@@ -8,7 +8,7 @@ def listado_ventas():
            saldo_pendiente, estado FROM ventas"
     c.execute(sql)
     datos = c.fetchall()
-    
+    print(datos)
     lista = []
     for p in datos:
         venta = Ventas(

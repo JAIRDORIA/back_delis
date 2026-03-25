@@ -1,10 +1,10 @@
 # __init__.py
 from .ventas import ventas_bp
-# from .roles import roles_bp
+from .cortes import cortes_bp
 
 def cargarRuta(app):
     app.register_blueprint(ventas_bp, url_prefix='/ventas')
-    # app.register_blueprint(roles_bp, url_prefix='/roles')
+    app.register_blueprint(cortes_bp, url_prefix='/cortes')
 
 
 
