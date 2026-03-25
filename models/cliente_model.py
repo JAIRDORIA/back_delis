@@ -12,6 +12,6 @@ class cliente:
             "Cli_Nombre":self.Cli_Nombre     ,
             "Cli_Apellido":self.Cli_Apellido ,
             "Cli_Celular":self.Cli_Celular   ,
-            "Cli_Correo":self.Cli_Correo 
+            "Cli_Correo1":self.Cli_Correo 
           }
       
