@@ -1,18 +1,17 @@
 from flask import current_app
-from models.cliente_model import clientes
+from models.cliente_model import cliente
 
 def listado_clientes():
     c = current_app.mysql.connection.cursor()
     
-    sql = """SELECT id, nombre, telefono, direccion, email, activo,
-             created_at, updated_at FROM clientes"""
+    sql = "SELECT id, nombre, telefono, direccion, email, activo,created_at, updated_at FROM clientes"
     
     c.execute(sql)
     datos = c.fetchall()
 
     lista = []
     for p in datos:
-        cli = clientes(
+        cli = cliente(
             id=p[0],
             nombre=p[1],
             telefono=p[2],
@@ -38,7 +37,7 @@ def obtener_clientes(id):
     dato = c.fetchone()
 
     if dato:
-        return clientes(
+        return cliente(
             id=dato[0],
             nombre=dato[1],
             telefono=dato[2],
