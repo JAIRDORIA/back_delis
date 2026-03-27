@@ -20,4 +20,3 @@ class cliente:
             "Cli_Creado":self.Cli_Creado ,
             "Cli_Actualizado":self.Cli_Actualizado
           }
-      
