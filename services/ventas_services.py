@@ -85,3 +85,31 @@ def registro(cliente_id, corte_id, usuario_id,
     }
     
     
+
+def obtener_venta(id):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
+               v.fecha_venta, v.fecha_entrega, v.total,
+               v.total_abonado, v.saldo_pendiente, v.estado
+        FROM ventas v
+        JOIN clientes c ON c.id = v.cliente_id
+        WHERE v.id = %s
+    """, (id,))
+    venta = c.fetchone()
+    c.close()
+    if venta:
+        return {
+            "id"              : venta[0],
+            "cliente_id"      : venta[1],
+            "nombre_cliente"  : venta[2],
+            "corte_id"        : venta[3],
+            "usuario_id"      : venta[4],
+            "fecha_venta"     : str(venta[5]),
+            "fecha_entrega"   : str(venta[6]),
+            "total"           : float(venta[7]),
+            "total_abonado"   : float(venta[8]),
+            "saldo_pendiente" : float(venta[9]),
+            "estado"          : venta[10]
+        }
+    return None
