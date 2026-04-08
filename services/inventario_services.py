@@ -19,4 +19,37 @@ def listado_inventarios():
         ).toDic()
         lista.append(inventario)
     
-    return lista               
+    return lista  
+
+def registro(producto_id):
+    c = current_app.mysql.connection.cursor()
+    sql = """
+             INSERT INTO inventario (producto_id)
+             VALUES 
+             (%s)
+             """
+    c.execute(sql, (producto_id,))
+    current_app.mysql.connection.commit()
+    id = c.lastrowid
+    c.close()
+    return inventarios(id, producto_id, 0, 0, 5, None).toDic()     
+
+def existe_producto(producto_id):
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT id FROM productos WHERE id = %s"
+    c.execute(sql, (producto_id,))
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None         
+
+def existe_inventario(producto_id):
+    c = current_app.mysql.connection.cursor()
+    
+    sql = "SELECT id FROM inventario WHERE producto_id = %s"
+    c.execute(sql, (producto_id,))
+    
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None

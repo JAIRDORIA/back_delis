@@ -21,5 +21,39 @@ def listado_productos():
         ).toDic()
         lista.append(producto)
 
-    return lista        
+    return lista   
+
+def registro(nombre, descripcion, precio_venta, unidades_por_bandeja):
+    c = current_app.mysql.connection.cursor()
+    sql = """
+             INSERT INTO productos (nombre, descripcion, precio_venta, unidades_por_bandeja)
+             VALUES 
+             (%s, %s, %s, %s)
+             """
+    c.execute(sql, (nombre, descripcion, precio_venta, unidades_por_bandeja))
+    current_app.mysql.connection.commit()
+    id = c.lastrowid
+    c.close()
+    return productos(id, nombre, descripcion, precio_venta, unidades_por_bandeja, 1, None, None).toDic() 
+
+def existe_nombre(nombre):
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT id FROM productos WHERE nombre = %s"
+    c.execute(sql, (nombre,))
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None
+
+def eliminar(id):
+    c = current_app.mysql.connection.cursor()
+    
+    sql = "UPDATE productos SET activo = 0 WHERE id = %s"
+    c.execute(sql, (id,))
+    
+    current_app.mysql.connection.commit()
+    filas_afectadas = c.rowcount
+    c.close()
+
+    return filas_afectadas > 0    
 
