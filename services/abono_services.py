@@ -4,7 +4,7 @@ from datetime import datetime
 
 def listado_abonos():
     c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, venta_id,  corte_id, monto, fecha,observacion FROM abonos"
+    sql = "SELECT id, venta_id,  corte_id,usuario_id, monto, fecha,observacion FROM abonos"
     c.execute(sql)
     datos = c.fetchall()
 
@@ -13,7 +13,8 @@ def listado_abonos():
         abono = abonos(
             id                    = p[0],
             venta_id                = p[1],
-            corte_id          = p[3],
+            corte_id          = p[2],
+            usuario_id       = p[3],
             monto               = p[4],
             fecha                = p[5],
             observacion            = p[6]

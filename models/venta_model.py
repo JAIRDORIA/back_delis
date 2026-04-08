@@ -17,7 +17,7 @@ class Ventas:
 
     def to_dict(self):
         return {
-            "id"              : self.id,
+            "id_venta"              : self.id,
             "cliente_id"      : self.cliente_id,
             "nombre_cliente"  : self.nombre_cliente,
             "corte_id"        : self.corte_id,

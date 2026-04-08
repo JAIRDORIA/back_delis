@@ -10,7 +10,7 @@ def listado_ventas():
            v.fecha_venta, v.fecha_entrega, v.total,
            v.total_abonado, v.saldo_pendiente, v.estado
     FROM ventas v
-    JOIN clientes c ON c.id = v.cliente_id
+    inner JOIN clientes c ON c.id = v.cliente_id
     """
     c.execute(sql)
     datos = c.fetchall()
@@ -29,8 +29,8 @@ def listado_ventas():
         total_abonado   = p[8],
         saldo_pendiente = p[9],
         estado          = p[10]
-    ).to_dict()
-    lista.append(venta)
+        ).to_dict()
+        lista.append(venta)
     return lista
 
     
