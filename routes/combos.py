@@ -1,20 +1,16 @@
 from flask import Blueprint
-from controllers.combos_controller import get_combos, get_combo, create_combo, update_combo
+# Importamos las funciones con los nombres que definimos en el controlador
+from controllers.combos_controller import get_combos, cntRegistrarCombo
 
 combos_bp = Blueprint('combos', __name__, url_prefix='/combos')
 
+# 1. Ruta para LISTAR (GET)
 @combos_bp.route('/', methods=['GET'])
 def listar_combos():
     return get_combos()
 
-@combos_bp.route('/<int:id>', methods=['GET'])
-def obtener_combo_por_id(id):
-    return get_combo(id)
-
+# 2. Ruta para REGISTRAR (POST)
 @combos_bp.route('/', methods=['POST'])
 def crear_nuevo_combo():
-    return create_combo()
-
-@combos_bp.route('/<int:id>', methods=['PUT'])
-def actualizar_combo_por_id(id):
-    return update_combo(id)
+    # Aquí llamamos a la función que tiene todas las validaciones (.strip, etc)
+    return cntRegistrarCombo()
