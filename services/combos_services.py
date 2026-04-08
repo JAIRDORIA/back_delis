@@ -16,9 +16,20 @@ def listado_combos():
         lista.append(combo)
     return lista
 
-def crear_combos(nombre, descripcion, precio):
+def existe_combo(nombre):
+    """Verifica si ya existe un combo con ese nombre para evitar duplicados."""
     c = current_app.mysql.connection.cursor()
-    # Usamos 1 por defecto para 'activo' y NOW() para las fechas
+    sql = "SELECT id FROM combos WHERE nombre = %s"
+    c.execute(sql, (nombre,))
+    return c.fetchone() is not None
+
+def crear_combos(nombre, descripcion, precio):
+    # 1. Validar duplicado
+    if existe_combo(nombre):
+        return {"error": f"Ya existe un combo con el nombre '{nombre}'"}, 400
+
+    # 2. Insertar si no existe
+    c = current_app.mysql.connection.cursor()
     sql = """INSERT INTO combos(nombre, descripcion, precio, activo, created_at, updated_at)
              VALUES (%s, %s, %s, 1, NOW(), NOW())"""
     c.execute(sql, (nombre, descripcion, precio))

@@ -13,22 +13,27 @@ def cntRegistrarCombo():
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
 
-    # 2. Validar que no estén vacíos (estilo .strip())
-    vacios = []
-    for campo in requeridos:
-        # Convertimos a string por si el precio viene como número
-        if str(request.json[campo]).strip() == "":
-            vacios.append(campo)
-            
-    if vacios:
-        return jsonify({"mensaje": f"los siguientes campos no pueden estar vacíos {vacios}"}), 400
+    # 2. Validar que no estén vacíos y limpiar espacios
+    nombre = str(request.json["nombre"]).strip()
+    descripcion = str(request.json["descripcion"]).strip()
+    precio = request.json["precio"]
 
-    # 3. Extraer datos
-    nombre      = request.json["nombre"]
-    descripcion = request.json["descripcion"]
-    precio      = request.json["precio"]
+    if not nombre or not descripcion:
+        return jsonify({"mensaje": "El nombre y la descripción no pueden estar vacíos"}), 400
 
-    # 4. Llamar al servicio
-    datos = crear_combos(nombre, descripcion, precio)
+    # 3. Validar que el precio sea un número válido y positivo
+    try:
+        precio_num = float(precio)
+        if precio_num <= 0:
+            return jsonify({"mensaje": "El precio debe ser un número mayor a cero"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"mensaje": "El precio debe ser un formato numérico válido"}), 400
+
+    # 4. Llamar al servicio y capturar posibles errores (como nombre duplicado)
+    resultado = crear_combos(nombre, descripcion, precio_num)
     
-    return jsonify({"mensaje": "Combo registrado", "datos": datos}), 201
+    # Si el servicio nos devolvió la tupla de error (ej: el 400 de 'existe_combo')
+    if isinstance(resultado, tuple):
+        return jsonify(resultado[0]), resultado[1]
+    
+    return jsonify({"mensaje": "Combo registrado con éxito", "datos": resultado}), 201
