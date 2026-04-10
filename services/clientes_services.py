@@ -26,28 +26,24 @@ def listado_clientes():
 
     return lista
 
-
-def obtener_clientes(id):
+def obtener_cliente(id):
     c = current_app.mysql.connection.cursor()
-
-    sql = """SELECT id, nombre, telefono, direccion, email, activo,
-             created_at, updated_at FROM clientes WHERE id = %s"""
-
-    c.execute(sql, (id,))
-    dato = c.fetchone()
-
-    if dato:
-        return cliente(
-            id=dato[0],
-            nombre=dato[1],
-            telefono=dato[2],
-            direccion=dato[3],
-            email=dato[4],
-            activo=dato[5],
-            created_at=dato[6],
-            updated_at=dato[7]
-        ).toDic()
-
+    c.execute("""
+        SELECT id, nombre, telefono, direccion, email, activo 
+        FROM clientes 
+        WHERE id = %s AND activo = 1
+    """, (id,))
+    cliente = c.fetchone()
+    c.close()
+    if cliente:
+        return {
+            "id"       : cliente[0],
+            "nombre"   : cliente[1],
+            "telefono" : cliente[2],
+            "direccion": cliente[3],
+            "email"    : cliente[4],
+            "activo"   : cliente[5]
+        }
     return None
 
 
