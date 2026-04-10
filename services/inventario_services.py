@@ -32,16 +32,7 @@ def registro(producto_id):
     current_app.mysql.connection.commit()
     id = c.lastrowid
     c.close()
-    return inventarios(id, producto_id, 0, 0, 5, None).toDic()     
-
-def existe_producto(producto_id):
-    c = current_app.mysql.connection.cursor()
-    sql = "SELECT id FROM productos WHERE id = %s"
-    c.execute(sql, (producto_id,))
-    dato = c.fetchone()
-    c.close()
-
-    return dato is not None         
+    return inventarios(id, producto_id, 0, 0, 5, None).toDic()        
 
 def existe_inventario(producto_id):
     c = current_app.mysql.connection.cursor()

@@ -1,5 +1,6 @@
 from flask import jsonify , request
-from  services.inventario_services import listado_inventarios, registro, existe_producto, existe_inventario
+from services.inventario_services import listado_inventarios, registro, existe_inventario
+from services.productos_services import existe_producto
 
 
 def cntListado():

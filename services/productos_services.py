@@ -45,6 +45,16 @@ def existe_nombre(nombre):
 
     return dato is not None
 
+
+def existe_producto(producto_id):
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT id FROM productos WHERE id = %s"
+    c.execute(sql, (producto_id,))
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None     
+
 def eliminar(id):
     c = current_app.mysql.connection.cursor()
     
