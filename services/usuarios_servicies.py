@@ -21,6 +21,42 @@ def listado_usuarios():
         ).toDic()
         lista.append(usuario)
 
+    return lista   
+
+def registro(nombre, username, password_hash, rol):
+    c = current_app.mysql.connection.cursor()
+    sql = """
+             INSERT INTO usuarios (nombre, username, password_hash, rol)
+             VALUES 
+             (%s, %s, %s, %s)
+             """
+    c.execute(sql, (nombre, username, password_hash, rol))
+    current_app.mysql.connection.commit()
+    id = c.lastrowid
+    c.close()
+    return usuarios(id, nombre, username, password_hash, rol,1, None, None).toDic()
+
+def existe_username(username):
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT id FROM usuarios WHERE username = %s"
+    c.execute(sql, (username,))
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None
+
+def eliminar(id):
+    c = current_app.mysql.connection.cursor()
+    
+    sql = "UPDATE usuarios SET activo = 0 WHERE id = %s"
+    c.execute(sql, (id,))
+    
+    current_app.mysql.connection.commit()
+    filas_afectadas = c.rowcount
+    c.close()
+
+    return filas_afectadas > 0
+
     return lista        
 
 
@@ -42,3 +78,4 @@ def obtener_usuario(id):
             "activo"  : usuario[4]
         }
     return None
+
