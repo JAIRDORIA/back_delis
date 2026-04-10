@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "API de MISCELANEA",
+    "title": "API de Delis",
     "description": "API REST para gestión de usuarios y eventos.",
     "version": "2.0.0"
   },
@@ -219,7 +219,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Evento eliminado"
+            "description": "Evento eliminado lider te odio la cara la cara"
           }
         }
       }
@@ -227,3 +227,4 @@
 
   }
 }
+
