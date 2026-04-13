@@ -9,7 +9,8 @@ from .combos import combos_bp
 from .clientes import clientes_bp
 from .abonos import abono_bp
 from .documentacion import documentacion_bp
-
+from .compra import compra_bp
+from .proovedores import proveedores_bp
 
 def cargarRuta(app):
     app.register_blueprint(ventas_bp, url_prefix='/ventas')
@@ -20,6 +21,8 @@ def cargarRuta(app):
     app.register_blueprint(combos_bp, url_prefix='/combos')
     app.register_blueprint(clientes_bp, url_prefix='/clientes')
     app.register_blueprint(abono_bp, url_prefix='/abonos')
+    app.register_blueprint(compra_bp, url_prefix='/compras')
+    app.register_blueprint(proveedores_bp, url_prefix='/proveedores')
     app.register_blueprint(documentacion_bp, url_prefix='/documentaciones')
 
     

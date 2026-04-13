@@ -1,51 +1,87 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "API de MISCELANEA",
-    "description": "API REST para gestión de usuarios y eventos.",
-    "version": "2.0.0"
+    "title": "API DELIS",
+    "description": "API REST para gestión contable e inventario del negocio DELIS.",
+    "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "http://miservidor.com"
+      "url": "http://localhost:5000"
     }
   ],
   "tags": [
     {
-      "name": "Usuarios",
-      "description": "Gestión de aprendices"
+      "name": "Ventas",
+      "description": "Gestión de ventas"
     },
     {
-      "name": "Eventos",
-      "description": "Gestión de eventos"
+      "name": "Abonos",
+      "description": "Gestión de abonos a ventas"
+    },
+    {
+      "name": "Cortes",
+      "description": "Gestión de cortes de caja"
     }
   ],
   "paths": {
-    
-    "/usuarios": {
+
+    "/ventas/": {
       "get": {
-        "tags": ["Usuarios"],
-        "summary": "Listar usuarios",
+        "tags": ["Ventas"],
+        "summary": "Listar todas las ventas",
+        "description": "Retorna el listado completo de ventas con el nombre del cliente obtenido por JOIN.",
         "responses": {
           "200": {
-            "description": "Lista de usuarios"
-          }
+            "description": "Lista de ventas obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id":              { "type": "integer",  "example": 1 },
+                      "cliente_id":      { "type": "integer",  "example": 2 },
+                      "nombre_cliente":  { "type": "string",   "example": "Juan Rodriguez" },
+                      "corte_id":        { "type": "integer",  "example": 1 },
+                      "usuario_id":      { "type": "integer",  "example": 1 },
+                      "fecha_venta":     { "type": "string",   "example": "2026-03-21 10:30:00" },
+                      "fecha_entrega":   { "type": "string",   "example": "2026-03-25" },
+                      "total":           { "type": "number",   "example": 42000.0 },
+                      "total_abonado":   { "type": "number",   "example": 20000.0 },
+                      "saldo_pendiente": { "type": "number",   "example": 22000.0 },
+                      "estado":          { "type": "string",   "example": "pendiente" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Error interno del servidor" }
         }
-      },
+      }
+    },
+
+    "/ventas/registro": {
       "post": {
-        "tags": ["Usuarios"],
-        "summary": "Crear usuario",
+        "tags": ["Ventas"],
+        "summary": "Registrar una nueva venta",
+        "description": "Crea una nueva venta. La fecha_venta y saldo_pendiente se calculan automaticamente por el servidor.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["cliente_id", "corte_id", "usuario_id", "fecha_entrega", "total", "total_abonado"],
                 "properties": {
-                  "nombre": { "type": "string" },
-                  "genero": { "type": "string" },
-                  "frm": { "type": "string" },
-                  "numdoc": { "type": "string" }
+                  "cliente_id":    { "type": "integer", "example": 2,            "description": "Debe existir en clientes y estar activo" },
+                  "corte_id":      { "type": "integer", "example": 1,            "description": "No puede ser un corte cerrado" },
+                  "usuario_id":    { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
+                  "fecha_entrega": { "type": "string",  "example": "25/03/2026", "description": "Formato DD/MM/YYYY, no puede ser fecha pasada" },
+                  "total":         { "type": "number",  "example": 42000,        "description": "Debe ser mayor a 0" },
+                  "total_abonado": { "type": "number",  "example": 20000,        "description": "No puede superar el total. Puede ser 0" }
                 }
               }
             }
@@ -53,108 +89,93 @@
         },
         "responses": {
           "201": {
-            "description": "Usuario creado"
-          }
-        }
-      }
-    },
-
-    "/usuarios/{id}": {
-      "get": {
-        "tags": ["Usuarios"],
-        "summary": "Obtener usuario por ID",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Usuario encontrado"
-          },
-          "404": {
-            "description": "Usuario no encontrado"
-          }
-        }
-      },
-      "patch": {
-        "tags": ["Usuarios"],
-        "summary": "Actualizar usuario",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "nombre": { "type": "string" },
-                  "genero": { "type": "string" },
-                  "frm": { "type": "string" },
-                  "numdoc": { "type": "string" }
+            "description": "Venta registrada correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "venta registrada" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":              { "type": "integer", "example": 4 },
+                        "cliente_id":      { "type": "integer", "example": 2 },
+                        "nombre_cliente":  { "type": "string",  "example": "Juan Rodriguez" },
+                        "corte_id":        { "type": "integer", "example": 1 },
+                        "usuario_id":      { "type": "integer", "example": 1 },
+                        "fecha_venta":     { "type": "string",  "example": "2026-03-21 10:30:00" },
+                        "fecha_entrega":   { "type": "string",  "example": "2026-03-25" },
+                        "total":           { "type": "number",  "example": 42000.0 },
+                        "total_abonado":   { "type": "number",  "example": 20000.0 },
+                        "saldo_pendiente": { "type": "number",  "example": 22000.0 },
+                        "estado":          { "type": "string",  "example": "pendiente" }
+                      }
+                    }
+                  }
                 }
               }
             }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Usuario actualizado"
-          }
-        }
-      },
-      "delete": {
-        "tags": ["Usuarios"],
-        "summary": "Eliminar usuario",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Usuario eliminado"
-          }
+          },
+          "400": { "description": "Datos invalidos, campos faltantes o vacios, fecha incorrecta, corte cerrado" },
+          "404": { "description": "Cliente, corte o usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
 
-    "/eventos": {
+    "/abonos/": {
       "get": {
-        "tags": ["Eventos"],
-        "summary": "Listar eventos",
+        "tags": ["Abonos"],
+        "summary": "Listar todos los abonos",
+        "description": "Retorna el listado completo de abonos registrados en el sistema.",
         "responses": {
           "200": {
-            "description": "Lista de eventos"
-          }
+            "description": "Lista de abonos obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id":          { "type": "integer", "example": 1 },
+                      "venta_id":    { "type": "integer", "example": 1 },
+                      "corte_id":    { "type": "integer", "example": 1 },
+                      "usuario_id":  { "type": "integer", "example": 1 },
+                      "monto":       { "type": "number",  "example": 20000.0 },
+                      "fecha":       { "type": "string",  "example": "2026-03-21" },
+                      "observacion": { "type": "string",  "example": "Pago en efectivo" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Error interno del servidor" }
         }
-      },
+      }
+    },
+
+    "/abonos/registro": {
       "post": {
-        "tags": ["Eventos"],
-        "summary": "Crear evento",
+        "tags": ["Abonos"],
+        "summary": "Registrar un nuevo abono",
+        "description": "Registra un abono sobre una venta existente. El trigger de la BD actualiza automaticamente total_abonado y saldo_pendiente de la venta.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["venta_id", "corte_id", "usuario_id", "monto", "fecha"],
                 "properties": {
-                  "nombre": { "type": "string" },
-                  "fecha": { "type": "string", "format": "date" },
-                  "lugar": { "type": "string" }
+                  "venta_id":    { "type": "integer", "example": 1,            "description": "Debe existir y no estar entregada" },
+                  "corte_id":    { "type": "integer", "example": 1,            "description": "No puede ser un corte cerrado" },
+                  "usuario_id":  { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
+                  "monto":       { "type": "number",  "example": 15000,        "description": "Debe ser mayor a 0 y no superar el saldo pendiente" },
+                  "fecha":       { "type": "string",  "example": "21/03/2026", "description": "Formato DD/MM/YYYY, no puede ser fecha pasada" },
+                  "observacion": { "type": "string",  "example": "Pago en efectivo", "description": "Opcional" }
                 }
               }
             }
@@ -162,65 +183,158 @@
         },
         "responses": {
           "201": {
-            "description": "Evento creado"
+            "description": "Abono registrado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "abono registrado" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":          { "type": "integer", "example": 4 },
+                        "venta_id":    { "type": "integer", "example": 1 },
+                        "corte_id":    { "type": "integer", "example": 1 },
+                        "usuario_id":  { "type": "integer", "example": 1 },
+                        "monto":       { "type": "number",  "example": 15000.0 },
+                        "fecha":       { "type": "string",  "example": "2026-03-21" },
+                        "observacion": { "type": "string",  "example": "Pago en efectivo" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Datos invalidos, monto supera saldo pendiente, venta entregada, corte cerrado" },
+          "404": { "description": "Venta, corte o usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+    "/cortes/": {
+  "get": {
+    "tags": ["Cortes"],
+    "summary": "Listar todos los cortes",
+    "description": "Retorna el listado completo de cortes registrados en el sistema con su estado actual.",
+    "responses": {
+      "200": {
+        "description": "Lista de cortes obtenida correctamente",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id":            { "type": "integer", "example": 1 },
+                  "numero":        { "type": "integer", "example": 1 },
+                  "fecha_inicio":  { "type": "string",  "example": "2026-03-21 08:00:00" },
+                  "fecha_cierre":  { "type": "string",  "example": "2026-03-21 14:00:00" },
+                  "estado":        { "type": "string",  "example": "cerrado" },
+                  "saldo_inicial": { "type": "number",  "example": 0.0 }
+                }
+              }
+            }
           }
+        }
+      },
+      "500": { "description": "Error interno del servidor" }
+    }
+  }
+},
+
+    "/cortes/iniciar": {
+      "post": {
+        "tags": ["Cortes"],
+        "summary": "Iniciar primer corte",
+        "description": "Crea el primer corte del sistema. Solo funciona una vez cuando no existe ningun corte registrado. Crea automaticamente el corte 1 abierto y el corte 2 futuro.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "No requiere body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Primer corte iniciado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "primer corte iniciado correctamente" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":            { "type": "integer", "example": 1 },
+                        "numero":        { "type": "integer", "example": 1 },
+                        "fecha_inicio":  { "type": "string",  "example": "2026-03-21 08:00:00" },
+                        "fecha_cierre":  { "type": "string",  "example": null },
+                        "estado":        { "type": "string",  "example": "abierto" },
+                        "saldo_inicial": { "type": "number",  "example": 0.0 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Ya existen cortes registrados, no se puede iniciar de nuevo" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
 
-    "/eventos/{id}": {
-      "get": {
-        "tags": ["Eventos"],
-        "summary": "Obtener evento por ID",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
+    "/cortes/cerrar": {
+      "post": {
+        "tags": ["Cortes"],
+        "summary": "Cerrar corte actual",
+        "description": "Cierra el corte actualmente abierto, abre el corte futuro y crea automaticamente el siguiente corte futuro. Calcula y hereda el saldo de abonos anticipados.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "No requiere body"
+              }
+            }
           }
-        ],
+        },
         "responses": {
           "200": {
-            "description": "Evento encontrado"
+            "description": "Corte cerrado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "corte #1 cerrado correctamente, corte #2 ahora esta abierto" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":            { "type": "integer", "example": 2 },
+                        "numero":        { "type": "integer", "example": 2 },
+                        "fecha_inicio":  { "type": "string",  "example": "2026-03-21 14:00:00" },
+                        "fecha_cierre":  { "type": "string",  "example": null },
+                        "estado":        { "type": "string",  "example": "abierto" },
+                        "saldo_inicial": { "type": "number",  "example": 35000.0 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
-          "404": {
-            "description": "Evento no encontrado"
-          }
-        }
-      },
-      "patch": {
-        "tags": ["Eventos"],
-        "summary": "Actualizar evento",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Evento actualizado"
-          }
-        }
-      },
-      "delete": {
-        "tags": ["Eventos"],
-        "summary": "Eliminar evento",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Evento eliminado"
-          }
+          "400": { "description": "No existe corte abierto o no existe corte futuro" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     }

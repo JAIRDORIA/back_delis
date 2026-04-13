@@ -12,7 +12,7 @@ def swagger_ui():
     <!DOCTYPE html>
     <html>
     <head>
-      <title>API APRENDIZ</title>
+      <title>API DELIS</title>
       <link href="/static/swagger-ui/swagger-ui.css" rel="stylesheet" />
     </head>
     <body>
