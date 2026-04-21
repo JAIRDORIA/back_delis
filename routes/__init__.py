@@ -21,13 +21,9 @@ def cargarRuta(app):
     app.register_blueprint(combos_bp, url_prefix='/combos')
     app.register_blueprint(clientes_bp, url_prefix='/clientes')
     app.register_blueprint(abono_bp, url_prefix='/abonos')
-<<<<<<< HEAD
-    app.register_blueprint(documentacion_bp, url_prefix='/documentacion')
-=======
     app.register_blueprint(compra_bp, url_prefix='/compras')
     app.register_blueprint(proveedores_bp, url_prefix='/proveedores')
     app.register_blueprint(documentacion_bp, url_prefix='/documentaciones')
->>>>>>> 025db5b40b45bb83201543b20d81a1b0a68efae6
 
     
 
