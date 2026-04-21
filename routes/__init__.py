@@ -20,7 +20,7 @@ def cargarRuta(app):
     app.register_blueprint(combos_bp, url_prefix='/combos')
     app.register_blueprint(clientes_bp, url_prefix='/clientes')
     app.register_blueprint(abono_bp, url_prefix='/abonos')
-    app.register_blueprint(documentacion_bp, url_prefix='/documentaciones')
+    app.register_blueprint(documentacion_bp, url_prefix='/documentacion')
 
     
 

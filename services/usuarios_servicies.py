@@ -57,9 +57,6 @@ def eliminar(id):
 
     return filas_afectadas > 0
 
-    return lista        
-
-
 def obtener_usuario(id):
     c = current_app.mysql.connection.cursor()
     c.execute("""

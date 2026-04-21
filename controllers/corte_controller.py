@@ -2,7 +2,6 @@ from flask import jsonify , request
 from  services.cortes_services import listado_cortes
 
 
-
 def cntListado():
     try:
         datos = listado_cortes()
