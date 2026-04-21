@@ -1,6 +1,6 @@
 from flask import jsonify , request
 from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar
-
+import re
 
 
 def cntListado():
