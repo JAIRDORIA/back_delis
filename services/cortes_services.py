@@ -42,10 +42,6 @@ def obtener_corte(id):
         }
     return None
 
-
-
-
-
 def registrar_primer_corte():
     c = current_app.mysql.connection.cursor()
     
@@ -203,3 +199,14 @@ def obtener_corte_futuro():
             "saldo_inicial": float(corte[5])
         }
     return None
+
+
+def actualizar_corte(id, estado):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        UPDATE cortes SET estado = %s
+        WHERE id = %s
+    """, (estado, id))
+    current_app.mysql.connection.commit()
+    c.close()
+    return obtener_corte(id)

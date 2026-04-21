@@ -3,9 +3,16 @@ from flask import Flask
 from flask_mysqldb import MySQL
 from routes import cargarRuta
 from config import config
+from flask_jwt_extended import JWTManager
+import os
+from flask_cors import CORS
+
 
 app = Flask(__name__)
 app.config.from_object(config)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+CORS(app)
+jwt = JWTManager(app)
 
 mysql = MySQL(app)
 app.mysql = mysql

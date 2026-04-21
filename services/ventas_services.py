@@ -38,38 +38,28 @@ def listado_ventas():
     
     
   
-def registro(cliente_id, corte_id, usuario_id,
-             fecha_entrega, total, total_abonado):
-    
-    # Convierte fecha de DD/MM/YYYY a YYYY-MM-DD
-    try:
-        fecha_entrega = datetime.strptime(
-            fecha_entrega, "%d/%m/%Y").strftime("%Y-%m-%d")
-    except ValueError:
-        pass
-
+def registro(cliente_id, corte_id, usuario_id, fecha_entrega, total):
+    # total_abonado ya no viene del usuario
+    # siempre inicia en 0
     c = current_app.mysql.connection.cursor()
     sql = """
     INSERT INTO ventas (cliente_id, corte_id, usuario_id,
-                        fecha_entrega, total, total_abonado)
-    VALUES (%s, %s, %s, %s, %s, %s)"""
+                        fecha_entrega, total)
+    VALUES (%s, %s, %s, %s, %s)"""
     c.execute(sql, (cliente_id, corte_id, usuario_id,
-                    fecha_entrega, total, total_abonado))
+                    fecha_entrega, total))
     current_app.mysql.connection.commit()
     id = c.lastrowid
-
-    # Consulta el registro completo con JOIN para traer nombre cliente
     c.execute("""
-    SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
-           v.fecha_venta, v.fecha_entrega, v.total,
-           v.total_abonado, v.saldo_pendiente, v.estado
-    FROM ventas v
-    JOIN clientes c ON c.id = v.cliente_id
-    WHERE v.id = %s
+        SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
+               v.fecha_venta, v.fecha_entrega, v.total,
+               v.total_abonado, v.saldo_pendiente, v.estado
+        FROM ventas v
+        JOIN clientes c ON c.id = v.cliente_id
+        WHERE v.id = %s
     """, (id,))
     venta = c.fetchone()
     c.close()
-
     return {
         "id"              : venta[0],
         "cliente_id"      : venta[1],
@@ -113,3 +103,45 @@ def obtener_venta(id):
             "estado"          : venta[10]
         }
     return None
+
+
+def actualizar_venta(id, fecha_entrega, total, estado):
+    # total_abonado ya no se toca aqui
+    try:
+        fecha_entrega = datetime.strptime(
+            fecha_entrega, "%d/%m/%Y").strftime("%Y-%m-%d")
+    except ValueError:
+        pass
+
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        UPDATE ventas
+        SET fecha_entrega = %s,
+            total         = %s,
+            estado        = %s
+        WHERE id = %s
+    """, (fecha_entrega, total, estado, id))
+    current_app.mysql.connection.commit()
+    c.close()
+    return obtener_venta(id)
+
+def anular_venta(id):
+    c = current_app.mysql.connection.cursor()
+    
+    # 1. Cambiar estado a anulada (dispara el trigger)
+    c.execute("""
+        UPDATE ventas SET estado = 'anulada'
+        WHERE id = %s
+    """, (id,))
+    
+    # 2. Resetear total_abonado a 0
+    # lo hacemos aqui y no en el trigger para evitar
+    # el error de MySQL de tabla en uso
+    c.execute("""
+        UPDATE ventas SET total_abonado = 0
+        WHERE id = %s
+    """, (id,))
+    
+    current_app.mysql.connection.commit()
+    c.close()
+    return obtener_venta(id)
