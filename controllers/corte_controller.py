@@ -2,7 +2,6 @@ from flask import jsonify , request
 from  services.cortes_services import listado_cortes,registrar_primer_corte, cerrar_corte,obtener_corte ,obtener_corte_abierto  , obtener_corte_futuro, actualizar_corte
 
 
-
 def cntListado():
     try:
         datos = listado_cortes()

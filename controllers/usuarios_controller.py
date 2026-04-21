@@ -1,6 +1,7 @@
 from flask import jsonify , request
 from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar
 import re
+from werkzeug.security import generate_password_hash
 
 
 def cntListado():
@@ -30,10 +31,10 @@ def cntRegistro():
     #validar que no esten vacios
     nombre        = request.json['nombre'] 
     username      = request.json['username']
-    password_hash = request.json['password_hash']
+    password = request.json['password_hash']
+    password_hash = generate_password_hash(password)
     rol           = request.json['rol']
     
-    #validar que el username no exista
     if existe_username(username):
         return jsonify({"mensaje": "El username ya existe"}), 400
 
@@ -47,8 +48,8 @@ def cntRegistro():
     if len(username) < 4 or len(username) > 50:
         return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
 
-    if len(password_hash) < 6 or len(password_hash) > 255:
-        return jsonify({"mensaje": "La contraseña debe tener entre 6 y 255 caracteres"}), 400
+    if len(password) < 6 or len(password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
     
     if rol not in ['admin', 'vendedor']:
         return jsonify({"mensaje": "El rol debe ser admin o vendedor"}), 400
