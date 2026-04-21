@@ -43,3 +43,25 @@ def crear_clientes(nombre, telefono, direccion, email):
         "nombre": nombre,
         "email": email
     }
+    
+    
+
+def obtener_cliente(id):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT id, nombre, telefono, direccion, email, activo
+        FROM clientes
+        WHERE id = %s AND activo = 1
+    """, (id,))
+    cliente = c.fetchone()
+    c.close()
+    if cliente:
+        return {
+            "id"       : cliente[0],
+            "nombre"   : cliente[1],
+            "telefono" : cliente[2],
+            "direccion": cliente[3],
+            "email"    : cliente[4],
+            "activo"   : cliente[5]
+        }
+    return None

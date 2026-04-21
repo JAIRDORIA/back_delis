@@ -1,9 +1,11 @@
 from flask import jsonify , request
-from  services.ventas_services import listado_ventas,registro
+from  services.ventas_services import listado_ventas,registro, obtener_venta,actualizar_venta, anular_venta
 from services.clientes_services import obtener_cliente
-from services.cortes_services import obtener_corte
+from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
+
+
 
 def cntListado():
     try:
@@ -14,65 +16,137 @@ def cntListado():
  
 
 def cntregistrar():
-    # 1. validar campos requeridos
-    requeridos = ["cliente_id", "corte_id", "usuario_id",
-                  "fecha_entrega", "total", "total_abonado"]
-    faltantes = [x for x in requeridos if x not in request.json]
-    if faltantes:
-        return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
-
-    # 2. validar campos vacios
-    vacios = [x for x in requeridos if request.json[x] == "" 
-              or request.json[x] is None]
-    if vacios:
-        return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
-
-    id_cliente    = request.json["cliente_id"]
-    corte         = request.json["corte_id"]
-    usuario       = request.json["usuario_id"]
-    fecha_entrega = request.json["fecha_entrega"]
-    total         = request.json["total"]
-    total_abonado = request.json["total_abonado"]
-
-    # 3. validar que el cliente existe
-    cliente = obtener_cliente(id_cliente)
-    if not cliente:
-        return jsonify({"mensaje": f"el cliente con id {id_cliente} no existe"}), 404
-
-    # 4. validar que el corte existe y no está cerrado
-    corte_db = obtener_corte(corte)
-    if not corte_db:
-        return jsonify({"mensaje": f"el corte con id {corte} no existe"}), 404
-    if corte_db["estado"] == "cerrado":
-        return jsonify({"mensaje": "no puedes registrar ventas en un corte cerrado"}), 400
-
-    # 5. validar que el usuario existe
-    usuario_db = obtener_usuario(usuario)
-    if not usuario_db:
-        return jsonify({"mensaje": f"el usuario con id {usuario} no existe"}), 404
-
-    # 6. validar que total es positivo
-    if total <= 0:
-        return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
-
-    # 7. validar que total_abonado no es negativo
-    if total_abonado < 0:
-        return jsonify({"mensaje": "el total abonado no puede ser negativo"}), 400
-
-    # 8. validar que abono no supera el total
-    if total_abonado > total:
-        return jsonify({"mensaje": "el abono no puede ser mayor al total"}), 400
-
-    # 9. validar formato de fecha
     try:
-        fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
-    except ValueError:
-        return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
+        # 1. validar campos requeridos
+        requeridos = ["cliente_id", "corte_id", "usuario_id",
+                      "fecha_entrega", "total"]
+        faltantes = [x for x in requeridos if x not in request.json]
+        if faltantes:
+            return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
 
-    # 10. validar que fecha no es en el pasado
-    if fecha.date() < datetime.now().date():
-        return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
+        # 2. validar campos vacios
+        vacios = [x for x in requeridos if request.json[x] == ""
+                  or request.json[x] is None]
+        if vacios:
+            return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
-    # registrar la venta
-    p = registro(id_cliente, corte, usuario, fecha_entrega, total, total_abonado)
-    return jsonify({"mensaje": "venta registrada", "datos": p}), 201
+        id_cliente    = request.json["cliente_id"]
+        corte         = request.json["corte_id"]
+        usuario       = request.json["usuario_id"]
+        fecha_entrega = request.json["fecha_entrega"]
+        total         = request.json["total"]
+
+        # 3. validar que el cliente existe y esta activo
+        cliente_db = obtener_cliente(id_cliente)
+        if not cliente_db:
+            return jsonify({"mensaje": f"el cliente con id {id_cliente} no existe"}), 404
+
+        # 4. validar que el corte existe y no esta cerrado
+        corte_db = obtener_corte(corte)
+        if not corte_db:
+            return jsonify({"mensaje": f"el corte con id {corte} no existe"}), 404
+        if corte_db["estado"] == "cerrado":
+            return jsonify({"mensaje": "no puedes registrar ventas en un corte cerrado"}), 400
+
+        # 5. validar que el usuario existe y esta activo
+        usuario_db = obtener_usuario(usuario)
+        if not usuario_db:
+            return jsonify({"mensaje": f"el usuario con id {usuario} no existe"}), 404
+
+        # 6. validar que total es positivo
+        if total <= 0:
+            return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
+
+        # 7. validar formato de fecha
+        try:
+            fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
+        except ValueError:
+            return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
+
+        # 8. validar que fecha no es en el pasado
+        if fecha.date() < datetime.now().date():
+            return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
+
+        # convertir fecha al formato correcto para MySQL
+        fecha_entrega = fecha.strftime("%Y-%m-%d")
+
+        p = registro(id_cliente, corte, usuario, fecha_entrega, total)
+        return jsonify({"mensaje": "venta registrada", "datos": p}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def cntActualizar(id):
+    try:
+        # 1. validar que la venta existe
+        venta = obtener_venta(id)
+        if not venta:
+            return jsonify({"mensaje": f"la venta con id {id} no existe"}), 404
+
+        # 2. solo se puede editar si esta pendiente
+        if venta["estado"] != "pendiente":
+            return jsonify({"mensaje": "solo puedes editar ventas en estado pendiente"}), 400
+
+        # 3. tomar valores del body o mantener los actuales
+        fecha_entrega = request.json.get("fecha_entrega", venta["fecha_entrega"])
+        total         = request.json.get("total",         venta["total"])
+        estado        = request.json.get("estado",        venta["estado"])
+
+        # 4. validar estado si fue enviado
+        estados_validos = ["pendiente", "entregada", "anulada"]
+        if estado not in estados_validos:
+            return jsonify({"mensaje": f"estado invalido, debe ser: {estados_validos}"}), 400
+
+        # 5. validar total
+        if total <= 0:
+            return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
+
+        # 6. validar fecha si viene en formato DD/MM/YYYY
+        try:
+            fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
+            if fecha.date() < datetime.now().date():
+                return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
+            fecha_entrega = fecha.strftime("%Y-%m-%d")
+        except ValueError:
+            # si la fecha viene en formato YYYY-MM-DD desde la BD
+            # no necesita convertirse
+            pass
+
+        resultado = actualizar_venta(id, fecha_entrega, total, estado)
+        return jsonify({"mensaje": "venta actualizada", "datos": resultado}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def cntAnular(id):
+    try:
+        # 1. validar que la venta existe
+        venta = obtener_venta(id)
+        if not venta:
+            return jsonify({"mensaje": f"la venta con id {id} no existe"}), 404
+
+        # 2. validar que no este ya anulada
+        if venta["estado"] == "anulada":
+            return jsonify({"mensaje": "la venta ya esta anulada"}), 400
+
+        # 3. validar que no este entregada
+        if venta["estado"] == "entregada":
+            return jsonify({"mensaje": "no puedes anular una venta ya entregada"}), 400
+
+        # 4. validar que pertenece al corte actual o futuro
+        corte_abierto = obtener_corte_abierto()
+        corte_futuro  = obtener_corte_futuro()
+        cortes_validos = [corte_abierto["id"], corte_futuro["id"]]
+
+        if venta["corte_id"] not in cortes_validos:
+            return jsonify({
+                "mensaje": "solo puedes anular ventas del corte actual o del corte futuro"
+            }), 400
+
+        resultado = anular_venta(id)
+        return jsonify({"mensaje": "venta anulada correctamente", "datos": resultado}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
