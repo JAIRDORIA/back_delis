@@ -1,7 +1,12 @@
 from flask import jsonify , request
-from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar
+from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro
 import re
-from werkzeug.security import generate_password_hash
+import bcrypt
+
+def hashear_password(password_plano: str) -> str:
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password_plano.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def cntListado():
@@ -9,7 +14,7 @@ def cntListado():
         datos = listado_usuarios()
         return jsonify(datos), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 
+        return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
     #validar en la peticion(body) atributos requeridos
@@ -32,7 +37,7 @@ def cntRegistro():
     nombre        = request.json['nombre'] 
     username      = request.json['username']
     password = request.json['password_hash']
-    password_hash = generate_password_hash(password)
+    password_hash = hashear_password(password)
     rol           = request.json['rol']
     
     if existe_username(username):
@@ -51,8 +56,8 @@ def cntRegistro():
     if len(password) < 6 or len(password) > 50:
         return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
     
-    if rol not in ['admin', 'vendedor']:
-        return jsonify({"mensaje": "El rol debe ser admin o vendedor"}), 400
+    if rol not in ['admin', 'cajero']:
+        return jsonify({"mensaje": "El rol debe ser admin o cajero"}), 400
     
     p             = registro(nombre=nombre, username=username, password_hash=password_hash, rol=rol)
     return jsonify({"mensaje":"Usuario registrado","datos":p}), 201
@@ -60,12 +65,100 @@ def cntRegistro():
 def cntEliminar(id):
     if not id:
         return jsonify({"mensaje": "El id es requerido"}), 400
-
+    
+    if not str(id).isdigit():
+     return jsonify({"mensaje": "El id debe ser un número entero"}), 400
+    
     eliminado = eliminar(id)
-
+    
     if not eliminado:
         return jsonify({"mensaje": "Usuario no encontrado"}), 404
 
     return jsonify({"mensaje": "Usuario desactivado correctamente"}), 200
 
+def cntActualizar(id):
+
+    if not request.json:
+        return jsonify({"mensaje": "Debe enviar datos"}), 400
+
+    nombre   = request.json.get('nombre')
+    username = request.json.get('username')
+    password = request.json.get('password_hash')
+    rol      = request.json.get('rol')
+
+    requeridos = ['nombre', 'username', 'rol']
+    faltantes = [r for r in requeridos if not request.json.get(r)]
+    if faltantes:
+        return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
+
+    if len(nombre) < 3 or len(nombre) > 100:
+        return jsonify({"mensaje": "El nombre debe tener entre 3 y 100 caracteres"}), 400
+
+    if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', nombre):
+        return jsonify({"mensaje": "El nombre solo puede contener letras"}), 400
+
+    if len(username) < 4 or len(username) > 50:
+        return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
+
+    if rol not in ['admin', 'cajero']:
+        return jsonify({"mensaje": "El rol debe ser admin o cajero"}), 400
     
+    if not str(id).isdigit():
+       return jsonify({"mensaje": "El id debe ser un número entero"}), 400
+
+    password_hash = None
+    if password:
+        if len(password) < 6 or len(password) > 50:
+            return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
+        password_hash = hashear_password(password)
+
+    if existe_username_otro(username, id):
+        return jsonify({"mensaje": "El username ya existe"}), 400
+    
+    usuario_actual = obtener_usuario(id)
+    if not usuario_actual:
+     return jsonify({"mensaje": "Usuario no encontrado"}), 404
+
+    cambios = []
+
+    if nombre is not None and nombre != usuario_actual["nombre"]:
+     cambios.append("nombre")
+
+    if username is not None and username != usuario_actual["username"]:
+     cambios.append("username")
+
+    if rol is not None and rol != usuario_actual["rol"]:
+     cambios.append("rol")
+
+    if password:
+     cambios.append("password")
+
+    if not cambios:
+     return jsonify({"mensaje": "No hay cambios para actualizar"}), 400
+
+    actualizado = actualizar(
+        id=id,
+        nombre=nombre,
+        username=username,
+        password_hash=password_hash,
+        rol=rol
+    )
+
+    if not actualizado:
+        return jsonify({"mensaje": "Usuario no encontrado"}), 404
+
+    return jsonify({"mensaje": "Usuario actualizado correctamente"}), 200
+
+def obtenerUsuario(id):
+    if not id:
+        return jsonify({"mensaje": "El id es requerido"}), 400
+    
+    if not str(id).isdigit():
+       return jsonify({"mensaje": "El id debe ser un número entero"}), 400
+
+    usuario = obtener_usuario(id)
+
+    if not usuario:
+        return jsonify({"mensaje": "Usuario no encontrado"}), 404
+
+    return jsonify(usuario), 200

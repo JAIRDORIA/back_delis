@@ -1,7 +1,6 @@
-from flask import jsonify , request
-from services.inventario_services import listado_inventarios, registro, existe_inventario
+from flask import jsonify, request
+from services.inventario_services import (listado_inventarios, registro, existe_inventario,obtener_inventario, actualizar_stock_minimo, productos_bajo_stock )
 from services.productos_services import existe_producto
-
 
 def cntListado():
     try:
@@ -9,44 +8,94 @@ def cntListado():
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
-def cntRegistro():
-    #validar en la peticion(body) atributos requeridos
-    requeridos = ['producto_id']
 
+
+def cntRegistro():
+    requeridos = ['producto_id']
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
-    
-    #Validar que no existan campos vacios en los requeridos
+
     vacios = []
     for clave in request.json:
         if str(request.json[clave]).strip() == "":
             vacios.append(clave)
-
     if vacios:
         return jsonify({"mensaje": f"los siguientes campos no pueden estar vacios {vacios}"}), 400
-    
-    #validar que no esten vacios
-    producto_id  = request.json['producto_id'] 
 
-    #validar campos 
+    producto_id = request.json['producto_id']
+
     try:
         producto_id = int(producto_id)
     except:
         return jsonify({"mensaje": "El producto_id debe ser numérico"}), 400
 
-    # validar positivo
     if producto_id <= 0:
         return jsonify({"mensaje": "El producto_id debe ser mayor a 0"}), 400
 
-    # validar que el producto exista
     if not existe_producto(producto_id):
         return jsonify({"mensaje": "El producto no existe"}), 400
 
-    # validar que no exista inventario
     if existe_inventario(producto_id):
         return jsonify({"mensaje": "El inventario ya existe para este producto"}), 400
-    
-    p             = registro(producto_id=producto_id)
-    return jsonify({"mensaje":"Inventario registrado","datos":p}), 201
+
+    p = registro(producto_id=producto_id)
+    return jsonify({"mensaje": "Inventario registrado", "datos": p}), 201
+
+
+def cntActualizar(id):
+    """Solo se puede actualizar el stock_minimo manualmente.
+    El stock_actual lo manejan los triggers automáticamente."""
+
+    if not str(id).isdigit():
+        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
+
+    if not request.json:
+        return jsonify({"mensaje": "Debe enviar datos"}), 400
+
+    stock_minimo = request.json.get('stock_minimo')
+
+    if stock_minimo is None:
+        return jsonify({"mensaje": "Debe enviar el campo stock_minimo"}), 400
+
+    try:
+        stock_minimo = int(stock_minimo)
+    except:
+        return jsonify({"mensaje": "El stock_minimo debe ser un número entero"}), 400
+
+    if stock_minimo < 0:
+        return jsonify({"mensaje": "El stock_minimo no puede ser negativo"}), 400
+
+    inventario_actual = obtener_inventario(id)
+    if not inventario_actual:
+        return jsonify({"mensaje": "Inventario no encontrado"}), 404
+
+    # verificar si hay cambio real
+    if stock_minimo == inventario_actual["stock_minimo"]:
+        return jsonify({"mensaje": "No hay cambios para actualizar"}), 400
+
+    actualizado = actualizar_stock_minimo(id, stock_minimo)
+    if not actualizado:
+        return jsonify({"mensaje": "No se pudo actualizar"}), 400
+
+    return jsonify({"mensaje": "Stock mínimo actualizado correctamente"}), 200
+
+
+def cntObtenerInventario(id):
+    if not str(id).isdigit():
+        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
+
+    inventario = obtener_inventario(id)
+    if not inventario:
+        return jsonify({"mensaje": "Inventario no encontrado"}), 404
+
+    return jsonify(inventario), 200
+
+
+def cntProductosBajoStock():
+    """Retorna los productos que están por debajo del stock mínimo."""
+    try:
+        datos = productos_bajo_stock()
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
