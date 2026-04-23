@@ -6,25 +6,499 @@
     "version": "1.0.0"
   },
   "servers": [
-    {
-      "url": "http://localhost:5000"
-    }
+    { "url": "http://localhost:5000" }
   ],
   "tags": [
-    {
-      "name": "Ventas",
-      "description": "Gestión de ventas"
-    },
-    {
-      "name": "Abonos",
-      "description": "Gestión de abonos a ventas"
-    },
-    {
-      "name": "Cortes",
-      "description": "Gestión de cortes de caja"
-    }
+    { "name": "Usuarios",   "description": "Gestión de usuarios del sistema" },
+    { "name": "Productos",  "description": "Gestión de productos" },
+    { "name": "Inventario", "description": "Gestión de inventario" },
+    { "name": "Ventas",     "description": "Gestión de ventas" },
+    { "name": "Abonos",     "description": "Gestión de abonos a ventas" },
+    { "name": "Cortes",     "description": "Gestión de cortes de caja" }
   ],
   "paths": {
+
+    "/api/usuarios/": {
+      "get": {
+        "tags": ["Usuarios"],
+        "summary": "Listar usuarios activos",
+        "description": "Retorna todos los usuarios con activo = 1. No incluye el password_hash.",
+        "responses": {
+          "200": {
+            "description": "Lista de usuarios obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id":         { "type": "integer", "example": 1 },
+                      "nombre":     { "type": "string",  "example": "Carlos Pérez" },
+                      "username":   { "type": "string",  "example": "cperez" },
+                      "rol":        { "type": "string",  "example": "admin" },
+                      "activo":     { "type": "integer", "example": 1 },
+                      "created_at": { "type": "string",  "example": "2026-03-24 09:01:45" },
+                      "updated_at": { "type": "string",  "example": "2026-03-24 09:01:45" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Error interno del servidor" }
+        }
+      },
+      "post": {
+        "tags": ["Usuarios"],
+        "summary": "Registrar un nuevo usuario",
+        "description": "Crea un nuevo usuario. La contraseña se envía en texto plano y se almacena como hash bcrypt.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nombre", "username", "password_hash", "rol"],
+                "properties": {
+                  "nombre":        { "type": "string", "example": "Ana Gómez",  "description": "Entre 3 y 100 caracteres, solo letras" },
+                  "username":      { "type": "string", "example": "agomez",     "description": "Entre 4 y 50 caracteres" },
+                  "password_hash": { "type": "string", "example": "clave123",   "description": "Entre 6 y 50 caracteres. Se guarda hasheada con bcrypt" },
+                  "rol":           { "type": "string", "example": "cajero",     "description": "Valores válidos: admin, cajero" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "Usuario registrado" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":       { "type": "integer", "example": 4 },
+                        "nombre":   { "type": "string",  "example": "Ana Gómez" },
+                        "username": { "type": "string",  "example": "agomez" },
+                        "rol":      { "type": "string",  "example": "cajero" },
+                        "activo":   { "type": "integer", "example": 1 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Campos faltantes, vacíos, username duplicado o rol inválido" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
+    "/api/usuarios/{id}": {
+      "get": {
+        "tags": ["Usuarios"],
+        "summary": "Obtener un usuario por ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuario encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id":       { "type": "integer", "example": 1 },
+                    "nombre":   { "type": "string",  "example": "Carlos Pérez" },
+                    "username": { "type": "string",  "example": "cperez" },
+                    "rol":      { "type": "string",  "example": "admin" },
+                    "activo":   { "type": "integer", "example": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Usuario no encontrado" }
+        }
+      },
+      "put": {
+        "tags": ["Usuarios"],
+        "summary": "Actualizar un usuario",
+        "description": "Actualiza los datos de un usuario. Si no se envía password_hash, se conserva la contraseña actual. No actualiza si no hay cambios reales.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nombre", "username", "rol"],
+                "properties": {
+                  "nombre":        { "type": "string", "example": "Ana Gómez" },
+                  "username":      { "type": "string", "example": "agomez2" },
+                  "password_hash": { "type": "string", "example": "nuevaClave123", "description": "Opcional. Si no se envía se conserva la contraseña actual" },
+                  "rol":           { "type": "string", "example": "admin",          "description": "Valores válidos: admin, cajero" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Usuario actualizado correctamente" },
+          "400": { "description": "Sin cambios, campos inválidos o username duplicado" },
+          "404": { "description": "Usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      },
+      "delete": {
+        "tags": ["Usuarios"],
+        "summary": "Desactivar un usuario (soft delete)",
+        "description": "Pone activo = 0. El usuario no se elimina físicamente de la base de datos.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": {
+          "200": { "description": "Usuario desactivado correctamente" },
+          "404": { "description": "Usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
+    "/api/productos/": {
+      "get": {
+        "tags": ["Productos"],
+        "summary": "Listar productos activos",
+        "description": "Retorna todos los productos con activo = 1.",
+        "responses": {
+          "200": {
+            "description": "Lista de productos obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id":                   { "type": "integer", "example": 1 },
+                      "nombre":               { "type": "string",  "example": "Bandeja de deditos" },
+                      "descripcion":          { "type": "string",  "example": "22 unidades de deditos" },
+                      "precio_venta":         { "type": "number",  "example": 14000.0 },
+                      "unidades_por_bandeja": { "type": "integer", "example": 22 },
+                      "activo":               { "type": "integer", "example": 1 },
+                      "created_at":           { "type": "string",  "example": "2026-03-24 09:02:57" },
+                      "updated_at":           { "type": "string",  "example": "2026-03-24 09:02:57" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Error interno del servidor" }
+        }
+      },
+      "post": {
+        "tags": ["Productos"],
+        "summary": "Registrar un nuevo producto",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nombre", "descripcion", "precio_venta", "unidades_por_bandeja"],
+                "properties": {
+                  "nombre":               { "type": "string",  "example": "Bandeja de deditos",     "description": "Entre 3 y 150 caracteres" },
+                  "descripcion":          { "type": "string",  "example": "22 unidades de deditos", "description": "Entre 4 y 255 caracteres" },
+                  "precio_venta":         { "type": "number",  "example": 14000,                    "description": "Debe ser mayor a 0" },
+                  "unidades_por_bandeja": { "type": "integer", "example": 22,                       "description": "Debe ser mayor a 0" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Producto registrado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "Producto registrado" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":                   { "type": "integer", "example": 4 },
+                        "nombre":               { "type": "string",  "example": "Bandeja de deditos" },
+                        "descripcion":          { "type": "string",  "example": "22 unidades de deditos" },
+                        "precio_venta":         { "type": "number",  "example": 14000.0 },
+                        "unidades_por_bandeja": { "type": "integer", "example": 22 },
+                        "activo":               { "type": "integer", "example": 1 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Campos faltantes, nombre duplicado o valores inválidos" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
+    "/api/productos/{id}": {
+      "get": {
+        "tags": ["Productos"],
+        "summary": "Obtener un producto por ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id":                   { "type": "integer", "example": 1 },
+                    "nombre":               { "type": "string",  "example": "Bandeja de deditos" },
+                    "descripcion":          { "type": "string",  "example": "22 unidades de deditos" },
+                    "precio_venta":         { "type": "number",  "example": 14000.0 },
+                    "unidades_por_bandeja": { "type": "integer", "example": 22 },
+                    "activo":               { "type": "integer", "example": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Producto no encontrado" }
+        }
+      },
+      "put": {
+        "tags": ["Productos"],
+        "summary": "Actualizar un producto",
+        "description": "Todos los campos son opcionales. Solo se actualizan los que se envíen. No actualiza si no hay cambios reales.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nombre":               { "type": "string",  "example": "Bandeja especial",    "description": "Opcional" },
+                  "descripcion":          { "type": "string",  "example": "25 unidades grandes", "description": "Opcional" },
+                  "precio_venta":         { "type": "number",  "example": 16000,                 "description": "Opcional. Debe ser mayor a 0" },
+                  "unidades_por_bandeja": { "type": "integer", "example": 25,                    "description": "Opcional. Debe ser mayor a 0" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Producto actualizado correctamente" },
+          "400": { "description": "Sin cambios o valores inválidos" },
+          "404": { "description": "Producto no encontrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      },
+      "delete": {
+        "tags": ["Productos"],
+        "summary": "Desactivar un producto (soft delete)",
+        "description": "Pone activo = 0. El producto no se elimina físicamente de la base de datos.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": {
+          "200": { "description": "Producto desactivado correctamente" },
+          "404": { "description": "Producto no encontrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
+    "/api/inventarios/": {
+      "get": {
+        "tags": ["Inventario"],
+        "summary": "Listar inventario",
+        "description": "Retorna el inventario de todos los productos activos. Incluye el nombre del producto por JOIN.",
+        "responses": {
+          "200": {
+            "description": "Inventario obtenido correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id":               { "type": "integer", "example": 1 },
+                      "producto_id":      { "type": "integer", "example": 1 },
+                      "nombre_producto":  { "type": "string",  "example": "Bandeja de deditos" },
+                      "stock_actual":     { "type": "integer", "example": 10 },
+                      "unidades_sueltas": { "type": "integer", "example": 0 },
+                      "stock_minimo":     { "type": "integer", "example": 5 },
+                      "updated_at":       { "type": "string",  "example": "2026-03-24 09:04:00" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Error interno del servidor" }
+        }
+      },
+      "post": {
+        "tags": ["Inventario"],
+        "summary": "Registrar inventario para un producto",
+        "description": "Crea el registro de inventario inicial. El stock_actual inicia en 0 y es actualizado automáticamente por los triggers de producciones y ventas.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["producto_id"],
+                "properties": {
+                  "producto_id": { "type": "integer", "example": 1, "description": "Debe existir en productos y no tener inventario previo" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Inventario registrado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": { "type": "string", "example": "Inventario registrado" },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id":               { "type": "integer", "example": 4 },
+                        "producto_id":      { "type": "integer", "example": 1 },
+                        "stock_actual":     { "type": "integer", "example": 0 },
+                        "unidades_sueltas": { "type": "integer", "example": 0 },
+                        "stock_minimo":     { "type": "integer", "example": 5 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Producto no existe o ya tiene inventario registrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
+    "/api/inventarios/bajo-stock": {
+      "get": {
+        "tags": ["Inventario"],
+        "summary": "Productos bajo stock mínimo",
+        "description": "Retorna los productos cuyo stock_actual es menor o igual al stock_minimo. Usa la vista v_productos_bajo_stock de la base de datos.",
+        "responses": {
+          "200": {
+            "description": "Lista de productos bajo stock",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id":           { "type": "integer", "example": 2 },
+                      "nombre":       { "type": "string",  "example": "Bandeja de empanadas" },
+                      "stock_actual": { "type": "integer", "example": 3 },
+                      "stock_minimo": { "type": "integer", "example": 5 }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
+    "/api/inventarios/{id}": {
+      "get": {
+        "tags": ["Inventario"],
+        "summary": "Obtener inventario por ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inventario encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id":               { "type": "integer", "example": 1 },
+                    "producto_id":      { "type": "integer", "example": 1 },
+                    "nombre_producto":  { "type": "string",  "example": "Bandeja de deditos" },
+                    "stock_actual":     { "type": "integer", "example": 10 },
+                    "unidades_sueltas": { "type": "integer", "example": 0 },
+                    "stock_minimo":     { "type": "integer", "example": 5 },
+                    "updated_at":       { "type": "string",  "example": "2026-03-24 09:04:00" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Inventario no encontrado" }
+        }
+      },
+      "put": {
+        "tags": ["Inventario"],
+        "summary": "Actualizar stock mínimo",
+        "description": "El único campo editable manualmente es stock_minimo. El stock_actual es manejado automáticamente por los triggers de producciones y ventas.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["stock_minimo"],
+                "properties": {
+                  "stock_minimo": { "type": "integer", "example": 10, "description": "Debe ser mayor o igual a 0" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Stock mínimo actualizado correctamente" },
+          "400": { "description": "Sin cambios o valor inválido" },
+          "404": { "description": "Inventario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
 
     "/ventas/": {
       "get": {
@@ -61,7 +535,6 @@
           "500": { "description": "Error interno del servidor" }
         }
       },
-
       "post": {
         "tags": ["Ventas"],
         "summary": "Registrar una nueva venta",
@@ -159,7 +632,7 @@
                   "type": "object",
                   "properties": {
                     "mensaje": { "type": "string", "example": "venta actualizada" },
-                    "datos":   { "type": "object"  }
+                    "datos":   { "type": "object" }
                   }
                 }
               }
@@ -230,7 +703,7 @@
                       "monto":       { "type": "number",  "example": 20000.0 },
                       "fecha":       { "type": "string",  "example": "2026-03-21" },
                       "observacion": { "type": "string",  "example": "nequi" },
-                      "medio_pago": { "type": "string", "example": "efectivo" }
+                      "medio_pago":  { "type": "string",  "example": "efectivo" }
                     }
                   }
                 }
@@ -240,7 +713,6 @@
           "500": { "description": "Error interno del servidor" }
         }
       },
-
       "post": {
         "tags": ["Abonos"],
         "summary": "Registrar un nuevo abono",
@@ -251,7 +723,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["venta_id", "corte_id", "usuario_id", "monto", "fecha","medio_pago"],
+                "required": ["venta_id", "corte_id", "usuario_id", "monto", "fecha", "medio_pago"],
                 "properties": {
                   "venta_id":    { "type": "integer", "example": 1,            "description": "Debe existir y no estar entregada ni anulada" },
                   "corte_id":    { "type": "integer", "example": 1,            "description": "No puede ser un corte cerrado" },
@@ -259,7 +731,7 @@
                   "monto":       { "type": "number",  "example": 15000,        "description": "Debe ser mayor a 0 y no superar el saldo_pendiente" },
                   "fecha":       { "type": "string",  "example": "21/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
                   "observacion": { "type": "string",  "example": "nequi",      "description": "Opcional. Si no se envia se guarda como null" },
-                  "medio_pago" : {"type ": "string", "example" : "efectivo",   "description": "valores validos: efecivo,transferencia,otro" }
+                  "medio_pago":  { "type": "string",  "example": "efectivo",   "description": "Valores validos: efectivo, transferencia, otro" }
                 }
               }
             }
@@ -284,7 +756,7 @@
                         "monto":       { "type": "number",  "example": 15000.0 },
                         "fecha":       { "type": "string",  "example": "2026-03-21" },
                         "observacion": { "type": "string",  "example": "vueltos" },
-                        "medio_pago": { "type": "string", "example": "efectivo" }
+                        "medio_pago":  { "type": "string",  "example": "efectivo" }
                       }
                     }
                   }
@@ -319,12 +791,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["monto", "fecha","medio_pago"],
+                "required": ["monto", "fecha", "medio_pago"],
                 "properties": {
-                  "monto":       { "type": "number", "example": 20000, "description": "Nuevo monto. No puede superar saldo_pendiente + monto_actual" },
-                  "fecha":       { "type": "string", "example": "22/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
+                  "monto":       { "type": "number", "example": 20000,              "description": "Nuevo monto. No puede superar saldo_pendiente + monto_actual" },
+                  "fecha":       { "type": "string", "example": "22/03/2026",       "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
                   "observacion": { "type": "string", "example": "Pago transferencia", "description": "Opcional" },
-                  "medio_pago" : {"type ": "string", "example" : "efectivo",   "description": "valores validos: efecivo,transferencia,otro" }
+                  "medio_pago":  { "type": "string", "example": "efectivo",         "description": "Valores validos: efectivo, transferencia, otro" }
                 }
               }
             }
@@ -338,8 +810,8 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "mensaje": { "type": "string", "example": "abono actualizado" },
-                    "datos":   { "type": "object" },
+                    "mensaje":    { "type": "string", "example": "abono actualizado" },
+                    "datos":      { "type": "object" },
                     "medio_pago": { "type": "string", "example": "efectivo" }
                   }
                 }
@@ -351,7 +823,6 @@
           "500": { "description": "Error interno del servidor" }
         }
       },
-
       "delete": {
         "tags": ["Abonos"],
         "summary": "Eliminar un abono",
@@ -542,4 +1013,3 @@
 
   }
 }
-

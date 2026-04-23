@@ -3,7 +3,7 @@ from models.usuarios_model import usuarios
 
 def listado_usuarios():
     c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, nombre, username, password_hash, rol, activo, created_at, updated_at FROM usuarios"
+    sql = "SELECT id, nombre, username, password_hash, rol, activo, created_at, updated_at FROM usuarios where activo = 1"
     c.execute(sql)
     datos = c.fetchall()
     
@@ -20,7 +20,7 @@ def listado_usuarios():
             updated_at       = p[7]
         ).toDic()
         lista.append(usuario)
-
+    c.close()
     return lista   
 
 def registro(nombre, username, password_hash, rol):
@@ -48,7 +48,7 @@ def existe_username(username):
 def eliminar(id):
     c = current_app.mysql.connection.cursor()
     
-    sql = "UPDATE usuarios SET activo = 0 WHERE id = %s"
+    sql = "UPDATE usuarios SET activo = 0 WHERE id = %s AND activo = 1"
     c.execute(sql, (id,))
     
     current_app.mysql.connection.commit()
@@ -76,3 +76,29 @@ def obtener_usuario(id):
         }
     return None
 
+def actualizar(id, nombre, username, password_hash, rol):
+    c = current_app.mysql.connection.cursor()
+    if password_hash:
+        sql = """UPDATE usuarios
+                 SET nombre=%s, username=%s, password_hash=%s, rol=%s
+                 WHERE id=%s"""
+        c.execute(sql, (nombre, username, password_hash, rol, id))
+    else:
+        sql = """UPDATE usuarios
+                 SET nombre=%s, username=%s, rol=%s
+                 WHERE id=%s"""
+        c.execute(sql, (nombre, username, rol, id))
+    
+    current_app.mysql.connection.commit()
+    filas_afectadas = c.rowcount
+    c.close()
+    return filas_afectadas > 0
+
+def existe_username_otro(username, id):
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT id FROM usuarios WHERE username = %s AND id != %s"
+    c.execute(sql, (username, id))
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None
