@@ -67,3 +67,34 @@ def eliminar(id):
 
     return filas_afectadas > 0    
 
+def productos_mas_vendidos(limite=5):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT
+            p.id,
+            p.nombre,
+            p.precio_venta,
+            COALESCE(SUM(vd.cantidad), 0) AS unidades_vendidas,
+            COALESCE(SUM(vd.subtotal), 0) AS total_ingresos
+        FROM productos p
+        LEFT JOIN venta_detalle vd ON vd.producto_id = p.id
+        LEFT JOIN ventas v ON v.id = vd.venta_id
+            AND v.estado != 'anulada'
+        WHERE p.activo = 1
+        GROUP BY p.id, p.nombre, p.precio_venta
+        ORDER BY total_ingresos DESC
+        LIMIT %s
+    """, (limite,))
+    datos = c.fetchall()
+    c.close()
+
+    lista = []
+    for p in datos:
+        lista.append({
+            "id"              : p[0],
+            "nombre"          : p[1],
+            "precio_venta"    : float(p[2]),
+            "unidades_vendidas": int(p[3]),
+            "total_ingresos"  : float(p[4])
+        })
+    return lista

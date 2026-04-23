@@ -1,5 +1,5 @@
 from flask import jsonify , request
-from  services.productos_services import listado_productos, registro, eliminar, existe_nombre
+from  services.productos_services import listado_productos, registro, eliminar, existe_nombre,productos_mas_vendidos
 import re
 
 def cntListado():
@@ -74,3 +74,15 @@ def cntEliminar(id):
         return jsonify({"mensaje": "Producto no encontrado"}), 404
 
     return jsonify({"mensaje": "Producto desactivado correctamente"}), 200
+
+
+
+def cntProductosMasVendidos():
+    try:
+        limite = request.args.get("limite", 5, type=int)
+        if limite < 1 or limite > 20:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 20"}), 400
+        datos = productos_mas_vendidos(limite)
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

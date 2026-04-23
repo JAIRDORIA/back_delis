@@ -65,3 +65,37 @@ def obtener_cliente(id):
             "activo"   : cliente[5]
         }
     return None
+
+
+def clientes_top(limite=5):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT 
+            cl.id,
+            cl.nombre,
+            cl.telefono,
+            COUNT(v.id)        AS total_ventas,
+            COALESCE(SUM(v.total), 0) AS total_comprado,
+            COALESCE(SUM(v.saldo_pendiente), 0) AS saldo_pendiente
+        FROM clientes cl
+        LEFT JOIN ventas v ON v.cliente_id = cl.id
+            AND v.estado != 'anulada'
+        WHERE cl.activo = 1
+        GROUP BY cl.id, cl.nombre, cl.telefono
+        ORDER BY total_comprado DESC
+        LIMIT %s
+    """, (limite,))
+    datos = c.fetchall()
+    c.close()
+
+    lista = []
+    for p in datos:
+        lista.append({
+            "id"              : p[0],
+            "nombre"          : p[1],
+            "telefono"        : p[2],
+            "total_ventas"    : p[3],
+            "total_comprado"  : float(p[4]),
+            "saldo_pendiente" : float(p[5])
+        })
+    return lista

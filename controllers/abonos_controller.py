@@ -8,14 +8,20 @@ from services.ventas_services import obtener_venta
 from services.cortes_services import obtener_corte, obtener_corte_abierto
 from services.usuarios_servicies import obtener_usuario
 
-
 def cntListado():
     try:
-        datos = listado_abonos()
+        pagina = request.args.get("pagina", 1, type=int)
+        limite = request.args.get("limite", 20, type=int)
+
+        if pagina < 1:
+            return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
+        if limite < 1 or limite > 100:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
+
+        datos = listado_abonos(pagina, limite)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 def cntregistrar():
     try:

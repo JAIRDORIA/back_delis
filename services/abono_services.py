@@ -2,16 +2,23 @@ from flask import current_app
 from models.abonos_model import Abono
 from datetime import datetime
 
+def listado_abonos(pagina=1, limite=20):
+    offset = (pagina - 1) * limite
 
-def listado_abonos():
     c = current_app.mysql.connection.cursor()
+
+    c.execute("SELECT COUNT(*) FROM abonos")
+    total = c.fetchone()[0]
+
     c.execute("""
         SELECT id, venta_id, corte_id, usuario_id,
                monto, fecha, observacion, medio_pago
         FROM abonos
-    """)
+        LIMIT %s OFFSET %s
+    """, (limite, offset))
     datos = c.fetchall()
     c.close()
+
     lista = []
     for p in datos:
         abono = Abono(
@@ -25,7 +32,14 @@ def listado_abonos():
             medio_pago  = p[7]
         ).to_dict()
         lista.append(abono)
-    return lista
+
+    return {
+        "total"        : total,
+        "pagina"       : pagina,
+        "limite"       : limite,
+        "total_paginas": -(-total // limite),
+        "datos"        : lista
+    }
 
 
 def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago):

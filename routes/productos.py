@@ -1,5 +1,5 @@
 from flask import Blueprint
-from controllers.productos_controller import cntListado, cntRegistro, cntEliminar
+from controllers.productos_controller import cntListado, cntRegistro, cntEliminar,cntProductosMasVendidos
 
 productos_bp = Blueprint ('productos', __name__)
 
@@ -15,3 +15,7 @@ def registro():
 @productos_bp.route('/<int:id>', methods=["DELETE"])
 def eliminar(id):
     return cntEliminar(id)
+
+@productos_bp.route('/mas-vendidos', methods=['GET'])
+def mas_vendidos():
+    return cntProductosMasVendidos()
