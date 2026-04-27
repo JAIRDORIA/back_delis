@@ -1,26 +1,43 @@
 from flask import current_app
 from models.corte_model import cortes
 
-def listado_cortes():
+
+def listado_cortes(pagina=1, limite=20):
+    offset = (pagina - 1) * limite
+
     c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, numero, fecha_inicio, fecha_cierre, estado, \
-           saldo_inicial FROM cortes"
-    c.execute(sql)
+
+    c.execute("SELECT COUNT(*) FROM cortes")
+    total = c.fetchone()[0]
+
+    c.execute("""
+        SELECT id, numero, fecha_inicio, fecha_cierre,
+               estado, saldo_inicial
+        FROM cortes
+        ORDER BY numero ASC
+        LIMIT %s OFFSET %s
+    """, (limite, offset))
     datos = c.fetchall()
-    print(datos)
+    c.close()
+
     lista = []
     for p in datos:
-        corte = cortes(
-            id               = p[0],
-            numero           = p[1],
-            fecha_inicio     = p[2],
-            fecha_cierre     = p[3],
-            estado           = p[4],
-            saldo_inicial    = p[5]
-        ).to_dict()
-        lista.append(corte)
-    
-    return lista
+        lista.append({
+            "id"           : p[0],
+            "numero"       : p[1],
+            "fecha_inicio" : str(p[2]) if p[2] else None,
+            "fecha_cierre" : str(p[3]) if p[3] else None,
+            "estado"       : p[4],
+            "saldo_inicial": float(p[5])
+        })
+
+    return {
+        "total"        : total,
+        "pagina"       : pagina,
+        "limite"       : limite,
+        "total_paginas": -(-total // limite),
+        "datos"        : lista
+    }
 
 def obtener_corte(id):
     c = current_app.mysql.connection.cursor()
@@ -210,3 +227,76 @@ def actualizar_corte(id, estado):
     current_app.mysql.connection.commit()
     c.close()
     return obtener_corte(id)
+
+
+def balance_corte_actual():
+    c = current_app.mysql.connection.cursor()
+
+    # buscar el corte abierto
+    c.execute("""
+        SELECT id, numero, fecha_inicio, saldo_inicial
+        FROM cortes WHERE estado = 'abierto'
+    """)
+    corte = c.fetchone()
+
+    if not corte:
+        c.close()
+        return None
+
+    corte_id = corte[0]
+
+    # total de ventas del corte actual
+    c.execute("""
+        SELECT COALESCE(SUM(total), 0)
+        FROM ventas
+        WHERE corte_id = %s AND estado != 'anulada'
+    """, (corte_id,))
+    total_ventas = float(c.fetchone()[0])
+
+    # total de compras del corte actual
+    c.execute("""
+        SELECT COALESCE(SUM(total), 0)
+        FROM compras
+        WHERE corte_id = %s AND eliminada = 0
+    """, (corte_id,))
+    total_compras = float(c.fetchone()[0])
+
+    # dinero en caja = ingresos - egresos de movimientos_caja
+    c.execute("""
+        SELECT
+            COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN tipo = 'egreso'  THEN monto ELSE 0 END), 0)
+        FROM movimientos_caja
+        WHERE corte_id = %s
+    """, (corte_id,))
+    dinero_caja = float(c.fetchone()[0])
+
+    # abonos en efectivo del corte actual
+    c.execute("""
+        SELECT COALESCE(SUM(monto), 0)
+        FROM abonos
+        WHERE corte_id = %s AND medio_pago = 'efectivo'
+    """, (corte_id,))
+    total_efectivo = float(c.fetchone()[0])
+
+    # abonos en transferencia del corte actual
+    c.execute("""
+        SELECT COALESCE(SUM(monto), 0)
+        FROM abonos
+        WHERE corte_id = %s AND medio_pago = 'transferencia'
+    """, (corte_id,))
+    total_transferencia = float(c.fetchone()[0])
+
+    c.close()
+
+    return {
+        "corte_numero"      : corte[1],
+        "fecha_inicio"      : str(corte[2]) if corte[2] else None,
+        "saldo_inicial"     : float(corte[3]),
+        "total_ventas"      : total_ventas,
+        "total_compras"     : total_compras,
+        "dinero_caja"       : dinero_caja,
+        "total_efectivo"    : total_efectivo,
+        "total_transferencia": total_transferencia,
+        "resultado"         : total_ventas - total_compras
+    }

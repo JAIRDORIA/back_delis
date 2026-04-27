@@ -1,6 +1,7 @@
 from flask import Blueprint
-from controllers.corte_controller import cntListado,cntPrimerCorte,cntCerrarCorte,cntActualizar
+from controllers.corte_controller import cntListado,cntPrimerCorte,cntCerrarCorte,cntActualizar,cntBalance
 from flask_jwt_extended import jwt_required
+
 cortes_bp = Blueprint ('cortes', __name__)
 
 
@@ -26,3 +27,6 @@ def iniciar():
 def cerrar():
     return cntCerrarCorte()
 
+@cortes_bp.route('/balance', methods=['GET'])
+def balance():
+    return cntBalance()

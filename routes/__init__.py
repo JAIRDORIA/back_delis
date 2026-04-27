@@ -23,7 +23,7 @@ def cargarRuta(app):
     app.register_blueprint(abono_bp, url_prefix='/abonos')
     app.register_blueprint(compra_bp, url_prefix='/compras')
     app.register_blueprint(proveedores_bp, url_prefix='/proveedores')
-    app.register_blueprint(documentacion_bp, url_prefix='/documentaciones')
+    app.register_blueprint(documentacion_bp, url_prefix='/documentacion')
 
     
 
