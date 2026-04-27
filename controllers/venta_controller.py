@@ -25,7 +25,7 @@ def cntregistrar():
     try:
         # 1. validar campos requeridos
         requeridos = ["cliente_id", "corte_id", "usuario_id",
-                      "fecha_entrega", "total"]
+                      "fecha_entrega", "total", "detalle"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
             return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
@@ -41,42 +41,70 @@ def cntregistrar():
         usuario       = request.json["usuario_id"]
         fecha_entrega = request.json["fecha_entrega"]
         total         = request.json["total"]
+        detalle       = request.json["detalle"]
 
-        # 3. validar que el cliente existe y esta activo
+        # 3. validar que detalle no este vacio
+        if not detalle or len(detalle) == 0:
+            return jsonify({"mensaje": "la venta debe tener al menos un producto"}), 400
+
+        # 4. validar cada item del detalle
+        for item in detalle:
+            if "producto_id" not in item:
+                return jsonify({"mensaje": "cada producto debe tener producto_id"}), 400
+            if "nombre_producto" not in item:
+                return jsonify({"mensaje": "cada producto debe tener nombre_producto"}), 400
+            if "cantidad" not in item:
+                return jsonify({"mensaje": "cada producto debe tener cantidad"}), 400
+            if "precio_unitario" not in item:
+                return jsonify({"mensaje": "cada producto debe tener precio_unitario"}), 400
+            if item["cantidad"] <= 0:
+                return jsonify({"mensaje": "la cantidad debe ser mayor a 0"}), 400
+            if item["precio_unitario"] <= 0:
+                return jsonify({"mensaje": "el precio unitario debe ser mayor a 0"}), 400
+
+        # 5. validar que total coincide con el detalle
+        total_calculado = sum(
+            item["cantidad"] * item["precio_unitario"] for item in detalle
+        )
+        if total != total_calculado:
+            return jsonify({
+                "mensaje": f"el total {total} no coincide con el detalle {total_calculado}"
+            }), 400
+
+        # 6. validar que el cliente existe
         cliente_db = obtener_cliente(id_cliente)
         if not cliente_db:
             return jsonify({"mensaje": f"el cliente con id {id_cliente} no existe"}), 404
 
-        # 4. validar que el corte existe y no esta cerrado
+        # 7. validar que el corte existe y no esta cerrado
         corte_db = obtener_corte(corte)
         if not corte_db:
             return jsonify({"mensaje": f"el corte con id {corte} no existe"}), 404
         if corte_db["estado"] == "cerrado":
             return jsonify({"mensaje": "no puedes registrar ventas en un corte cerrado"}), 400
 
-        # 5. validar que el usuario existe y esta activo
+        # 8. validar que el usuario existe
         usuario_db = obtener_usuario(usuario)
         if not usuario_db:
             return jsonify({"mensaje": f"el usuario con id {usuario} no existe"}), 404
 
-        # 6. validar que total es positivo
+        # 9. validar total positivo
         if total <= 0:
             return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
 
-        # 7. validar formato de fecha
+        # 10. validar formato fecha
         try:
             fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
         except ValueError:
             return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
 
-        # 8. validar que fecha no es en el pasado
+        # 11. validar que fecha no sea en el pasado
         if fecha.date() < datetime.now().date():
             return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
 
-        # convertir fecha al formato correcto para MySQL
         fecha_entrega = fecha.strftime("%Y-%m-%d")
 
-        p = registro(id_cliente, corte, usuario, fecha_entrega, total)
+        p = registro(id_cliente, corte, usuario, fecha_entrega, total, detalle)
         return jsonify({"mensaje": "venta registrada", "datos": p}), 201
 
     except Exception as e:
