@@ -49,42 +49,37 @@ def listado_ventas(pagina=1, limite=20):
     
     
     
-  
-def registro(cliente_id, corte_id, usuario_id, fecha_entrega, total):
-    # total_abonado ya no viene del usuario
-    # siempre inicia en 0
+
+
+def registro(cliente_id, corte_id, usuario_id, fecha_entrega, total, detalle):
     c = current_app.mysql.connection.cursor()
-    sql = """
-    INSERT INTO ventas (cliente_id, corte_id, usuario_id,
-                        fecha_entrega, total)
-    VALUES (%s, %s, %s, %s, %s)"""
-    c.execute(sql, (cliente_id, corte_id, usuario_id,
-                    fecha_entrega, total))
-    current_app.mysql.connection.commit()
-    id = c.lastrowid
+
+    # 1. insertar la venta
     c.execute("""
-        SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
-               v.fecha_venta, v.fecha_entrega, v.total,
-               v.total_abonado, v.saldo_pendiente, v.estado
-        FROM ventas v
-        JOIN clientes c ON c.id = v.cliente_id
-        WHERE v.id = %s
-    """, (id,))
-    venta = c.fetchone()
+        INSERT INTO ventas (cliente_id, corte_id, usuario_id,
+                            fecha_entrega, total)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (cliente_id, corte_id, usuario_id, fecha_entrega, total))
+
+    venta_id = c.lastrowid
+
+    # 2. insertar cada producto del detalle
+    for item in detalle:
+        c.execute("""
+            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
+                                       cantidad, precio_unitario)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            venta_id,
+            item["producto_id"],
+            item["nombre_producto"],
+            item["cantidad"],
+            item["precio_unitario"]
+        ))
+
+    current_app.mysql.connection.commit()
     c.close()
-    return {
-        "id"              : venta[0],
-        "cliente_id"      : venta[1],
-        "nombre_cliente"  : venta[2],
-        "corte_id"        : venta[3],
-        "usuario_id"      : venta[4],
-        "fecha_venta"     : str(venta[5]),
-        "fecha_entrega"   : str(venta[6]),
-        "total"           : float(venta[7]),
-        "total_abonado"   : float(venta[8]),
-        "saldo_pendiente" : float(venta[9]),
-        "estado"          : venta[10]
-    }
+    return obtener_venta(venta_id)
     
     
 
