@@ -1,7 +1,9 @@
 from flask import jsonify , request
-from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro
+from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro, existe_admin
 import re
 import bcrypt
+from services.usuarios_servicies import login
+from jwt_config import generar_token
 
 def hashear_password(password_plano: str) -> str:
     salt = bcrypt.gensalt(rounds=12)
@@ -36,8 +38,8 @@ def cntRegistro():
     #validar que no esten vacios
     nombre        = request.json['nombre'] 
     username      = request.json['username']
-    password = request.json['password_hash']
-    password_hash = hashear_password(password)
+    password = request.json['password']
+    password = hashear_password(password)
     rol           = request.json['rol']
     
     if existe_username(username):
@@ -162,3 +164,98 @@ def obtenerUsuario(id):
         return jsonify({"mensaje": "Usuario no encontrado"}), 404
 
     return jsonify(usuario), 200
+
+
+def login_post():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')  # Contraseña en texto plano
+
+    if not username or not password:
+        return jsonify({"error": "Faltan credenciales"}), 400
+
+    usuario = login(username, password)
+    if not usuario:
+        return jsonify({"error": "Credenciales inválidas"}), 401
+
+    token = generar_token(usuario)
+    return jsonify({
+        "access_token": token,
+        "token_type": "bearer",
+        "usuario": usuario      # opcional, para que el front sepa el rol/nombre
+    }), 200
+
+
+def cntPrimerAdmin():
+    """
+    Registra al primer administrador del sistema.
+    Solo funciona si no existe ningún admin en la BD.
+    No requiere token JWT.
+    """
+    # 1. Verificar que no exista ya un admin
+    if existe_admin():
+        return jsonify({
+            "mensaje": "Ya existe un administrador registrado. Use el login normal."
+        }), 403
+    
+    # 2. Validar campos requeridos
+    requeridos = ['nombre', 'username', 'password', 'rol']
+    faltantes = [d for d in requeridos if d not in request.json]
+    if faltantes:
+        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
+    
+    # 3. Validar campos vacíos
+    vacios = []
+    for clave in requeridos:
+        if str(request.json.get(clave, '')).strip() == '':
+            vacios.append(clave)
+    if vacios:
+        return jsonify({"mensaje": f"Los siguientes campos no pueden estar vacíos: {vacios}"}), 400
+    
+    # 4. Obtener datos
+    nombre = request.json['nombre'].strip()
+    username = request.json['username'].strip()
+    password = request.json['password']
+    rol = request.json['rol']
+    
+    # 5. Validar que el rol sea admin (no permitir crear cajero en setup)
+    if rol != 'admin':
+        return jsonify({"mensaje": "El primer usuario debe ser administrador"}), 400
+    
+    # 6. Validar formato de nombre
+    if len(nombre) < 3 or len(nombre) > 100:
+        return jsonify({"mensaje": "El nombre debe tener entre 3 y 100 caracteres"}), 400
+    
+    if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', nombre):
+        return jsonify({"mensaje": "El nombre solo puede contener letras"}), 400
+    
+    # 7. Validar username
+    if len(username) < 4 or len(username) > 50:
+        return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
+    
+    if existe_username(username):
+        return jsonify({"mensaje": "El username ya existe"}), 400
+    
+    # 8. Validar contraseña
+    if len(password) < 6 or len(password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
+    
+    # 9. Hashear contraseña
+    password_hash = hashear_password(password)
+    
+    # 10. Registrar usuario
+    try:
+        usuario = registro(
+            nombre=nombre,
+            username=username,
+            password_hash=password_hash,
+            rol=rol
+        )
+        return jsonify({
+            "mensaje": "Administrador inicial creado exitosamente",
+            "datos": usuario
+        }), 201
+    except Exception as e:
+        return jsonify({
+            "mensaje": f"Error al crear administrador: {str(e)}"
+        }), 500

@@ -4,3 +4,4 @@ flask-mysqldb
 python-dotenv
 flask-jwt-extended
 bcrypt
+pyjwt
