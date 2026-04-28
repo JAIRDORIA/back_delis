@@ -1,6 +1,6 @@
 from flask import current_app
 from models.usuarios_model import usuarios
-
+import bcrypt   
 def listado_usuarios():
     c = current_app.mysql.connection.cursor()
     sql = "SELECT id, nombre, username, password_hash, rol, activo, created_at, updated_at FROM usuarios where activo = 1"
@@ -102,3 +102,42 @@ def existe_username_otro(username, id):
     c.close()
 
     return dato is not None
+
+def login(username, password_plano):
+    """
+    Verifica credenciales y devuelve los datos del usuario (sin password hash)
+    para generar el token. Retorna None si falla.
+    """
+    c = current_app.mysql.connection.cursor()
+    sql = """SELECT id, nombre, username, password_hash, rol
+             FROM usuarios
+             WHERE username = %s AND activo = 1"""
+    c.execute(sql, (username,))
+    usuario = c.fetchone()
+    c.close()
+
+    if not usuario:
+        return None
+
+    hash_almacenado = usuario[3].encode('utf-8')
+    if bcrypt.checkpw(password_plano.encode('utf-8'), hash_almacenado):
+        return {
+            "id": usuario[0],
+            "nombre": usuario[1],
+            "username": usuario[2],
+            "rol": usuario[4]
+        }
+    return None
+
+
+def existe_admin():
+    """
+    Verifica si ya existe al menos un usuario con rol 'admin' activo.
+    Retorna True si existe, False si no.
+    """
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT COUNT(*) FROM usuarios WHERE rol = 'admin' AND activo = 1"
+    c.execute(sql)
+    cantidad = c.fetchone()[0]
+    c.close()
+    return cantidad > 0
