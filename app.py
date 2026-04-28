@@ -19,3 +19,11 @@ mysql = MySQL(app)
 app.mysql = mysql
 cargarRuta(app)
 app.run(debug=True, port=4000, host='0.0.0.0')  
+
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Authorization"]
+)

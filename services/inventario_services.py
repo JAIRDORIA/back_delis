@@ -1,21 +1,32 @@
 from flask import current_app
 from models.inventario_model import inventarios
 
-def listado_inventarios():
+def listado_inventarios(pagina=1, limite=20):
+    offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
+
+    c.execute("""
+        SELECT COUNT(*) FROM inventario i
+        JOIN productos p ON p.id = i.producto_id
+        WHERE p.activo = 1
+    """)
+    total = c.fetchone()[0]
+
     sql = """
         SELECT i.id, i.producto_id, p.nombre, i.stock_actual, 
                i.unidades_sueltas, i.stock_minimo, i.updated_at 
         FROM inventario i
         JOIN productos p ON p.id = i.producto_id
         WHERE p.activo = 1
+        LIMIT %s OFFSET %s
     """
-    c.execute(sql)
+    c.execute(sql, (limite, offset))
     datos = c.fetchall()
+    c.close()
 
     lista = []
     for p in datos:
-        inventario = {
+        lista.append({
             "id"              : p[0],
             "producto_id"     : p[1],
             "nombre_producto" : p[2],
@@ -23,12 +34,15 @@ def listado_inventarios():
             "unidades_sueltas": p[4],
             "stock_minimo"    : p[5],
             "updated_at"      : str(p[6]) if p[6] else None
-        }
-        lista.append(inventario)
+        })
 
-    c.close()
-    return lista
-
+    return {
+        "datos"        : lista,
+        "total"        : total,
+        "pagina"       : pagina,
+        "limite"       : limite,
+        "total_paginas": -(-total // limite)
+    }
 
 def registro(producto_id):
     c = current_app.mysql.connection.cursor()

@@ -4,7 +4,13 @@ import re
 
 def cntListado():
     try:
-        datos = listado_productos()
+        pagina = int(request.args.get('pagina', 1))
+        limite = int(request.args.get('limite', 20))
+
+        if pagina < 1 or limite < 1:
+            return jsonify({"mensaje": "pagina y limite deben ser mayores a 0"}), 400
+
+        datos = listado_productos(pagina=pagina, limite=limite)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
