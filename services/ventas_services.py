@@ -49,9 +49,82 @@ def listado_ventas(pagina=1, limite=20):
     
     
     
+    
+    
 
+def obtener_venta_detalle(id):
+    c = current_app.mysql.connection.cursor()
 
-def registro(cliente_id, corte_id, usuario_id, fecha_entrega, total, detalle):
+    # datos de la venta
+    c.execute("""
+        SELECT v.id, v.cliente_id, cl.nombre, v.corte_id,
+               v.usuario_id, v.fecha_venta, v.fecha_entrega,
+               v.total, v.total_abonado, v.saldo_pendiente, v.estado
+        FROM ventas v
+        JOIN clientes cl ON cl.id = v.cliente_id
+        WHERE v.id = %s
+    """, (id,))
+    venta = c.fetchone()
+
+    if not venta:
+        c.close()
+        return None
+
+    # detalle de productos
+    c.execute("""
+        SELECT producto_id, nombre_producto,
+               cantidad, precio_unitario, subtotal
+        FROM venta_detalle
+        WHERE venta_id = %s
+    """, (id,))
+    detalle = c.fetchall()
+
+    # abonos de la venta
+    c.execute("""
+        SELECT id, monto, fecha, medio_pago, observacion
+        FROM abonos
+        WHERE venta_id = %s
+        ORDER BY fecha ASC
+    """, (id,))
+    abonos = c.fetchall()
+
+    c.close()
+
+    return {
+        "id"              : venta[0],
+        "cliente_id"      : venta[1],
+        "nombre_cliente"  : venta[2],
+        "corte_id"        : venta[3],
+        "usuario_id"      : venta[4],
+        "fecha_venta"     : str(venta[5]),
+        "fecha_entrega"   : str(venta[6]),
+        "total"           : float(venta[7]),
+        "total_abonado"   : float(venta[8]),
+        "saldo_pendiente" : float(venta[9]),
+        "estado"          : venta[10],
+        "detalle"         : [
+            {
+                "producto_id"    : d[0],
+                "nombre_producto": d[1],
+                "cantidad"       : d[2],
+                "precio_unitario": float(d[3]),
+                "subtotal"       : float(d[4])
+            } for d in detalle
+        ],
+        "abonos": [
+            {
+                "id"         : a[0],
+                "monto"      : float(a[1]),
+                "fecha"      : str(a[2]),
+                "medio_pago" : a[3],
+                "observacion": a[4]
+            } for a in abonos
+        ]
+    }
+    
+
+def registro(cliente_id, corte_id, usuario_id,
+             fecha_entrega, total, detalle, abono_inicial=None):
     c = current_app.mysql.connection.cursor()
 
     # 1. insertar la venta
@@ -66,8 +139,9 @@ def registro(cliente_id, corte_id, usuario_id, fecha_entrega, total, detalle):
     # 2. insertar cada producto del detalle
     for item in detalle:
         c.execute("""
-            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
-                                       cantidad, precio_unitario)
+            INSERT INTO venta_detalle (venta_id, producto_id,
+                                       nombre_producto, cantidad,
+                                       precio_unitario)
             VALUES (%s, %s, %s, %s, %s)
         """, (
             venta_id,
@@ -75,6 +149,21 @@ def registro(cliente_id, corte_id, usuario_id, fecha_entrega, total, detalle):
             item["nombre_producto"],
             item["cantidad"],
             item["precio_unitario"]
+        ))
+
+    # 3. insertar abono inicial si el cliente pago algo
+    if abono_inicial and abono_inicial.get("monto", 0) > 0:
+        c.execute("""
+            INSERT INTO abonos (venta_id, corte_id, usuario_id,
+                                monto, fecha, observacion, medio_pago)
+            VALUES (%s, %s, %s, %s, NOW(), %s, %s)
+        """, (
+            venta_id,
+            corte_id,
+            usuario_id,
+            abono_inicial["monto"],
+            abono_inicial.get("observacion", None),
+            abono_inicial.get("medio_pago", "efectivo")
         ))
 
     current_app.mysql.connection.commit()

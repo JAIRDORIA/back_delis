@@ -536,62 +536,169 @@
         }
       },
       "post": {
-        "tags": ["Ventas"],
-        "summary": "Registrar una nueva venta",
-        "description": "Crea una nueva venta. La fecha_venta, total_abonado y saldo_pendiente son asignados automaticamente por el servidor y los triggers. El campo total_abonado inicia en 0 y solo se actualiza mediante abonos.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+  "tags": ["Ventas"],
+  "summary": "Registrar una nueva venta",
+  "description": "Crea una nueva venta con su detalle de productos. Opcionalmente puede incluir un abono inicial si el cliente paga algo al momento de registrar. El total_abonado y saldo_pendiente son calculados automaticamente por los triggers de la base de datos.",
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "required": ["cliente_id", "corte_id", "usuario_id", "fecha_entrega", "total", "detalle"],
+          "properties": {
+            "cliente_id":    { "type": "integer", "example": 2,            "description": "Debe existir en clientes y estar activo" },
+            "corte_id":      { "type": "integer", "example": 1,            "description": "No puede ser un corte cerrado" },
+            "usuario_id":    { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
+            "fecha_entrega": { "type": "string",  "example": "25/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
+            "total":         { "type": "number",  "example": 40000,        "description": "Debe ser mayor a 0 y debe coincidir exactamente con la suma del detalle (cantidad x precio_unitario)" },
+            "detalle": {
+              "type": "array",
+              "description": "Lista de productos de la venta. Debe tener al menos un producto.",
+              "items": {
                 "type": "object",
-                "required": ["cliente_id", "corte_id", "usuario_id", "fecha_entrega", "total"],
+                "required": ["producto_id", "nombre_producto", "cantidad", "precio_unitario"],
                 "properties": {
-                  "cliente_id":    { "type": "integer", "example": 2,            "description": "Debe existir en clientes y estar activo" },
-                  "corte_id":      { "type": "integer", "example": 1,            "description": "No puede ser un corte cerrado" },
-                  "usuario_id":    { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
-                  "fecha_entrega": { "type": "string",  "example": "25/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
-                  "total":         { "type": "number",  "example": 42000,        "description": "Debe ser mayor a 0" }
+                  "producto_id":     { "type": "integer", "example": 1,                    "description": "ID del producto" },
+                  "nombre_producto": { "type": "string",  "example": "Bandeja de deditos", "description": "Nombre del producto al momento de la venta" },
+                  "cantidad":        { "type": "integer", "example": 2,                    "description": "Debe ser mayor a 0" },
+                  "precio_unitario": { "type": "number",  "example": 14000,                "description": "Precio del producto al momento de la venta. Debe ser mayor a 0" }
                 }
+              }
+            },
+            "abono_inicial": {
+              "type": "object",
+              "description": "Opcional. Pago que realiza el cliente al momento de registrar la venta. Si no se envia el cliente queda con saldo pendiente completo.",
+              "properties": {
+                "monto":       { "type": "number", "example": 20000,      "description": "Debe ser mayor a 0 y no puede superar el total de la venta" },
+                "medio_pago":  { "type": "string", "example": "efectivo", "description": "Valores validos: efectivo, transferencia, otro" },
+                "observacion": { "type": "string", "example": "pago en caja", "description": "Opcional" }
               }
             }
           }
         },
-        "responses": {
-          "201": {
-            "description": "Venta registrada correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "mensaje": { "type": "string", "example": "venta registrada" },
-                    "datos": {
-                      "type": "object",
-                      "properties": {
-                        "id":              { "type": "integer", "example": 4 },
-                        "cliente_id":      { "type": "integer", "example": 2 },
-                        "nombre_cliente":  { "type": "string",  "example": "Juan Rodriguez" },
-                        "corte_id":        { "type": "integer", "example": 1 },
-                        "usuario_id":      { "type": "integer", "example": 1 },
-                        "fecha_venta":     { "type": "string",  "example": "2026-03-21 10:30:00" },
-                        "fecha_entrega":   { "type": "string",  "example": "2026-03-25" },
-                        "total":           { "type": "number",  "example": 42000.0 },
-                        "total_abonado":   { "type": "number",  "example": 0.0 },
-                        "saldo_pendiente": { "type": "number",  "example": 42000.0 },
-                        "estado":          { "type": "string",  "example": "pendiente" }
-                      }
-                    }
-                  }
+        "examples": {
+          "sin_abono": {
+            "summary": "Caso 1 - Cliente no paga nada al registrar",
+            "value": {
+              "cliente_id": 2,
+              "corte_id": 1,
+              "usuario_id": 1,
+              "fecha_entrega": "25/03/2026",
+              "total": 40000,
+              "detalle": [
+                {
+                  "producto_id": 1,
+                  "nombre_producto": "Bandeja de deditos",
+                  "cantidad": 2,
+                  "precio_unitario": 14000
+                },
+                {
+                  "producto_id": 2,
+                  "nombre_producto": "Bandeja de empanadas",
+                  "cantidad": 1,
+                  "precio_unitario": 12000
                 }
+              ]
+            }
+          },
+          "con_abono_parcial": {
+            "summary": "Caso 2 - Cliente paga algo al registrar y el resto despues",
+            "value": {
+              "cliente_id": 2,
+              "corte_id": 1,
+              "usuario_id": 1,
+              "fecha_entrega": "25/03/2026",
+              "total": 40000,
+              "detalle": [
+                {
+                  "producto_id": 1,
+                  "nombre_producto": "Bandeja de deditos",
+                  "cantidad": 2,
+                  "precio_unitario": 14000
+                },
+                {
+                  "producto_id": 2,
+                  "nombre_producto": "Bandeja de empanadas",
+                  "cantidad": 1,
+                  "precio_unitario": 12000
+                }
+              ],
+              "abono_inicial": {
+                "monto": 20000,
+                "medio_pago": "efectivo",
+                "observacion": "pago en caja"
               }
             }
           },
-          "400": { "description": "Campos faltantes o vacios, total <= 0, formato de fecha incorrecto, fecha pasada, corte cerrado" },
-          "404": { "description": "Cliente, corte o usuario no encontrado" },
-          "500": { "description": "Error interno del servidor" }
+          "con_pago_completo": {
+            "summary": "Caso 3 - Cliente paga todo al registrar",
+            "value": {
+              "cliente_id": 2,
+              "corte_id": 1,
+              "usuario_id": 1,
+              "fecha_entrega": "25/03/2026",
+              "total": 40000,
+              "detalle": [
+                {
+                  "producto_id": 1,
+                  "nombre_producto": "Bandeja de deditos",
+                  "cantidad": 2,
+                  "precio_unitario": 14000
+                },
+                {
+                  "producto_id": 2,
+                  "nombre_producto": "Bandeja de empanadas",
+                  "cantidad": 1,
+                  "precio_unitario": 12000
+                }
+              ],
+              "abono_inicial": {
+                "monto": 40000,
+                "medio_pago": "transferencia",
+                "observacion": "pago completo Nequi"
+              }
+            }
+          }
         }
       }
+    }
+  },
+  "responses": {
+    "201": {
+      "description": "Venta registrada correctamente",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "mensaje": { "type": "string", "example": "venta registrada" },
+              "datos": {
+                "type": "object",
+                "properties": {
+                  "id":              { "type": "integer", "example": 4 },
+                  "cliente_id":      { "type": "integer", "example": 2 },
+                  "nombre_cliente":  { "type": "string",  "example": "Juan Rodriguez" },
+                  "corte_id":        { "type": "integer", "example": 1 },
+                  "usuario_id":      { "type": "integer", "example": 1 },
+                  "fecha_venta":     { "type": "string",  "example": "2026-03-21 10:30:00" },
+                  "fecha_entrega":   { "type": "string",  "example": "2026-03-25" },
+                  "total":           { "type": "number",  "example": 40000.0 },
+                  "total_abonado":   { "type": "number",  "example": 20000.0 },
+                  "saldo_pendiente": { "type": "number",  "example": 20000.0 },
+                  "estado":          { "type": "string",  "example": "pendiente" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "400": { "description": "Campos faltantes o vacios, detalle vacio, total no coincide con el detalle, abono supera el total, medio_pago invalido, formato de fecha incorrecto, fecha pasada, corte cerrado" },
+    "404": { "description": "Cliente, corte o usuario no encontrado" },
+    "500": { "description": "Error interno del servidor" }
+  }
+}
     },
 
     "/ventas/{id}": {

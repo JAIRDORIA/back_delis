@@ -4,7 +4,7 @@ from services.clientes_services import obtener_cliente
 from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
-
+from services.ventas_services import obtener_venta_detalle
 
 def cntListado():
     try:
@@ -20,6 +20,19 @@ def cntListado():
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+def cntDetalle(id):
+    try:
+        datos = obtener_venta_detalle(id)
+        if not datos:
+            return jsonify({"mensaje": f"la venta con id {id} no existe"}), 404
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
 
 def cntregistrar():
     try:
@@ -42,6 +55,7 @@ def cntregistrar():
         fecha_entrega = request.json["fecha_entrega"]
         total         = request.json["total"]
         detalle       = request.json["detalle"]
+        abono_inicial = request.json.get("abono_inicial", None)
 
         # 3. validar que detalle no este vacio
         if not detalle or len(detalle) == 0:
@@ -71,45 +85,59 @@ def cntregistrar():
                 "mensaje": f"el total {total} no coincide con el detalle {total_calculado}"
             }), 400
 
-        # 6. validar que el cliente existe
+        # 6. validar abono_inicial si viene
+        if abono_inicial:
+            if "monto" not in abono_inicial:
+                return jsonify({"mensaje": "el abono debe tener monto"}), 400
+            if abono_inicial["monto"] <= 0:
+                return jsonify({"mensaje": "el monto del abono debe ser mayor a 0"}), 400
+            if abono_inicial["monto"] > total:
+                return jsonify({"mensaje": "el abono no puede superar el total"}), 400
+            if "medio_pago" not in abono_inicial:
+                return jsonify({"mensaje": "el abono debe tener medio_pago"}), 400
+            medios_validos = ["efectivo", "transferencia", "otro"]
+            if abono_inicial["medio_pago"] not in medios_validos:
+                return jsonify({"mensaje": f"medio_pago invalido, debe ser: {medios_validos}"}), 400
+
+        # 7. validar que el cliente existe
         cliente_db = obtener_cliente(id_cliente)
         if not cliente_db:
             return jsonify({"mensaje": f"el cliente con id {id_cliente} no existe"}), 404
 
-        # 7. validar que el corte existe y no esta cerrado
+        # 8. validar que el corte existe y no esta cerrado
         corte_db = obtener_corte(corte)
         if not corte_db:
             return jsonify({"mensaje": f"el corte con id {corte} no existe"}), 404
         if corte_db["estado"] == "cerrado":
             return jsonify({"mensaje": "no puedes registrar ventas en un corte cerrado"}), 400
 
-        # 8. validar que el usuario existe
+        # 9. validar que el usuario existe
         usuario_db = obtener_usuario(usuario)
         if not usuario_db:
             return jsonify({"mensaje": f"el usuario con id {usuario} no existe"}), 404
 
-        # 9. validar total positivo
+        # 10. validar total positivo
         if total <= 0:
             return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
 
-        # 10. validar formato fecha
+        # 11. validar formato fecha
         try:
             fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
         except ValueError:
             return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
 
-        # 11. validar que fecha no sea en el pasado
+        # 12. validar que fecha no sea en el pasado
         if fecha.date() < datetime.now().date():
             return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
 
         fecha_entrega = fecha.strftime("%Y-%m-%d")
 
-        p = registro(id_cliente, corte, usuario, fecha_entrega, total, detalle)
+        p = registro(id_cliente, corte, usuario, fecha_entrega,
+                     total, detalle, abono_inicial)
         return jsonify({"mensaje": "venta registrada", "datos": p}), 201
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 def cntActualizar(id):
     try:
