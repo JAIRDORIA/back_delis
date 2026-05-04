@@ -2,6 +2,7 @@ from flask import Blueprint
 # Importamos las funciones con los nombres que definimos en el controlador
 from controllers.combos_controller import get_combos, cntRegistrarCombo
 
+
 combos_bp = Blueprint('combos', __name__, url_prefix='/combos')
 
 # 1. Ruta para LISTAR (GET)

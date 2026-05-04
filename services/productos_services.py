@@ -1,28 +1,44 @@
 from flask import current_app
 from models.productos_model import productos
 
-def listado_productos():
+def listado_productos(pagina=1, limite=20):
+    offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, nombre, descripcion, precio_venta, unidades_por_bandeja, activo, created_at, updated_at FROM productos WHERE activo = 1"
-    c.execute(sql)
+
+    c.execute("SELECT COUNT(*) FROM productos WHERE activo = 1")
+    total = c.fetchone()[0]
+
+    sql = """
+        SELECT id, nombre, descripcion, precio_venta, unidades_por_bandeja, activo, created_at, updated_at 
+        FROM productos 
+        WHERE activo = 1
+        LIMIT %s OFFSET %s
+    """
+    c.execute(sql, (limite, offset))
     datos = c.fetchall()
+    c.close()
 
     lista = []
     for p in datos:
         producto = productos(
-            id                    = p[0],
-            nombre                = p[1],
-            descripcion           = p[2],
-            precio_venta          = p[3],
-            unidades_por_bandeja  = p[4],
-            activo                = p[5],
-            created_at            = p[6],
-            updated_at            = p[7]
+            id                   = p[0],
+            nombre               = p[1],
+            descripcion          = p[2],
+            precio_venta         = p[3],
+            unidades_por_bandeja = p[4],
+            activo               = p[5],
+            created_at           = p[6],
+            updated_at           = p[7]
         ).toDic()
         lista.append(producto)
-    c.close()
 
-    return lista   
+    return {
+        "datos"        : lista,
+        "total"        : total,
+        "pagina"       : pagina,
+        "limite"       : limite,
+        "total_paginas": -(-total // limite)
+    } 
 
 def registro(nombre, descripcion, precio_venta, unidades_por_bandeja):
     c = current_app.mysql.connection.cursor()
