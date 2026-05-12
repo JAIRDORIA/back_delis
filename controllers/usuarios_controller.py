@@ -13,14 +13,20 @@ def hashear_password(password_plano: str) -> str:
 
 def cntListado():
     try:
-        datos = listado_usuarios()
+        pagina = int(request.args.get('pagina', 1))
+        limite = int(request.args.get('limite', 20))
+
+        if pagina < 1 or limite < 1:
+            return jsonify({"mensaje": "pagina y limite deben ser mayores a 0"}), 400
+
+        datos = listado_usuarios(pagina=pagina, limite=limite)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
     #validar en la peticion(body) atributos requeridos
-    requeridos = ['nombre', 'username', 'password_hash', 'rol']
+    requeridos = ['nombre', 'username', 'password', 'rol']
 
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
@@ -35,12 +41,11 @@ def cntRegistro():
     if vacios:
         return jsonify({"mensaje": f"los siguientes campos no pueden estar vacios {vacios}"}), 400
     
-    #validar que no esten vacios
-    nombre        = request.json['nombre'] 
-    username      = request.json['username']
+    
+    nombre   = request.json['nombre'] 
+    username = request.json['username']
     password = request.json['password']
-    password = hashear_password(password)
-    rol           = request.json['rol']
+    rol      = request.json['rol']
     
     if existe_username(username):
         return jsonify({"mensaje": "El username ya existe"}), 400
@@ -58,10 +63,12 @@ def cntRegistro():
     if len(password) < 6 or len(password) > 50:
         return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
     
+    password = hashear_password(password)
+    
     if rol not in ['admin', 'cajero']:
         return jsonify({"mensaje": "El rol debe ser admin o cajero"}), 400
     
-    p             = registro(nombre=nombre, username=username, password_hash=password_hash, rol=rol)
+    p             = registro(nombre=nombre, username=username, password_hash=password, rol=rol)
     return jsonify({"mensaje":"Usuario registrado","datos":p}), 201
 
 def cntEliminar(id):
@@ -85,10 +92,10 @@ def cntActualizar(id):
 
     nombre   = request.json.get('nombre')
     username = request.json.get('username')
-    password = request.json.get('password_hash')
+    password = request.json.get('password')
     rol      = request.json.get('rol')
 
-    requeridos = ['nombre', 'username', 'rol']
+    requeridos = ['nombre', 'username','rol']
     faltantes = [r for r in requeridos if not request.json.get(r)]
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400

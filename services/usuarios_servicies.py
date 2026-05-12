@@ -1,27 +1,44 @@
 from flask import current_app
 from models.usuarios_model import usuarios
 import bcrypt   
-def listado_usuarios():
+def listado_usuarios(pagina=1, limite=20):
+    offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, nombre, username, password_hash, rol, activo, created_at, updated_at FROM usuarios where activo = 1"
-    c.execute(sql)
-    datos = c.fetchall()
     
+    c.execute("SELECT COUNT(*) FROM usuarios WHERE activo = 1")
+    total = c.fetchone()[0]
+
+    sql = """
+        SELECT id, nombre, username, rol, activo, created_at, updated_at 
+        FROM usuarios 
+        WHERE activo = 1
+        LIMIT %s OFFSET %s
+    """
+    c.execute(sql, (limite, offset))
+    datos = c.fetchall()
+    c.close()
+
     lista = []
     for p in datos:
         usuario = usuarios(
-            id               = p[0],
-            nombre           = p[1],
-            username         = p[2],
-            password_hash    = p[3],
-            rol              = p[4],
-            activo           = p[5],
-            created_at       = p[6],
-            updated_at       = p[7]
+            id            = p[0],
+            nombre        = p[1],
+            username      = p[2],
+            password_hash = None,
+            rol           = p[3],
+            activo        = p[4],
+            created_at    = p[5],
+            updated_at    = p[6]
         ).toDic()
         lista.append(usuario)
-    c.close()
-    return lista   
+
+    return {
+        "datos"        : lista,
+        "total"        : total,
+        "pagina"       : pagina,
+        "limite"       : limite,
+        "total_paginas": -(-total // limite)
+    } 
 
 def registro(nombre, username, password_hash, rol):
     c = current_app.mysql.connection.cursor()
