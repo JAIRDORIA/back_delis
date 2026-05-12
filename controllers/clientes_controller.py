@@ -2,11 +2,12 @@ import re
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required
 from services.clientes_services import (
-    listado_clientes, crear_clientes, existe_email, 
+    listado_clientes, crear_clientes, existe_email,clientes_top, 
     obtener_cliente, service_actualizar_cliente, service_eliminar_cliente
 )
+from utils.decorators import token_requerido
 
-@jwt_required()
+@token_requerido
 def get_clientes():
     """
     Listar clientes paginados (RF13)
@@ -93,6 +94,17 @@ def cntRegistrar():
         return jsonify(resultado[0]), resultado[1]
     
     return jsonify({"mensaje": "Cliente registrado con éxito", "datos": resultado}), 201
+
+
+def cntClientesTop():
+    try:
+        limite = request.args.get("limite", 5, type=int)
+        if limite < 1 or limite > 20:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 20"}), 400
+        datos = clientes_top(limite)
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @jwt_required()
 def cntActualizar(id):

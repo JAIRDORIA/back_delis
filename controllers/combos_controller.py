@@ -4,8 +4,9 @@ from services.combos_services import (
     listado_combos, crear_combos, existe_combo, 
     obtener_combo_id, actualizar_combos, eliminar_combos
 )
+from utils.decorators import token_requerido
 
-@jwt_required()
+@token_requerido
 def get_combos():
     """
     Listar combos paginados (RF24)
