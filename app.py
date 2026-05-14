@@ -12,10 +12,19 @@ app = Flask(__name__)
 app.config.from_object(config)
 app.register_blueprint(auth_bp)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-CORS(app)
+
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Authorization"]
+)
+
 jwt = JWTManager(app)
 
 mysql = MySQL(app)
 app.mysql = mysql
 cargarRuta(app)
 app.run(debug=True, port=4000, host='0.0.0.0')  
+
