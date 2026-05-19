@@ -7,7 +7,8 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5000"
+      "url": "http://127.0.0.1:4000",
+      "description": "Servidor Local Flask"
     }
   ],
   "components": {
@@ -34,12 +35,20 @@
       "description": "Gestión de productos"
     },
     {
+      "name": "Clientes",
+      "description": "Gestión de clientes"
+    },
+    {
+      "name": "Combos",
+      "description": "Gestión de combos"
+    },
+    {
       "name": "Inventario",
       "description": "Gestión de inventario"
     },
     {
       "name": "Ventas",
-      "description": "Gestión de ventas"
+      "description": "Gestión de ventas y estados"
     },
     {
       "name": "Abonos",
@@ -957,6 +966,60 @@
         }
       }
     },
+    "/api/clientes/": {
+  "get": {
+    "tags": ["Clientes"],
+    "summary": "Listar clientes activos",
+    "description": "Retorna clientes activos con paginación.",
+    "security": [{"BearerAuth":[]}],
+    "parameters": [
+      {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "example": 1
+        }
+      },
+      {
+        "name": "per_page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Listado de clientes obtenido correctamente"
+      }
+    }
+  },
+  "post": {
+    "tags": ["Clientes"],
+    "summary": "Registrar cliente",
+    "security": [{"BearerAuth":[]}],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": [
+              "nombre",
+              "telefono",
+              "direccion",
+              "email"
+            ],
+            "properties": {
+              "nombre": {
+                "type": "string",
+                "example": "Juan Rodriguez"
+              },
+              "telefono": {
+                "type": "string"
+},
     "/api/inventarios/": {
       "get": {
         "tags": [
@@ -1532,7 +1595,6 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
