@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask
 from flask_mysqldb import MySQL
 from routes import cargarRuta
@@ -13,6 +12,14 @@ app.config.from_object(config)
 app.register_blueprint(auth_bp)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
+# 2. Configurar Swagger para que use tu archivo swagger.json
+
+jwt = JWTManager(app)
+
+mysql = MySQL(app)
+app.mysql = mysql
+cargarRuta(app)
+
 CORS(
     app,
     resources={r"/*": {"origins": "*"}},
@@ -21,10 +28,5 @@ CORS(
     expose_headers=["Authorization"]
 )
 
-jwt = JWTManager(app)
-
-mysql = MySQL(app)
-app.mysql = mysql
-cargarRuta(app)
-app.run(debug=True, port=4000, host='0.0.0.0')  
-
+if __name__ == '__main__':
+    app.run(debug=True, port=4000, host='0.0.0.0')

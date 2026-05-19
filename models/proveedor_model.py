@@ -1,21 +1,18 @@
-class proveedor:
-    def __init__(self,id,nombre,contacto,direccion,compra):
-        self.ID_Proveedor = id
-        self.PROO_Nombre = nombre
-        self.PROO_Contacto = contacto
-        self.PROODireccion = direccion
-        self.ID_Compra = compra
-    
+class proveedores:
+    def __init__(self, id, nombre, telefono, direccion, email, activo=1):
+        self.id        = id
+        self.nombre    = nombre
+        self.telefono  = telefono
+        self.direccion = direccion
+        self.email     = email
+        self.activo    = activo
+
     def todic(self):
-        return{
-            "proo_id" : self.ID_Proveedor ,
-            "proo_nom" : self.PROO_Nombre ,
-            "proo_cont" : self.PROO_Contacto ,
-            "proo_dir" : self.PROODireccion ,
-            "proo_compra" : self.ID_Compra ,
-            
-            
-        } 
-    
-        
-           
+        return {
+            "id":        self.id,
+            "nombre":    self.nombre,
+            "telefono":  self.telefono,
+            "direccion": self.direccion,
+            "email":     self.email,
+            "activo":    self.activo
+        }
