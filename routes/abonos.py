@@ -1,5 +1,5 @@
 from flask import Blueprint
-from controllers.abonos_controller import cntListado,cntregistrar, cntListado, cntActualizar,cntEliminar
+from controllers.abonos_controller import cntListado,cntregistrar, cntListado, cntActualizar,cntEliminar,cntGenerarRecibo
 from flask_jwt_extended import jwt_required
 
 abono_bp = Blueprint ('abonos', __name__)
@@ -23,3 +23,8 @@ def actualizar(id):
 #@jwt_required()
 def eliminar(id):
     return cntEliminar(id)
+
+@abono_bp.route('/<int:id>/recibo', methods=['GET'])
+#@token_requerido()
+def recibo(id):
+    return cntGenerarRecibo(id)

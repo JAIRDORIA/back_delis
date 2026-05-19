@@ -1,5 +1,5 @@
 from flask import jsonify , request
-from  services.ventas_services import listado_ventas,registro, obtener_venta,actualizar_venta, anular_venta
+from  services.ventas_services import listado_ventas,registro, obtener_venta,actualizar_venta, anular_venta,generar_comprobante
 from services.clientes_services import obtener_cliente
 from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
 from services.usuarios_servicies import obtener_usuario
@@ -33,6 +33,17 @@ def cntDetalle(id):
         return jsonify({"error": str(e)}), 500
     
 
+
+def cntGenerarComprobante(id):
+    try:
+        venta = obtener_venta(id)
+        if not venta:
+            return jsonify({"mensaje": f"la venta con id {id} no existe"}), 404
+
+        resultado = generar_comprobante(id)
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def cntregistrar():
     try:

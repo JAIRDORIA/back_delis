@@ -1,5 +1,5 @@
 from flask import Blueprint
-from controllers.venta_controller import cntListado,cntregistrar, cntActualizar, cntAnular
+from controllers.venta_controller import cntListado,cntregistrar, cntActualizar, cntAnular,cntGenerarComprobante
 from utils.decorators import token_requerido
 from controllers.venta_controller import cntDetalle
 
@@ -34,3 +34,8 @@ def actualizar(id):
 @token_requerido
 def anular(id):
     return cntAnular(id)
+
+@ventas_bp.route('/<int:id>/comprobante', methods=['GET'])
+#@token_requerido
+def comprobante(id):
+    return cntGenerarComprobante(id)
