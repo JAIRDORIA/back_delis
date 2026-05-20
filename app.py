@@ -12,7 +12,8 @@ app.config.from_object(config)
 app.register_blueprint(auth_bp)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
-# 2. Configurar Swagger para que use tu archivo swagger.json
+
+
 
 jwt = JWTManager(app)
 

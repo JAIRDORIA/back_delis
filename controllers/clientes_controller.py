@@ -7,7 +7,7 @@ from services.clientes_services import (
 )
 from utils.decorators import token_requerido
 
-@token_requerido
+#@token_requerido
 def get_clientes():
     """
     Listar clientes paginados (RF13)
@@ -33,7 +33,7 @@ def get_clientes():
     w = listado_clientes(page, per_page)
     return jsonify(w)
 
-@jwt_required()
+#@jwt_required()
 def get_cliente_por_id(id):
     """
     Visualizar detalle de un cliente (RF14)
@@ -51,7 +51,7 @@ def get_cliente_por_id(id):
         return jsonify({"mensaje": "Cliente no encontrado"}), 404
     return jsonify(c)
 
-@jwt_required()
+#@jwt_required()
 def cntRegistrar():
     """
     Registrar un nuevo cliente (RF10)
@@ -106,7 +106,7 @@ def cntClientesTop():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@jwt_required()
+#@jwt_required()
 def cntActualizar(id):
     """
     Editar información de un cliente (RF11)
@@ -136,7 +136,7 @@ def cntActualizar(id):
     resultado = service_actualizar_cliente(id, nombre, telefono, direccion, email)
     return jsonify({"mensaje": "Cliente actualizado con éxito", "datos": resultado}), 200
 
-@jwt_required()
+#@jwt_required()
 def cntEliminar(id):
     """
     Eliminar cliente - Borrado lógico (RF12)
