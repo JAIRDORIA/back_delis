@@ -12,7 +12,7 @@ def listado():
     return cntListado()
 
 @ventas_bp.route('/<int:id>/detalle', methods=['GET'])
-@token_requerido()
+@token_requerido
 def detalle(id):
     return cntDetalle(id)
 
