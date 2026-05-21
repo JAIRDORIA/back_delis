@@ -1297,10 +1297,32 @@
           "Ventas"
         ],
         "summary": "Listar todas las ventas",
-        "description": "Retorna el listado completo de ventas con el nombre del cliente obtenido por JOIN con la tabla clientes.",
+        "description": "Retorna el listado paginado de ventas con el nombre del cliente obtenido por JOIN. Por defecto retorna la pagina 1 con 20 registros.",
         "security": [
           {
             "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "description": "Numero de pagina a consultar. Por defecto: 1",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Cantidad de registros por pagina. Por defecto: 20. Maximo: 100",
+            "schema": {
+              "type": "integer",
+              "example": 20
+            }
           }
         ],
         "responses": {
@@ -1309,62 +1331,127 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "cliente_id": {
-                        "type": "integer",
-                        "example": 2
-                      },
-                      "nombre_cliente": {
-                        "type": "string",
-                        "example": "Juan Rodriguez"
-                      },
-                      "corte_id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "usuario_id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "fecha_venta": {
-                        "type": "string",
-                        "example": "2026-03-21 10:30:00"
-                      },
-                      "fecha_entrega": {
-                        "type": "string",
-                        "example": "2026-03-25"
-                      },
-                      "total": {
-                        "type": "number",
-                        "example": 42000
-                      },
-                      "total_abonado": {
-                        "type": "number",
-                        "example": 20000
-                      },
-                      "saldo_pendiente": {
-                        "type": "number",
-                        "example": 22000
-                      },
-                      "estado": {
-                        "type": "string",
-                        "example": "pendiente"
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "example": 9,
+                      "description": "Total de ventas en la base de datos"
+                    },
+                    "pagina": {
+                      "type": "integer",
+                      "example": 1,
+                      "description": "Pagina actual"
+                    },
+                    "limite": {
+                      "type": "integer",
+                      "example": 20,
+                      "description": "Registros por pagina"
+                    },
+                    "total_paginas": {
+                      "type": "integer",
+                      "example": 1,
+                      "description": "Total de paginas disponibles"
+                    },
+                    "datos": {
+                      "type": "array",
+                      "description": "Lista de ventas de la pagina actual",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "cliente_id": {
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "nombre_cliente": {
+                            "type": "string",
+                            "example": "Juan Rodriguez"
+                          },
+                          "corte_id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "usuario_id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "fecha_venta": {
+                            "type": "string",
+                            "example": "2026-03-21 10:30:00"
+                          },
+                          "fecha_entrega": {
+                            "type": "string",
+                            "example": "2026-03-25"
+                          },
+                          "total": {
+                            "type": "number",
+                            "example": 42000.0
+                          },
+                          "total_abonado": {
+                            "type": "number",
+                            "example": 20000.0
+                          },
+                          "saldo_pendiente": {
+                            "type": "number",
+                            "example": 22000.0
+                          },
+                          "estado": {
+                            "type": "string",
+                            "example": "pendiente"
+                          }
+                        }
                       }
+                    }
+                  }
+                },
+                "examples": {
+                  "pagina_1": {
+                    "summary": "Primera pagina con 20 registros",
+                    "value": {
+                      "total": 9,
+                      "pagina": 1,
+                      "limite": 20,
+                      "total_paginas": 1,
+                      "datos": [
+                        {
+                          "id": 1,
+                          "cliente_id": 2,
+                          "nombre_cliente": "Juan Rodriguez",
+                          "corte_id": 1,
+                          "usuario_id": 1,
+                          "fecha_venta": "2026-03-21 10:30:00",
+                          "fecha_entrega": "2026-03-25",
+                          "total": 42000.0,
+                          "total_abonado": 20000.0,
+                          "saldo_pendiente": 22000.0,
+                          "estado": "pendiente"
+                        }
+                      ]
+                    }
+                  },
+                  "con_paginacion": {
+                    "summary": "Pagina 2 con limite de 5 registros",
+                    "value": {
+                      "total": 9,
+                      "pagina": 2,
+                      "limite": 5,
+                      "total_paginas": 2,
+                      "datos": []
                     }
                   }
                 }
               }
             }
           },
+          "400": {
+            "description": "Pagina o limite invalido"
+          },
           "401": {
-            "description": "Token inválido o no enviado"
+            "description": "Token invalido o no enviado"
           },
           "500": {
             "description": "Error interno del servidor"
@@ -1376,12 +1463,7 @@
           "Ventas"
         ],
         "summary": "Registrar una nueva venta",
-        "description": "Crea una nueva venta. La fecha_venta, total_abonado y saldo_pendiente son asignados automáticamente por el servidor y los triggers. El campo total_abonado inicia en 0 y solo se actualiza mediante abonos.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Crea una nueva venta con su detalle de productos. Opcionalmente puede incluir un abono inicial si el cliente paga algo al momento de registrar. El total_abonado y saldo_pendiente son calculados automaticamente por los triggers de la base de datos.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1393,7 +1475,8 @@
                   "corte_id",
                   "usuario_id",
                   "fecha_entrega",
-                  "total"
+                  "total",
+                  "detalle"
                 ],
                 "properties": {
                   "cliente_id": {
@@ -1418,8 +1501,148 @@
                   },
                   "total": {
                     "type": "number",
-                    "example": 42000,
-                    "description": "Debe ser mayor a 0"
+                    "example": 40000,
+                    "description": "Debe ser mayor a 0 y debe coincidir exactamente con la suma del detalle (cantidad x precio_unitario)"
+                  },
+                  "detalle": {
+                    "type": "array",
+                    "description": "Lista de productos de la venta. Debe tener al menos un producto.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "producto_id",
+                        "nombre_producto",
+                        "cantidad",
+                        "precio_unitario"
+                      ],
+                      "properties": {
+                        "producto_id": {
+                          "type": "integer",
+                          "example": 1,
+                          "description": "ID del producto"
+                        },
+                        "nombre_producto": {
+                          "type": "string",
+                          "example": "Bandeja de deditos",
+                          "description": "Nombre del producto al momento de la venta"
+                        },
+                        "cantidad": {
+                          "type": "integer",
+                          "example": 2,
+                          "description": "Debe ser mayor a 0"
+                        },
+                        "precio_unitario": {
+                          "type": "number",
+                          "example": 14000,
+                          "description": "Precio del producto al momento de la venta. Debe ser mayor a 0"
+                        }
+                      }
+                    }
+                  },
+                  "abono_inicial": {
+                    "type": "object",
+                    "description": "Opcional. Pago que realiza el cliente al momento de registrar la venta. Si no se envia el cliente queda con saldo pendiente completo.",
+                    "properties": {
+                      "monto": {
+                        "type": "number",
+                        "example": 20000,
+                        "description": "Debe ser mayor a 0 y no puede superar el total de la venta"
+                      },
+                      "medio_pago": {
+                        "type": "string",
+                        "example": "efectivo",
+                        "description": "Valores validos: efectivo, transferencia, otro"
+                      },
+                      "observacion": {
+                        "type": "string",
+                        "example": "pago en caja",
+                        "description": "Opcional"
+                      }
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "sin_abono": {
+                  "summary": "Caso 1 - Cliente no paga nada al registrar",
+                  "value": {
+                    "cliente_id": 2,
+                    "corte_id": 1,
+                    "usuario_id": 1,
+                    "fecha_entrega": "25/03/2026",
+                    "total": 40000,
+                    "detalle": [
+                      {
+                        "producto_id": 1,
+                        "nombre_producto": "Bandeja de deditos",
+                        "cantidad": 2,
+                        "precio_unitario": 14000
+                      },
+                      {
+                        "producto_id": 2,
+                        "nombre_producto": "Bandeja de empanadas",
+                        "cantidad": 1,
+                        "precio_unitario": 12000
+                      }
+                    ]
+                  }
+                },
+                "con_abono_parcial": {
+                  "summary": "Caso 2 - Cliente paga algo al registrar y el resto despues",
+                  "value": {
+                    "cliente_id": 2,
+                    "corte_id": 1,
+                    "usuario_id": 1,
+                    "fecha_entrega": "25/03/2026",
+                    "total": 40000,
+                    "detalle": [
+                      {
+                        "producto_id": 1,
+                        "nombre_producto": "Bandeja de deditos",
+                        "cantidad": 2,
+                        "precio_unitario": 14000
+                      },
+                      {
+                        "producto_id": 2,
+                        "nombre_producto": "Bandeja de empanadas",
+                        "cantidad": 1,
+                        "precio_unitario": 12000
+                      }
+                    ],
+                    "abono_inicial": {
+                      "monto": 20000,
+                      "medio_pago": "efectivo",
+                      "observacion": "pago en caja"
+                    }
+                  }
+                },
+                "con_pago_completo": {
+                  "summary": "Caso 3 - Cliente paga todo al registrar",
+                  "value": {
+                    "cliente_id": 2,
+                    "corte_id": 1,
+                    "usuario_id": 1,
+                    "fecha_entrega": "25/03/2026",
+                    "total": 40000,
+                    "detalle": [
+                      {
+                        "producto_id": 1,
+                        "nombre_producto": "Bandeja de deditos",
+                        "cantidad": 2,
+                        "precio_unitario": 14000
+                      },
+                      {
+                        "producto_id": 2,
+                        "nombre_producto": "Bandeja de empanadas",
+                        "cantidad": 1,
+                        "precio_unitario": 12000
+                      }
+                    ],
+                    "abono_inicial": {
+                      "monto": 40000,
+                      "medio_pago": "transferencia",
+                      "observacion": "pago completo Nequi"
+                    }
                   }
                 }
               }
@@ -1471,15 +1694,15 @@
                         },
                         "total": {
                           "type": "number",
-                          "example": 42000
+                          "example": 40000.0
                         },
                         "total_abonado": {
                           "type": "number",
-                          "example": 0
+                          "example": 20000.0
                         },
                         "saldo_pendiente": {
                           "type": "number",
-                          "example": 42000
+                          "example": 20000.0
                         },
                         "estado": {
                           "type": "string",
@@ -1493,10 +1716,7 @@
             }
           },
           "400": {
-            "description": "Campos faltantes o vacíos, total <= 0, formato de fecha incorrecto, fecha pasada, corte cerrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
+            "description": "Campos faltantes o vacios, detalle vacio, total no coincide con el detalle, abono supera el total, medio_pago invalido, formato de fecha incorrecto, fecha pasada, corte cerrado"
           },
           "404": {
             "description": "Cliente, corte o usuario no encontrado"
@@ -1532,7 +1752,6 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1645,6 +1864,119 @@
           },
           "404": {
             "description": "La venta con ese id no existe"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/ventas/{id}/comprobante": {
+      "get": {
+        "tags": [
+          "Ventas"
+        ],
+        "summary": "Generar o consultar comprobante de venta",
+        "description": "Si la venta no tiene comprobante lo crea y lo devuelve. Si ya tiene comprobante simplemente lo devuelve. El numero se genera automaticamente con formato COMP-0001.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID de la venta",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comprobante generado o consultado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "numero": {
+                      "type": "string",
+                      "example": "COMP-0001"
+                    },
+                    "fecha_emision": {
+                      "type": "string",
+                      "example": "2026-03-21 10:30:00"
+                    },
+                    "venta_id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "nombre_cliente": {
+                      "type": "string",
+                      "example": "Juan Rodriguez"
+                    },
+                    "fecha_venta": {
+                      "type": "string",
+                      "example": "2026-03-21"
+                    },
+                    "fecha_entrega": {
+                      "type": "string",
+                      "example": "2026-03-25"
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 40000.0
+                    },
+                    "total_abonado": {
+                      "type": "number",
+                      "example": 20000.0
+                    },
+                    "saldo_pendiente": {
+                      "type": "number",
+                      "example": 20000.0
+                    },
+                    "estado": {
+                      "type": "string",
+                      "example": "pendiente"
+                    },
+                    "detalle": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "nombre_producto": {
+                            "type": "string",
+                            "example": "Bandeja de deditos"
+                          },
+                          "cantidad": {
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "precio_unitario": {
+                            "type": "number",
+                            "example": 14000.0
+                          },
+                          "subtotal": {
+                            "type": "number",
+                            "example": 28000.0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La venta con ese id no existe"
+          },
+          "401": {
+            "description": "Token invalido o no enviado"
           },
           "500": {
             "description": "Error interno del servidor"
@@ -2285,6 +2617,120 @@
           },
           "500": {
             "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/api/clientes/": {
+      "get": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Listar clientes",
+        "description": "Retorna todos los clientes registrados en el sistema. Requiere token JWT.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de clientes obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "example": 1
+                      },
+                      "nombre": {
+                        "type": "string",
+                        "example": "Juan Gómez"
+                      },
+                      "telefono": {
+                        "type": "string",
+                        "example": "3001234567"
+                      },
+                      "correo": {
+                        "type": "string",
+                        "example": "juan@gmail.com"
+                      },
+                      "direccion": {
+                        "type": "string",
+                        "example": "Calle 10 #20-30"
+                      },
+                      "activo": {
+                        "type": "integer",
+                        "example": 1
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "example": "2026-03-24 09:01:45"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "example": "2026-03-24 09:01:45"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Registrar cliente",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nombre",
+                  "telefono",
+                  "direccion",
+                  "email"
+                ],
+                "properties": {
+                  "nombre": {
+                    "type": "string",
+                    "example": "Juan Rodriguez"
+                  },
+                  "telefono": {
+                    "type": "string"
+                  },"direccion": {
+                    "type": "string",
+                    "example": "cra1f#40b-123",
+                    "description": "debe tener mas de 5 caracterres"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "jairdoria2020@gmail.com",
+                    "description": "debe tener formato de correo"
+                  }
+                }
+              }
+            }
           }
         }
       }

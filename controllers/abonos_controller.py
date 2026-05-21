@@ -2,7 +2,7 @@ from flask import jsonify, request
 from datetime import datetime
 from services.abono_services import (
     listado_abonos, registro, obtener_abono,
-    actualizar_abono, eliminar_abono
+    actualizar_abono, eliminar_abono,generar_recibo
 )
 from services.ventas_services import obtener_venta
 from services.cortes_services import obtener_corte, obtener_corte_abierto
@@ -93,6 +93,18 @@ def cntregistrar():
         return jsonify({"error": str(e)}), 500
 
 
+def cntGenerarRecibo(id):
+    try:
+        abono = obtener_abono(id)
+        if not abono:
+            return jsonify({"mensaje": f"el abono con id {id} no existe"}), 404
+
+        resultado = generar_recibo(id)
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    
 def cntActualizar(id):
     try:
         requeridos = ["monto", "fecha", "medio_pago"]
