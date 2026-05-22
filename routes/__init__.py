@@ -1,5 +1,3 @@
-# __init__.py
-# __init__.py
 from .ventas import ventas_bp
 from .cortes import cortes_bp
 from .usuarios import usuarios_bp

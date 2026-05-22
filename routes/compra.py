@@ -1,12 +1,9 @@
 from flask import Blueprint
 from controllers.compra_controller import (
-    cntListadoCompra,
-    cntObtenerCompra,
-    cntRegistroCompra,
-    cntActualizarCompra,
-    cntEliminarCompra
+    cntListadoCompra, cntRegistroCompra,
+    cntActualizarCompra, cntEliminarCompra
 )
-from utils.decorators import token_requerido
+from utils.decorators import token_requerido, rol_requerido
 
 compra_bp = Blueprint('compra', __name__)
 
@@ -31,5 +28,6 @@ def actualizar(id):
     return cntActualizarCompra(id)
 
 @compra_bp.route('/<int:id>', methods=['DELETE'])
+@token_requerido
 def eliminar(id):
     return cntEliminarCompra(id)

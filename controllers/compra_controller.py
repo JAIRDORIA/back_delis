@@ -10,7 +10,7 @@ from services.compra_services import (
 
 def cntListadoCompra():
     try:
-        datos = listado_compra()
+        datos = listado_compras()
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -33,13 +33,32 @@ def cntRegistroCompra():
     requeridos = ['proveedor_id', 'corte_id', 'usuario_id', 'fecha', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
-        return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
+        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
     corte_id     = request.json['corte_id']
     usuario_id   = request.json['usuario_id']
     fecha        = request.json['fecha']
     total        = request.json['total']
+    descripcion  = request.json['descripcion'].strip()
+
+    if total <= 0:
+        return jsonify({"mensaje": "El total debe ser mayor a 0"}), 400
+
+    try:
+        c = registrar_compra(proveedor_id, corte_id, usuario_id, fecha, total, descripcion)
+        return jsonify({"mensaje": "Compra registrada", "datos": c}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def cntActualizarCompra(id):
+    if not str(id).isdigit():
+        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
+
+    requeridos = ['proveedor_id', 'corte_id', 'usuario_id', 'fecha', 'total', 'descripcion']
+    faltantes = [d for d in requeridos if d not in request.json]
+    if faltantes:
+        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
     descripcion  = request.json.get('descripcion', None)
 
     # ── Validaciones de tipo ───────────────────────────────────────
