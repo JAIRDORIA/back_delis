@@ -34,7 +34,7 @@ def cntRegistroProveedor():
     requeridos = ['nombre', 'telefono', 'direccion', 'email']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
-        return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
+        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     nombre    = request.json['nombre'].strip()
     telefono  = request.json['telefono'].strip()
