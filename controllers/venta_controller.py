@@ -67,6 +67,29 @@ def cntregistrar():
         total         = request.json["total"]
         detalle       = request.json["detalle"]
         abono_inicial = request.json.get("abono_inicial", None)
+        
+        
+        formatos = [
+            "%Y-%m-%dT%H:%M:%S.%fZ",  # 2026-04-25T12:30:00.000Z
+            "%Y-%m-%dT%H:%M:%SZ",     # 2026-04-25T12:30:00Z
+            "%Y-%m-%dT%H:%M:%S",      # 2026-04-25T12:30:00
+            "%Y-%m-%d %H:%M:%S",      # 2026-04-25 12:30:00
+            "%Y-%m-%d %H:%M",         # 2026-04-25 12:30
+            "%Y-%m-%d",               # 2026-04-25
+            ]
+        
+        fecha_convertida = None
+        for formato in formatos:
+            try:
+                fecha_convertida = datetime.strptime(fecha_entrega, formato)
+                break
+            except ValueError:
+                continue
+
+        if not fecha_convertida:
+            return jsonify({
+        "mensaje": "formato de fecha incorrecto"
+                }), 400
 
         # 3. validar que detalle no este vacio
         if not detalle or len(detalle) == 0:
@@ -131,17 +154,10 @@ def cntregistrar():
         if total <= 0:
             return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
 
-        # 11. validar formato fecha
-        try:
-            fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
-        except ValueError:
-            return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
+        
+        
 
-        # 12. validar que fecha no sea en el pasado
-        if fecha.date() < datetime.now().date():
-            return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
-
-        fecha_entrega = fecha.strftime("%Y-%m-%d")
+        fecha_entrega = fecha_convertida.strftime("%Y-%m-%d %H:%M:%S")
 
         p = registro(id_cliente, corte, usuario, fecha_entrega,
                      total, detalle, abono_inicial)
