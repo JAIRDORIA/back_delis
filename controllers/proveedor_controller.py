@@ -1,8 +1,12 @@
 from flask import jsonify, request
 from services.proveedor_services import (
-    listado_proveedores, registrar_proveedor,
-    actualizar_proveedor, eliminar_proveedor, existe_proveedor
+    listado_proveedores,
+    obtener_proveedor,
+    registro_proveedor,
+    actualizar_proveedor,
+    eliminar_proveedor
 )
+
 
 def cntListadoProveedores():
     try:
@@ -11,63 +15,82 @@ def cntListadoProveedores():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def cntRegistroProveedor():
-    requeridos = ['nombre', 'contacto', 'direccion', 'compra']
-    faltantes = [d for d in requeridos if d not in request.json]
-    if faltantes:
-        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
-    vacios = [c for c in requeridos if str(request.json[c]).strip() == ""]
-    if vacios:
-        return jsonify({"mensaje": f"Los siguientes campos no pueden estar vacíos: {vacios}"}), 400
-
-    nombre    = request.json['nombre'].strip()
-    contacto  = request.json['contacto'].strip()
-    direccion = request.json['direccion'].strip()
-    compra    = request.json['compra']
-
-    if len(nombre) < 3 or len(nombre) > 100:
-        return jsonify({"mensaje": "El nombre debe tener entre 3 y 100 caracteres"}), 400
-
+def cntObtenerProveedor(id):
     try:
-        p = registrar_proveedor(nombre, contacto, direccion, compra)
-        return jsonify({"mensaje": "Proveedor registrado", "datos": p}), 201
+        dato, error = obtener_proveedor(id)
+        if error:
+            return jsonify({"error": error}), 404
+        return jsonify(dato), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def cntActualizarProveedor(id):
-    if not str(id).isdigit():
-        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
 
-    requeridos = ['nombre', 'contacto', 'direccion', 'compra']
-    faltantes = [d for d in requeridos if d not in request.json]
+def cntRegistroProveedor():
+    if not request.is_json:
+        return jsonify({"error": "El cuerpo debe ser JSON"}), 400
+
+    requeridos = ['nombre', 'telefono', 'direccion', 'email']
+    faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     nombre    = request.json['nombre'].strip()
-    contacto  = request.json['contacto'].strip()
+    telefono  = request.json['telefono'].strip()
     direccion = request.json['direccion'].strip()
-    compra    = request.json['compra']
+    email     = request.json['email'].strip()
 
-    if len(nombre) < 3 or len(nombre) > 100:
-        return jsonify({"mensaje": "El nombre debe tener entre 3 y 100 caracteres"}), 400
+    if not nombre:
+        return jsonify({"error": "El nombre no puede estar vacío"}), 400
+    if not email or '@' not in email:
+        return jsonify({"error": "El email no tiene un formato válido"}), 400
 
-    if not existe_proveedor(id):
-        return jsonify({"mensaje": "Proveedor no encontrado"}), 404
+    try:
+        dato, error = registro_proveedor(None, nombre, telefono, direccion, email)
+        if error:
+            return jsonify({"error": error}), 409
+        return jsonify(dato), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    actualizado = actualizar_proveedor(id, nombre, contacto, direccion, compra)
-    if not actualizado:
-        return jsonify({"mensaje": "No se pudo actualizar"}), 400
-    return jsonify({"mensaje": "Proveedor actualizado correctamente"}), 200
+
+def cntActualizarProveedor(id):
+    if not request.is_json:
+        return jsonify({"error": "El cuerpo debe ser JSON"}), 400
+
+    requeridos = ['nombre', 'telefono', 'direccion', 'email', 'activo']
+    faltantes  = [x for x in requeridos if x not in request.json]
+    if faltantes:
+        return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
+
+    nombre    = request.json['nombre'].strip()
+    telefono  = request.json['telefono'].strip()
+    direccion = request.json['direccion'].strip()
+    email     = request.json['email'].strip()
+    activo    = request.json['activo']
+
+    if not nombre:
+        return jsonify({"error": "El nombre no puede estar vacío"}), 400
+    if not email or '@' not in email:
+        return jsonify({"error": "El email no tiene un formato válido"}), 400
+    if activo not in [0, 1]:
+        return jsonify({"error": "El campo 'activo' debe ser 0 o 1"}), 400
+
+    try:
+        dato, error = actualizar_proveedor(id, nombre, telefono, direccion, email, activo)
+        if error:
+            status = 404 if "no encontrado" in error else 409
+            return jsonify({"error": error}), status
+        return jsonify(dato), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 def cntEliminarProveedor(id):
-    if not str(id).isdigit():
-        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
-
-    if not existe_proveedor(id):
-        return jsonify({"mensaje": "Proveedor no encontrado"}), 404
-
-    eliminado = eliminar_proveedor(id)
-    if not eliminado:
-        return jsonify({"mensaje": "No se pudo eliminar"}), 400
-    return jsonify({"mensaje": "Proveedor eliminado correctamente"}), 200
+    try:
+        ok, error = eliminar_proveedor(id)
+        if error:
+            return jsonify({"error": error}), 404
+        return jsonify({"mensaje": f"Proveedor {id} eliminado correctamente"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

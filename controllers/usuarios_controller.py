@@ -60,6 +60,9 @@ def cntRegistro():
     if len(username) < 4 or len(username) > 50:
         return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
 
+    if username.isdigit(): 
+        return jsonify({"mensaje": "El username no puede contener solo números"}), 400
+
     if len(password) < 6 or len(password) > 50:
         return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
     

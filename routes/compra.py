@@ -1,9 +1,12 @@
 from flask import Blueprint
 from controllers.compra_controller import (
-    cntListadoCompra, cntRegistroCompra,
-    cntActualizarCompra, cntEliminarCompra
+    cntListadoCompra,
+    cntObtenerCompra,
+    cntRegistroCompra,
+    cntActualizarCompra,
+    cntEliminarCompra
 )
-from utils.decorators import token_requerido, rol_requerido
+from utils.decorators import token_requerido
 
 compra_bp = Blueprint('compra', __name__)
 
@@ -11,6 +14,10 @@ compra_bp = Blueprint('compra', __name__)
 @token_requerido
 def listado():
     return cntListadoCompra()
+
+@compra_bp.route('/<int:id>', methods=['GET'])
+def obtener(id):
+    return cntObtenerCompra(id)
 
 @compra_bp.route('/', methods=['POST'])
 @token_requerido

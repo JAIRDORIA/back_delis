@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask
 from flask_mysqldb import MySQL
 from routes import cargarRuta
@@ -12,13 +11,15 @@ app = Flask(__name__)
 app.config.from_object(config)
 app.register_blueprint(auth_bp)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-CORS(app)
+
+
+
+
 jwt = JWTManager(app)
 
 mysql = MySQL(app)
 app.mysql = mysql
 cargarRuta(app)
-app.run(debug=True, port=4000, host='0.0.0.0')  
 
 CORS(
     app,
@@ -27,3 +28,6 @@ CORS(
     allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Authorization"]
 )
+
+if __name__ == '__main__':
+    app.run(debug=True, port=4000, host='0.0.0.0')
