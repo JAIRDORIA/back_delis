@@ -12,6 +12,11 @@ compra_bp = Blueprint('compra', __name__)
 def listado():
     return cntListadoCompra()
 
+@compra_bp.route('/<int:id>', methods=['GET'])
+@token_requerido
+def obtener(id):
+    return cntObtenerCompra(id)
+
 @compra_bp.route('/', methods=['POST'])
 @token_requerido
 def registro():
