@@ -8,15 +8,16 @@ from services.ventas_services import obtener_venta_detalle
 
 def cntListado():
     try:
-        pagina = request.args.get("pagina", 1, type=int)
-        limite = request.args.get("limite", 20, type=int)
+        pagina   = request.args.get("pagina",   1,    type=int)
+        limite   = request.args.get("limite",   20,   type=int)
+        corte_id = request.args.get("corte_id", None, type=int)
 
         if pagina < 1:
             return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
         if limite < 1 or limite > 100:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
 
-        datos = listado_ventas(pagina, limite)
+        datos = listado_ventas(pagina, limite, corte_id)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
