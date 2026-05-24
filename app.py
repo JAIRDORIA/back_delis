@@ -21,7 +21,6 @@ CORS(
 )
 
 
-
 jwt = JWTManager(app)
 
 mysql = MySQL(app)

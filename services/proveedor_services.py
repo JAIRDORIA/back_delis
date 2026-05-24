@@ -1,5 +1,5 @@
 from flask import current_app
-from models.proveedor_model import proveedor
+from models.proveedor_model import proveedores
 
 
 # ─────────────────────────────────────────────
