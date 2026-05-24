@@ -3,21 +3,41 @@ from models.venta_model import Ventas
 from datetime import datetime
 
 
-def listado_ventas(pagina=1, limite=20):
+def listado_ventas(pagina=1, limite=20, corte_id=None):
     offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
 
-    c.execute("SELECT COUNT(*) FROM ventas")
+    # contar total según filtro
+    if corte_id:
+        c.execute("""
+            SELECT COUNT(*) FROM ventas
+            WHERE corte_id = %s
+        """, (corte_id,))
+    else:
+        c.execute("SELECT COUNT(*) FROM ventas")
     total = c.fetchone()[0]
 
-    c.execute("""
-        SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
-               v.fecha_venta, v.fecha_entrega, v.total,
-               v.total_abonado, v.saldo_pendiente, v.estado
-        FROM ventas v
-        JOIN clientes c ON c.id = v.cliente_id
-        LIMIT %s OFFSET %s
-    """, (limite, offset))
+    # traer registros según filtro
+    if corte_id:
+        c.execute("""
+            SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, v.usuario_id,
+                   v.fecha_venta, v.fecha_entrega, v.total,
+                   v.total_abonado, v.saldo_pendiente, v.estado
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            WHERE v.corte_id = %s
+            LIMIT %s OFFSET %s
+        """, (corte_id, limite, offset))
+    else:
+        c.execute("""
+            SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, v.usuario_id,
+                   v.fecha_venta, v.fecha_entrega, v.total,
+                   v.total_abonado, v.saldo_pendiente, v.estado
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            LIMIT %s OFFSET %s
+        """, (limite, offset))
+
     datos = c.fetchall()
     c.close()
 

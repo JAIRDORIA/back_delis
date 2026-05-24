@@ -290,6 +290,7 @@ def balance_corte_actual():
     c.close()
 
     return {
+        "corte_id"          : corte[0], 
         "corte_numero"      : corte[1],
         "fecha_inicio"      : str(corte[2]) if corte[2] else None,
         "saldo_inicial"     : float(corte[3]),
