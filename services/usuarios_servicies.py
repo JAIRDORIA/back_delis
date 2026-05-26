@@ -62,6 +62,15 @@ def existe_username(username):
 
     return dato is not None
 
+def existe_username_otro(username, id):
+    c = current_app.mysql.connection.cursor()
+    sql = "SELECT id FROM usuarios WHERE username = %s AND id != %s"
+    c.execute(sql, (username, id))
+    dato = c.fetchone()
+    c.close()
+
+    return dato is not None
+
 def eliminar(id):
     c = current_app.mysql.connection.cursor()
     
@@ -111,14 +120,7 @@ def actualizar(id, nombre, username, password_hash, rol):
     c.close()
     return filas_afectadas > 0
 
-def existe_username_otro(username, id):
-    c = current_app.mysql.connection.cursor()
-    sql = "SELECT id FROM usuarios WHERE username = %s AND id != %s"
-    c.execute(sql, (username, id))
-    dato = c.fetchone()
-    c.close()
 
-    return dato is not None
 
 def login(username, password_plano):
     """
@@ -158,3 +160,15 @@ def existe_admin():
     cantidad = c.fetchone()[0]
     c.close()
     return cantidad > 0
+
+def eliminar(id):
+    if int(id) == 1:
+        return None  
+
+    c = current_app.mysql.connection.cursor()
+    sql = "UPDATE usuarios SET activo = 0 WHERE id = %s AND activo = 1"
+    c.execute(sql, (id,))
+    current_app.mysql.connection.commit()
+    filas_afectadas = c.rowcount
+    c.close()
+    return filas_afectadas > 0
