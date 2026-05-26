@@ -22,7 +22,7 @@ def cntListado():
 
 def cntRegistro():
     # 1. Validar campos requeridos — observacion es opcional
-    requeridos = ['producto_id', 'cantidad', 'usuario_id', 'fecha']
+    requeridos = ['producto_id', 'cantidad', 'unidades_sueltas', 'usuario_id', 'fecha']
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
@@ -32,12 +32,13 @@ def cntRegistro():
     if vacios:
         return jsonify({"mensaje": f"Los siguientes campos no pueden estar vacíos: {vacios}"}), 400
 
-    producto_id  = request.json['producto_id']
-    cantidad     = request.json['cantidad']
-    usuario_id   = request.json['usuario_id']
-    fecha        = request.json['fecha']
-    observacion  = request.json.get('observacion', None)  # opcional
-
+    producto_id      = request.json['producto_id']
+    cantidad         = request.json['cantidad']
+    unidades_sueltas = request.json['unidades_sueltas']
+    usuario_id       = request.json['usuario_id']
+    fecha            = request.json['fecha']
+    observacion      = request.json.get('observacion', None)  # opcional
+   
     # 3. Validar que producto_id sea entero positivo
     try:
         producto_id = int(producto_id)
@@ -60,7 +61,16 @@ def cntRegistro():
     if cantidad <= 0:
         return jsonify({"mensaje": "La cantidad debe ser mayor a 0"}), 400
 
-    # 6. Validar usuario_id
+    # 5. Validar unidades_sueltas
+    try:
+        unidades_sueltas = int(unidades_sueltas)
+    except:
+        return jsonify({"mensaje": "Las unidades sueltas deben ser un número entero"}), 400
+
+    if unidades_sueltas < 0:
+        return jsonify({"mensaje": "Las unidades sueltas deben ser un número entero no negativo"}), 400
+
+    # 6. Validar 
     try:
         usuario_id = int(usuario_id)
     except:
@@ -86,6 +96,7 @@ def cntRegistro():
     p = registro(
         producto_id=producto_id,
         cantidad=cantidad,
+        unidades_sueltas=unidades_sueltas,
         usuario_id=usuario_id,
         fecha=fecha_obj,
         observacion=observacion
