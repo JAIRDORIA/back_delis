@@ -3,11 +3,11 @@ from models.venta_model import Ventas
 from datetime import datetime
 
 
-def listado_ventas(pagina=1, limite=20):
+def listado_ventas(pagina=1, limite=20, corte_id=None):
     offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
 
-    c.execute("SELECT COUNT(*) FROM ventas")
+    c.execute("SELECT COUNT(*) FROM ventas WHERE corte_id = %s", (corte_id,))
     total = c.fetchone()[0]
 
     c.execute("""
@@ -16,8 +16,10 @@ def listado_ventas(pagina=1, limite=20):
                v.total_abonado, v.saldo_pendiente, v.estado
         FROM ventas v
         JOIN clientes c ON c.id = v.cliente_id
+        WHERE v.corte_id = %s
+        ORDER BY v.fecha_venta DESC
         LIMIT %s OFFSET %s
-    """, (limite, offset))
+    """, (corte_id, limite, offset))
     datos = c.fetchall()
     c.close()
 
@@ -46,12 +48,6 @@ def listado_ventas(pagina=1, limite=20):
         "datos"        : lista
     }
     
-    
-    
-    
-    
-    
-
 def obtener_venta_detalle(id):
     c = current_app.mysql.connection.cursor()
 

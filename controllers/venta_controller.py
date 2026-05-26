@@ -8,15 +8,28 @@ from services.ventas_services import obtener_venta_detalle
 
 def cntListado():
     try:
-        pagina = request.args.get("pagina", 1, type=int)
-        limite = request.args.get("limite", 20, type=int)
+        pagina   = request.args.get("pagina", 1, type=int)
+        limite   = request.args.get("limite", 20, type=int)
+        corte_id = request.args.get("corte_id", None, type=int)
 
         if pagina < 1:
             return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
         if limite < 1 or limite > 100:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
 
-        datos = listado_ventas(pagina, limite)
+        # Sin filtro → usar corte abierto automáticamente
+        if corte_id is None:
+            corte_abierto = obtener_corte_abierto()
+            if not corte_abierto:
+                return jsonify({"mensaje": "no hay corte abierto"}), 404
+            corte_id = corte_abierto["id"]
+        else:
+            # Validar que el corte_id existe
+            corte_db = obtener_corte(corte_id)
+            if not corte_db:
+                return jsonify({"mensaje": f"el corte con id {corte_id} no existe"}), 404
+
+        datos = listado_ventas(pagina, limite, corte_id)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
