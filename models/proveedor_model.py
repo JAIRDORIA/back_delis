@@ -1,4 +1,4 @@
-class proveedor:
+class proveedores:
     def __init__(self, id, nombre, telefono, direccion, email, activo=1):
         self.id        = id
         self.nombre    = nombre

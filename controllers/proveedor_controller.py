@@ -46,7 +46,8 @@ def cntRegistroProveedor():
         return jsonify({"error": "El email no tiene un formato válido"}), 400
 
     try:
-        dato, error = registro_proveedor(None, nombre, telefono, direccion, email)
+        # ✅ Ya no se pasa 'None' como id — el service no lo recibe
+        dato, error = registro_proveedor(nombre, telefono, direccion, email)
         if error:
             return jsonify({"error": error}), 409
         return jsonify(dato), 201
