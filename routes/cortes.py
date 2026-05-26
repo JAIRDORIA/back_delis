@@ -24,7 +24,7 @@ def iniciar():
 
 # Se llama cada vez que el admin decide cerrar el corte
 @cortes_bp.route('/cerrar', methods=['POST'])
-@token_requerido
+#@token_requerido
 def cerrar():
     return cntCerrarCorte()
 

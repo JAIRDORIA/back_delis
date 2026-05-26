@@ -1293,171 +1293,181 @@
     },
     "/ventas/": {
       "get": {
-        "tags": [
-          "Ventas"
-        ],
-        "summary": "Listar todas las ventas",
-        "description": "Retorna el listado paginado de ventas con el nombre del cliente obtenido por JOIN. Por defecto retorna la pagina 1 con 20 registros.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "pagina",
-            "in": "query",
-            "required": false,
-            "description": "Numero de pagina a consultar. Por defecto: 1",
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "limite",
-            "in": "query",
-            "required": false,
-            "description": "Cantidad de registros por pagina. Por defecto: 20. Maximo: 100",
-            "schema": {
-              "type": "integer",
-              "example": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Lista de ventas obtenida correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
+  "tags": [
+    "Ventas"
+  ],
+  "summary": "Listar todas las ventas",
+  "description": "Retorna el listado paginado de ventas con el nombre del cliente obtenido por JOIN. Permite filtrar las ventas por corte mediante el parametro opcional corte_id. Por defecto retorna la pagina 1 con 20 registros.",
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "name": "corte_id",
+      "in": "query",
+      "required": false,
+      "description": "Filtra las ventas pertenecientes a un corte especifico",
+      "schema": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    {
+      "name": "pagina",
+      "in": "query",
+      "required": false,
+      "description": "Numero de pagina a consultar. Por defecto: 1",
+      "schema": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "description": "Cantidad de registros por pagina. Por defecto: 20. Maximo: 100",
+      "schema": {
+        "type": "integer",
+        "example": 20
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "Lista de ventas obtenida correctamente",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "example": 9,
+                "description": "Total de ventas en la base de datos"
+              },
+              "pagina": {
+                "type": "integer",
+                "example": 1,
+                "description": "Pagina actual"
+              },
+              "limite": {
+                "type": "integer",
+                "example": 20,
+                "description": "Registros por pagina"
+              },
+              "total_paginas": {
+                "type": "integer",
+                "example": 1,
+                "description": "Total de paginas disponibles"
+              },
+              "datos": {
+                "type": "array",
+                "description": "Lista de ventas de la pagina actual",
+                "items": {
                   "type": "object",
                   "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "cliente_id": {
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "nombre_cliente": {
+                      "type": "string",
+                      "example": "Juan Rodriguez"
+                    },
+                    "corte_id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "usuario_id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "fecha_venta": {
+                      "type": "string",
+                      "example": "2026-03-21 10:30:00"
+                    },
+                    "fecha_entrega": {
+                      "type": "string",
+                      "example": "2026-03-25"
+                    },
                     "total": {
-                      "type": "integer",
-                      "example": 9,
-                      "description": "Total de ventas en la base de datos"
+                      "type": "number",
+                      "example": 42000.0
                     },
-                    "pagina": {
-                      "type": "integer",
-                      "example": 1,
-                      "description": "Pagina actual"
+                    "total_abonado": {
+                      "type": "number",
+                      "example": 20000.0
                     },
-                    "limite": {
-                      "type": "integer",
-                      "example": 20,
-                      "description": "Registros por pagina"
+                    "saldo_pendiente": {
+                      "type": "number",
+                      "example": 22000.0
                     },
-                    "total_paginas": {
-                      "type": "integer",
-                      "example": 1,
-                      "description": "Total de paginas disponibles"
-                    },
-                    "datos": {
-                      "type": "array",
-                      "description": "Lista de ventas de la pagina actual",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "cliente_id": {
-                            "type": "integer",
-                            "example": 2
-                          },
-                          "nombre_cliente": {
-                            "type": "string",
-                            "example": "Juan Rodriguez"
-                          },
-                          "corte_id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "usuario_id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "fecha_venta": {
-                            "type": "string",
-                            "example": "2026-03-21 10:30:00"
-                          },
-                          "fecha_entrega": {
-                            "type": "string",
-                            "example": "2026-03-25"
-                          },
-                          "total": {
-                            "type": "number",
-                            "example": 42000.0
-                          },
-                          "total_abonado": {
-                            "type": "number",
-                            "example": 20000.0
-                          },
-                          "saldo_pendiente": {
-                            "type": "number",
-                            "example": 22000.0
-                          },
-                          "estado": {
-                            "type": "string",
-                            "example": "pendiente"
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "examples": {
-                  "pagina_1": {
-                    "summary": "Primera pagina con 20 registros",
-                    "value": {
-                      "total": 9,
-                      "pagina": 1,
-                      "limite": 20,
-                      "total_paginas": 1,
-                      "datos": [
-                        {
-                          "id": 1,
-                          "cliente_id": 2,
-                          "nombre_cliente": "Juan Rodriguez",
-                          "corte_id": 1,
-                          "usuario_id": 1,
-                          "fecha_venta": "2026-03-21 10:30:00",
-                          "fecha_entrega": "2026-03-25",
-                          "total": 42000.0,
-                          "total_abonado": 20000.0,
-                          "saldo_pendiente": 22000.0,
-                          "estado": "pendiente"
-                        }
-                      ]
-                    }
-                  },
-                  "con_paginacion": {
-                    "summary": "Pagina 2 con limite de 5 registros",
-                    "value": {
-                      "total": 9,
-                      "pagina": 2,
-                      "limite": 5,
-                      "total_paginas": 2,
-                      "datos": []
+                    "estado": {
+                      "type": "string",
+                      "example": "pendiente"
                     }
                   }
                 }
               }
             }
           },
-          "400": {
-            "description": "Pagina o limite invalido"
-          },
-          "401": {
-            "description": "Token invalido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
+          "examples": {
+            "ventas_por_corte": {
+              "summary": "Ventas filtradas por corte",
+              "value": {
+                "total": 3,
+                "pagina": 1,
+                "limite": 20,
+                "total_paginas": 1,
+                "datos": [
+                  {
+                    "id": 1,
+                    "cliente_id": 2,
+                    "nombre_cliente": "Juan Rodriguez",
+                    "corte_id": 1,
+                    "usuario_id": 1,
+                    "fecha_venta": "2026-03-21 10:30:00",
+                    "fecha_entrega": "2026-03-25",
+                    "total": 42000.0,
+                    "total_abonado": 20000.0,
+                    "saldo_pendiente": 22000.0,
+                    "estado": "pendiente"
+                  }
+                ]
+              }
+            },
+            "con_paginacion": {
+              "summary": "Pagina 2 con limite de 5 registros",
+              "value": {
+                "total": 9,
+                "pagina": 2,
+                "limite": 5,
+                "total_paginas": 2,
+                "datos": []
+              }
+            }
           }
         }
-      },
+      }
+    },
+    "400": {
+      "description": "Pagina, limite o corte_id invalido"
+    },
+    "401": {
+      "description": "Token invalido o no enviado"
+    },
+    "500": {
+      "description": "Error interno del servidor"
+    }
+  }
+},
       "post": {
         "tags": [
           "Ventas"
@@ -2719,7 +2729,7 @@
                   "telefono": {
                     "type": "string"
                   },"direccion": {
-                    "type": "string", 
+                    "type": "string",
                     "example": "cra1f#40b-123",
                     "description": "debe tener mas de 5 caracterres"
                   },
