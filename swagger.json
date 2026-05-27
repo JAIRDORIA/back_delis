@@ -7,8 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:4000",
-      "description": "Servidor Local Flask"
+      "url": "http://localhost:5000"
     }
   ],
   "components": {
@@ -22,15 +21,15 @@
     }
   },
   "tags": [
-    { "name": "Auth", "description": "Autenticación y configuración inicial del sistema" },
-    { "name": "Usuarios", "description": "Gestión de usuarios del sistema" },
+    { "name": "Auth",      "description": "Autenticación y configuración inicial del sistema" },
+    { "name": "Usuarios",  "description": "Gestión de usuarios del sistema" },
     { "name": "Productos", "description": "Gestión de productos" },
-    { "name": "Clientes", "description": "Gestión de clientes" },
-    { "name": "Combos", "description": "Gestión de combos" },
-    { "name": "Inventario", "description": "Gestión de inventario" },
-    { "name": "Ventas", "description": "Gestión de ventas y estados" },
-    { "name": "Abonos", "description": "Gestión de abonos a ventas" },
-    { "name": "Cortes", "description": "Gestión de cortes de caja" }
+    { "name": "Clientes",  "description": "Gestión de clientes" },
+    { "name": "Combos",    "description": "Gestión de combos" },
+    { "name": "Inventario","description": "Gestión de inventario" },
+    { "name": "Ventas",    "description": "Gestión de ventas y estados" },
+    { "name": "Abonos",    "description": "Gestión de abonos a ventas" },
+    { "name": "Cortes",    "description": "Gestión de cortes de caja" }
   ],
   "paths": {
     "/auth/login": {
@@ -62,14 +61,14 @@
                   "type": "object",
                   "properties": {
                     "access_token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
-                    "token_type": { "type": "string", "example": "bearer" },
+                    "token_type":   { "type": "string", "example": "bearer" },
                     "usuario": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 1 },
-                        "nombre": { "type": "string", "example": "Carlos Pérez" },
-                        "username": { "type": "string", "example": "cperez" },
-                        "rol": { "type": "string", "example": "admin" }
+                        "id":       { "type": "integer", "example": 1 },
+                        "nombre":   { "type": "string",  "example": "Carlos Pérez" },
+                        "username": { "type": "string",  "example": "cperez" },
+                        "rol":      { "type": "string",  "example": "admin" }
                       }
                     }
                   }
@@ -95,10 +94,10 @@
                 "type": "object",
                 "required": ["nombre", "username", "password", "rol"],
                 "properties": {
-                  "nombre": { "type": "string", "example": "Carlos Pérez", "description": "Entre 3 y 100 caracteres, solo letras" },
-                  "username": { "type": "string", "example": "cperez", "description": "Entre 4 y 50 caracteres" },
-                  "password": { "type": "string", "example": "clave123", "description": "Entre 6 y 50 caracteres" },
-                  "rol": { "type": "string", "example": "admin", "description": "Debe ser exactamente 'admin'" }
+                  "nombre":   { "type": "string", "example": "Carlos Pérez", "description": "Entre 3 y 100 caracteres, solo letras" },
+                  "username": { "type": "string", "example": "cperez",       "description": "Entre 4 y 50 caracteres" },
+                  "password": { "type": "string", "example": "clave123",     "description": "Entre 6 y 50 caracteres" },
+                  "rol":      { "type": "string", "example": "admin",        "description": "Debe ser exactamente 'admin'" }
                 }
               }
             }
@@ -116,11 +115,11 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 1 },
-                        "nombre": { "type": "string", "example": "Carlos Pérez" },
-                        "username": { "type": "string", "example": "cperez" },
-                        "rol": { "type": "string", "example": "admin" },
-                        "activo": { "type": "integer", "example": 1 }
+                        "id":       { "type": "integer", "example": 1 },
+                        "nombre":   { "type": "string",  "example": "Carlos Pérez" },
+                        "username": { "type": "string",  "example": "cperez" },
+                        "rol":      { "type": "string",  "example": "admin" },
+                        "activo":   { "type": "integer", "example": 1 }
                       }
                     }
                   }
@@ -148,7 +147,7 @@
                   "type": "object",
                   "properties": {
                     "setup_completado": { "type": "boolean", "example": true },
-                    "mensaje": { "type": "string", "example": "Sistema configurado" }
+                    "mensaje":          { "type": "string",  "example": "Sistema configurado" }
                   }
                 }
               }
@@ -173,13 +172,13 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "nombre": { "type": "string", "example": "Carlos Pérez" },
-                      "username": { "type": "string", "example": "cperez" },
-                      "rol": { "type": "string", "example": "admin" },
-                      "activo": { "type": "integer", "example": 1 },
-                      "created_at": { "type": "string", "example": "2026-03-24 09:01:45" },
-                      "updated_at": { "type": "string", "example": "2026-03-24 09:01:45" }
+                      "id":         { "type": "integer", "example": 1 },
+                      "nombre":     { "type": "string",  "example": "Carlos Pérez" },
+                      "username":   { "type": "string",  "example": "cperez" },
+                      "rol":        { "type": "string",  "example": "admin" },
+                      "activo":     { "type": "integer", "example": 1 },
+                      "created_at": { "type": "string",  "example": "2026-03-24 09:01:45" },
+                      "updated_at": { "type": "string",  "example": "2026-03-24 09:01:45" }
                     }
                   }
                 }
@@ -203,10 +202,10 @@
                 "type": "object",
                 "required": ["nombre", "username", "password", "rol"],
                 "properties": {
-                  "nombre": { "type": "string", "example": "Ana Gómez", "description": "Entre 3 y 100 caracteres, solo letras" },
-                  "username": { "type": "string", "example": "agomez", "description": "Entre 4 y 50 caracteres" },
-                  "password": { "type": "string", "example": "clave123", "description": "Entre 6 y 50 caracteres. Se guarda hasheada con bcrypt" },
-                  "rol": { "type": "string", "example": "cajero", "description": "Valores válidos: admin, cajero" }
+                  "nombre":   { "type": "string", "example": "Ana Gómez", "description": "Entre 3 y 100 caracteres, solo letras" },
+                  "username": { "type": "string", "example": "agomez",    "description": "Entre 4 y 50 caracteres" },
+                  "password": { "type": "string", "example": "clave123",  "description": "Entre 6 y 50 caracteres. Se guarda hasheada con bcrypt" },
+                  "rol":      { "type": "string", "example": "cajero",    "description": "Valores válidos: admin, cajero" }
                 }
               }
             }
@@ -224,11 +223,11 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 4 },
-                        "nombre": { "type": "string", "example": "Ana Gómez" },
-                        "username": { "type": "string", "example": "agomez" },
-                        "rol": { "type": "string", "example": "cajero" },
-                        "activo": { "type": "integer", "example": 1 }
+                        "id":       { "type": "integer", "example": 4 },
+                        "nombre":   { "type": "string",  "example": "Ana Gómez" },
+                        "username": { "type": "string",  "example": "agomez" },
+                        "rol":      { "type": "string",  "example": "cajero" },
+                        "activo":   { "type": "integer", "example": 1 }
                       }
                     }
                   }
@@ -258,11 +257,11 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
-                    "nombre": { "type": "string", "example": "Carlos Pérez" },
-                    "username": { "type": "string", "example": "cperez" },
-                    "rol": { "type": "string", "example": "admin" },
-                    "activo": { "type": "integer", "example": 1 }
+                    "id":       { "type": "integer", "example": 1 },
+                    "nombre":   { "type": "string",  "example": "Carlos Pérez" },
+                    "username": { "type": "string",  "example": "cperez" },
+                    "rol":      { "type": "string",  "example": "admin" },
+                    "activo":   { "type": "integer", "example": 1 }
                   }
                 }
               }
@@ -288,10 +287,10 @@
                 "type": "object",
                 "required": ["nombre", "username", "rol"],
                 "properties": {
-                  "nombre": { "type": "string", "example": "Ana Gómez" },
+                  "nombre":   { "type": "string", "example": "Ana Gómez" },
                   "username": { "type": "string", "example": "agomez2" },
                   "password": { "type": "string", "example": "nuevaClave123", "description": "Opcional. Si no se envía se conserva la contraseña actual" },
-                  "rol": { "type": "string", "example": "admin", "description": "Valores válidos: admin, cajero" }
+                  "rol":      { "type": "string", "example": "admin", "description": "Valores válidos: admin, cajero" }
                 }
               }
             }
@@ -337,14 +336,14 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "nombre": { "type": "string", "example": "Bandeja de deditos" },
-                      "descripcion": { "type": "string", "example": "22 unidades de deditos" },
-                      "precio_venta": { "type": "number", "example": 14000 },
+                      "id":                   { "type": "integer", "example": 1 },
+                      "nombre":               { "type": "string",  "example": "Bandeja de deditos" },
+                      "descripcion":          { "type": "string",  "example": "22 unidades de deditos" },
+                      "precio_venta":         { "type": "number",  "example": 14000 },
                       "unidades_por_bandeja": { "type": "integer", "example": 22 },
-                      "activo": { "type": "integer", "example": 1 },
-                      "created_at": { "type": "string", "example": "2026-03-24 09:02:57" },
-                      "updated_at": { "type": "string", "example": "2026-03-24 09:02:57" }
+                      "activo":               { "type": "integer", "example": 1 },
+                      "created_at":           { "type": "string",  "example": "2026-03-24 09:02:57" },
+                      "updated_at":           { "type": "string",  "example": "2026-03-24 09:02:57" }
                     }
                   }
                 }
@@ -367,10 +366,10 @@
                 "type": "object",
                 "required": ["nombre", "descripcion", "precio_venta", "unidades_por_bandeja"],
                 "properties": {
-                  "nombre": { "type": "string", "example": "Bandeja de deditos", "description": "Entre 3 y 150 caracteres" },
-                  "descripcion": { "type": "string", "example": "22 unidades de deditos", "description": "Entre 4 y 255 caracteres" },
-                  "precio_venta": { "type": "number", "example": 14000, "description": "Debe ser mayor a 0" },
-                  "unidades_por_bandeja": { "type": "integer", "example": 22, "description": "Debe ser mayor a 0" }
+                  "nombre":               { "type": "string",  "example": "Bandeja de deditos",   "description": "Entre 3 y 150 caracteres" },
+                  "descripcion":          { "type": "string",  "example": "22 unidades de deditos","description": "Entre 4 y 255 caracteres" },
+                  "precio_venta":         { "type": "number",  "example": 14000,                  "description": "Debe ser mayor a 0" },
+                  "unidades_por_bandeja": { "type": "integer", "example": 22,                     "description": "Debe ser mayor a 0" }
                 }
               }
             }
@@ -388,12 +387,12 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 4 },
-                        "nombre": { "type": "string", "example": "Bandeja de deditos" },
-                        "descripcion": { "type": "string", "example": "22 unidades de deditos" },
-                        "precio_venta": { "type": "number", "example": 14000 },
+                        "id":                   { "type": "integer", "example": 4 },
+                        "nombre":               { "type": "string",  "example": "Bandeja de deditos" },
+                        "descripcion":          { "type": "string",  "example": "22 unidades de deditos" },
+                        "precio_venta":         { "type": "number",  "example": 14000 },
                         "unidades_por_bandeja": { "type": "integer", "example": 22 },
-                        "activo": { "type": "integer", "example": 1 }
+                        "activo":               { "type": "integer", "example": 1 }
                       }
                     }
                   }
@@ -423,12 +422,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
-                    "nombre": { "type": "string", "example": "Bandeja de deditos" },
-                    "descripcion": { "type": "string", "example": "22 unidades de deditos" },
-                    "precio_venta": { "type": "number", "example": 14000 },
+                    "id":                   { "type": "integer", "example": 1 },
+                    "nombre":               { "type": "string",  "example": "Bandeja de deditos" },
+                    "descripcion":          { "type": "string",  "example": "22 unidades de deditos" },
+                    "precio_venta":         { "type": "number",  "example": 14000 },
                     "unidades_por_bandeja": { "type": "integer", "example": 22 },
-                    "activo": { "type": "integer", "example": 1 }
+                    "activo":               { "type": "integer", "example": 1 }
                   }
                 }
               }
@@ -453,10 +452,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "nombre": { "type": "string", "example": "Bandeja especial", "description": "Opcional" },
-                  "descripcion": { "type": "string", "example": "25 unidades grandes", "description": "Opcional" },
-                  "precio_venta": { "type": "number", "example": 16000, "description": "Opcional. Debe ser mayor a 0" },
-                  "unidades_por_bandeja": { "type": "integer", "example": 25, "description": "Opcional. Debe ser mayor a 0" }
+                  "nombre":               { "type": "string",  "example": "Bandeja especial", "description": "Opcional" },
+                  "descripcion":          { "type": "string",  "example": "25 unidades grandes","description": "Opcional" },
+                  "precio_venta":         { "type": "number",  "example": 16000,              "description": "Opcional. Debe ser mayor a 0" },
+                  "unidades_por_bandeja": { "type": "integer", "example": 25,                 "description": "Opcional. Debe ser mayor a 0" }
                 }
               }
             }
@@ -493,7 +492,7 @@
         "description": "Retorna todos los clientes con activo = 1. Soporta paginación opcional mediante query params.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
-          { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 }, "description": "Número de página (por defecto 1)" },
+          { "name": "page",     "in": "query", "required": false, "schema": { "type": "integer", "example": 1  }, "description": "Número de página (por defecto 1)" },
           { "name": "per_page", "in": "query", "required": false, "schema": { "type": "integer", "example": 10 }, "description": "Cantidad de resultados por página (por defecto 10)" }
         ],
         "responses": {
@@ -504,22 +503,22 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "total": { "type": "integer", "example": 25 },
-                    "page": { "type": "integer", "example": 1 },
+                    "total":    { "type": "integer", "example": 25 },
+                    "page":     { "type": "integer", "example": 1  },
                     "per_page": { "type": "integer", "example": 10 },
                     "datos": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": { "type": "integer", "example": 1 },
-                          "nombre": { "type": "string", "example": "Juan Rodriguez" },
-                          "telefono": { "type": "string", "example": "3001234567" },
-                          "direccion": { "type": "string", "example": "Calle 10 # 5-20" },
-                          "email": { "type": "string", "example": "juan@correo.com" },
-                          "activo": { "type": "integer", "example": 1 },
-                          "created_at": { "type": "string", "example": "2026-03-24 09:05:00" },
-                          "updated_at": { "type": "string", "example": "2026-03-24 09:05:00" }
+                          "id":         { "type": "integer", "example": 1 },
+                          "nombre":     { "type": "string",  "example": "Juan Rodriguez" },
+                          "telefono":   { "type": "string",  "example": "3001234567" },
+                          "direccion":  { "type": "string",  "example": "Calle 10 # 5-20" },
+                          "email":      { "type": "string",  "example": "juan@correo.com" },
+                          "activo":     { "type": "integer", "example": 1 },
+                          "created_at": { "type": "string",  "example": "2026-03-24 09:05:00" },
+                          "updated_at": { "type": "string",  "example": "2026-03-24 09:05:00" }
                         }
                       }
                     }
@@ -545,10 +544,10 @@
                 "type": "object",
                 "required": ["nombre", "telefono", "direccion", "email"],
                 "properties": {
-                  "nombre": { "type": "string", "example": "Juan Rodriguez", "description": "Entre 3 y 100 caracteres" },
-                  "telefono": { "type": "string", "example": "3001234567", "description": "Entre 7 y 20 caracteres, solo dígitos" },
-                  "direccion": { "type": "string", "example": "Calle 10 # 5-20", "description": "Entre 5 y 255 caracteres" },
-                  "email": { "type": "string", "example": "juan@correo.com", "description": "Debe ser un email válido y único" }
+                  "nombre":    { "type": "string", "example": "Juan Rodriguez",    "description": "Entre 3 y 100 caracteres" },
+                  "telefono":  { "type": "string", "example": "3001234567",        "description": "Entre 7 y 20 caracteres, solo dígitos" },
+                  "direccion": { "type": "string", "example": "Calle 10 # 5-20",  "description": "Entre 5 y 255 caracteres" },
+                  "email":     { "type": "string", "example": "juan@correo.com",  "description": "Debe ser un email válido y único" }
                 }
               }
             }
@@ -566,12 +565,12 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 5 },
-                        "nombre": { "type": "string", "example": "Juan Rodriguez" },
-                        "telefono": { "type": "string", "example": "3001234567" },
-                        "direccion": { "type": "string", "example": "Calle 10 # 5-20" },
-                        "email": { "type": "string", "example": "juan@correo.com" },
-                        "activo": { "type": "integer", "example": 1 }
+                        "id":        { "type": "integer", "example": 5 },
+                        "nombre":    { "type": "string",  "example": "Juan Rodriguez" },
+                        "telefono":  { "type": "string",  "example": "3001234567" },
+                        "direccion": { "type": "string",  "example": "Calle 10 # 5-20" },
+                        "email":     { "type": "string",  "example": "juan@correo.com" },
+                        "activo":    { "type": "integer", "example": 1 }
                       }
                     }
                   }
@@ -601,14 +600,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
-                    "nombre": { "type": "string", "example": "Juan Rodriguez" },
-                    "telefono": { "type": "string", "example": "3001234567" },
-                    "direccion": { "type": "string", "example": "Calle 10 # 5-20" },
-                    "email": { "type": "string", "example": "juan@correo.com" },
-                    "activo": { "type": "integer", "example": 1 },
-                    "created_at": { "type": "string", "example": "2026-03-24 09:05:00" },
-                    "updated_at": { "type": "string", "example": "2026-03-24 09:05:00" }
+                    "id":         { "type": "integer", "example": 1 },
+                    "nombre":     { "type": "string",  "example": "Juan Rodriguez" },
+                    "telefono":   { "type": "string",  "example": "3001234567" },
+                    "direccion":  { "type": "string",  "example": "Calle 10 # 5-20" },
+                    "email":      { "type": "string",  "example": "juan@correo.com" },
+                    "activo":     { "type": "integer", "example": 1 },
+                    "created_at": { "type": "string",  "example": "2026-03-24 09:05:00" },
+                    "updated_at": { "type": "string",  "example": "2026-03-24 09:05:00" }
                   }
                 }
               }
@@ -633,10 +632,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "nombre": { "type": "string", "example": "Juan Rodriguez", "description": "Opcional" },
-                  "telefono": { "type": "string", "example": "3009876543", "description": "Opcional" },
-                  "direccion": { "type": "string", "example": "Carrera 5 # 10-30", "description": "Opcional" },
-                  "email": { "type": "string", "example": "juanr@correo.com", "description": "Opcional" }
+                  "nombre":    { "type": "string", "example": "Juan Rodriguez",   "description": "Opcional" },
+                  "telefono":  { "type": "string", "example": "3009876543",       "description": "Opcional" },
+                  "direccion": { "type": "string", "example": "Carrera 5 # 10-30","description": "Opcional" },
+                  "email":     { "type": "string", "example": "juanr@correo.com", "description": "Opcional" }
                 }
               }
             }
@@ -654,12 +653,12 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 1 },
-                        "nombre": { "type": "string", "example": "Juan Rodriguez" },
-                        "telefono": { "type": "string", "example": "3009876543" },
-                        "direccion": { "type": "string", "example": "Carrera 5 # 10-30" },
-                        "email": { "type": "string", "example": "juanr@correo.com" },
-                        "activo": { "type": "integer", "example": 1 }
+                        "id":        { "type": "integer", "example": 1 },
+                        "nombre":    { "type": "string",  "example": "Juan Rodriguez" },
+                        "telefono":  { "type": "string",  "example": "3009876543" },
+                        "direccion": { "type": "string",  "example": "Carrera 5 # 10-30" },
+                        "email":     { "type": "string",  "example": "juanr@correo.com" },
+                        "activo":    { "type": "integer", "example": 1 }
                       }
                     }
                   }
@@ -705,21 +704,21 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "nombre": { "type": "string", "example": "Combo Familiar" },
-                      "descripcion": { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
-                      "precio_venta": { "type": "number", "example": 35000 },
-                      "activo": { "type": "integer", "example": 1 },
-                      "created_at": { "type": "string", "example": "2026-03-24 09:10:00" },
-                      "updated_at": { "type": "string", "example": "2026-03-24 09:10:00" },
+                      "id":           { "type": "integer", "example": 1 },
+                      "nombre":       { "type": "string",  "example": "Combo Familiar" },
+                      "descripcion":  { "type": "string",  "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
+                      "precio_venta": { "type": "number",  "example": 35000 },
+                      "activo":       { "type": "integer", "example": 1 },
+                      "created_at":   { "type": "string",  "example": "2026-03-24 09:10:00" },
+                      "updated_at":   { "type": "string",  "example": "2026-03-24 09:10:00" },
                       "productos": {
                         "type": "array",
                         "items": {
                           "type": "object",
                           "properties": {
-                            "producto_id": { "type": "integer", "example": 1 },
-                            "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
-                            "cantidad": { "type": "integer", "example": 2 }
+                            "producto_id":    { "type": "integer", "example": 1 },
+                            "nombre_producto":{ "type": "string",  "example": "Bandeja de deditos" },
+                            "cantidad":       { "type": "integer", "example": 2 }
                           }
                         }
                       }
@@ -746,8 +745,8 @@
                 "type": "object",
                 "required": ["nombre", "descripcion", "precio_venta", "productos"],
                 "properties": {
-                  "nombre": { "type": "string", "example": "Combo Familiar", "description": "Entre 3 y 150 caracteres. Debe ser único" },
-                  "descripcion": { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas", "description": "Entre 4 y 255 caracteres" },
+                  "nombre":       { "type": "string", "example": "Combo Familiar", "description": "Entre 3 y 150 caracteres. Debe ser único" },
+                  "descripcion":  { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas", "description": "Entre 4 y 255 caracteres" },
                   "precio_venta": { "type": "number", "example": 35000, "description": "Debe ser mayor a 0" },
                   "productos": {
                     "type": "array",
@@ -757,7 +756,7 @@
                       "required": ["producto_id", "cantidad"],
                       "properties": {
                         "producto_id": { "type": "integer", "example": 1, "description": "Debe existir en productos y estar activo" },
-                        "cantidad": { "type": "integer", "example": 2, "description": "Debe ser mayor a 0" }
+                        "cantidad":    { "type": "integer", "example": 2, "description": "Debe ser mayor a 0" }
                       }
                     }
                   }
@@ -778,19 +777,19 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 3 },
-                        "nombre": { "type": "string", "example": "Combo Familiar" },
-                        "descripcion": { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
-                        "precio_venta": { "type": "number", "example": 35000 },
-                        "activo": { "type": "integer", "example": 1 },
+                        "id":           { "type": "integer", "example": 3 },
+                        "nombre":       { "type": "string",  "example": "Combo Familiar" },
+                        "descripcion":  { "type": "string",  "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
+                        "precio_venta": { "type": "number",  "example": 35000 },
+                        "activo":       { "type": "integer", "example": 1 },
                         "productos": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "producto_id": { "type": "integer", "example": 1 },
-                              "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
-                              "cantidad": { "type": "integer", "example": 2 }
+                              "producto_id":    { "type": "integer", "example": 1 },
+                              "nombre_producto":{ "type": "string",  "example": "Bandeja de deditos" },
+                              "cantidad":       { "type": "integer", "example": 2 }
                             }
                           }
                         }
@@ -824,21 +823,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
-                    "nombre": { "type": "string", "example": "Combo Familiar" },
-                    "descripcion": { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
-                    "precio_venta": { "type": "number", "example": 35000 },
-                    "activo": { "type": "integer", "example": 1 },
-                    "created_at": { "type": "string", "example": "2026-03-24 09:10:00" },
-                    "updated_at": { "type": "string", "example": "2026-03-24 09:10:00" },
+                    "id":           { "type": "integer", "example": 1 },
+                    "nombre":       { "type": "string",  "example": "Combo Familiar" },
+                    "descripcion":  { "type": "string",  "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
+                    "precio_venta": { "type": "number",  "example": 35000 },
+                    "activo":       { "type": "integer", "example": 1 },
+                    "created_at":   { "type": "string",  "example": "2026-03-24 09:10:00" },
+                    "updated_at":   { "type": "string",  "example": "2026-03-24 09:10:00" },
                     "productos": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "producto_id": { "type": "integer", "example": 1 },
-                          "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
-                          "cantidad": { "type": "integer", "example": 2 }
+                          "producto_id":    { "type": "integer", "example": 1 },
+                          "nombre_producto":{ "type": "string",  "example": "Bandeja de deditos" },
+                          "cantidad":       { "type": "integer", "example": 2 }
                         }
                       }
                     }
@@ -866,8 +865,8 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "nombre": { "type": "string", "example": "Combo Familiar Grande", "description": "Opcional" },
-                  "descripcion": { "type": "string", "example": "3 bandejas de deditos + 1 bandeja de empanadas", "description": "Opcional" },
+                  "nombre":       { "type": "string", "example": "Combo Familiar Grande", "description": "Opcional" },
+                  "descripcion":  { "type": "string", "example": "3 bandejas de deditos + 1 bandeja de empanadas", "description": "Opcional" },
                   "precio_venta": { "type": "number", "example": 45000, "description": "Opcional. Debe ser mayor a 0" },
                   "productos": {
                     "type": "array",
@@ -877,7 +876,7 @@
                       "required": ["producto_id", "cantidad"],
                       "properties": {
                         "producto_id": { "type": "integer", "example": 1 },
-                        "cantidad": { "type": "integer", "example": 3 }
+                        "cantidad":    { "type": "integer", "example": 3 }
                       }
                     }
                   }
@@ -898,19 +897,19 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 1 },
-                        "nombre": { "type": "string", "example": "Combo Familiar Grande" },
-                        "descripcion": { "type": "string", "example": "3 bandejas de deditos + 1 bandeja de empanadas" },
-                        "precio_venta": { "type": "number", "example": 45000 },
-                        "activo": { "type": "integer", "example": 1 },
+                        "id":           { "type": "integer", "example": 1 },
+                        "nombre":       { "type": "string",  "example": "Combo Familiar Grande" },
+                        "descripcion":  { "type": "string",  "example": "3 bandejas de deditos + 1 bandeja de empanadas" },
+                        "precio_venta": { "type": "number",  "example": 45000 },
+                        "activo":       { "type": "integer", "example": 1 },
                         "productos": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "producto_id": { "type": "integer", "example": 1 },
-                              "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
-                              "cantidad": { "type": "integer", "example": 3 }
+                              "producto_id":    { "type": "integer", "example": 1 },
+                              "nombre_producto":{ "type": "string",  "example": "Bandeja de deditos" },
+                              "cantidad":       { "type": "integer", "example": 3 }
                             }
                           }
                         }
@@ -959,13 +958,13 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "producto_id": { "type": "integer", "example": 1 },
-                      "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
-                      "stock_actual": { "type": "integer", "example": 10 },
+                      "id":               { "type": "integer", "example": 1 },
+                      "producto_id":      { "type": "integer", "example": 1 },
+                      "nombre_producto":  { "type": "string",  "example": "Bandeja de deditos" },
+                      "stock_actual":     { "type": "integer", "example": 10 },
                       "unidades_sueltas": { "type": "integer", "example": 0 },
-                      "stock_minimo": { "type": "integer", "example": 5 },
-                      "updated_at": { "type": "string", "example": "2026-03-24 09:04:00" }
+                      "stock_minimo":     { "type": "integer", "example": 5 },
+                      "updated_at":       { "type": "string",  "example": "2026-03-24 09:04:00" }
                     }
                   }
                 }
@@ -1007,11 +1006,11 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 4 },
-                        "producto_id": { "type": "integer", "example": 1 },
-                        "stock_actual": { "type": "integer", "example": 0 },
+                        "id":               { "type": "integer", "example": 4 },
+                        "producto_id":      { "type": "integer", "example": 1 },
+                        "stock_actual":     { "type": "integer", "example": 0 },
                         "unidades_sueltas": { "type": "integer", "example": 0 },
-                        "stock_minimo": { "type": "integer", "example": 5 }
+                        "stock_minimo":     { "type": "integer", "example": 5 }
                       }
                     }
                   }
@@ -1041,8 +1040,8 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 2 },
-                      "nombre": { "type": "string", "example": "Bandeja de empanadas" },
+                      "id":           { "type": "integer", "example": 2 },
+                      "nombre":       { "type": "string",  "example": "Bandeja de empanadas" },
                       "stock_actual": { "type": "integer", "example": 3 },
                       "stock_minimo": { "type": "integer", "example": 5 }
                     }
@@ -1072,13 +1071,13 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
-                    "producto_id": { "type": "integer", "example": 1 },
-                    "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
-                    "stock_actual": { "type": "integer", "example": 10 },
+                    "id":               { "type": "integer", "example": 1 },
+                    "producto_id":      { "type": "integer", "example": 1 },
+                    "nombre_producto":  { "type": "string",  "example": "Bandeja de deditos" },
+                    "stock_actual":     { "type": "integer", "example": 10 },
                     "unidades_sueltas": { "type": "integer", "example": 0 },
-                    "stock_minimo": { "type": "integer", "example": 5 },
-                    "updated_at": { "type": "string", "example": "2026-03-24 09:04:00" }
+                    "stock_minimo":     { "type": "integer", "example": 5 },
+                    "updated_at":       { "type": "string",  "example": "2026-03-24 09:04:00" }
                   }
                 }
               }
@@ -1123,35 +1122,63 @@
       "get": {
         "tags": ["Ventas"],
         "summary": "Listar todas las ventas",
-        "description": "Retorna el listado completo de ventas con el nombre del cliente obtenido por JOIN con la tabla clientes.",
+        "description": "Retorna el listado paginado de ventas con el nombre del cliente obtenido por JOIN. Por defecto retorna la pagina 1 con 20 registros.",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "pagina", "in": "query", "required": false, "description": "Numero de pagina a consultar. Por defecto: 1",                          "schema": { "type": "integer", "example": 1  } },
+          { "name": "limite", "in": "query", "required": false, "description": "Cantidad de registros por pagina. Por defecto: 20. Maximo: 100", "schema": { "type": "integer", "example": 20 } }
+        ],
         "responses": {
           "200": {
             "description": "Lista de ventas obtenida correctamente",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "cliente_id": { "type": "integer", "example": 2 },
-                      "nombre_cliente": { "type": "string", "example": "Juan Rodriguez" },
-                      "corte_id": { "type": "integer", "example": 1 },
-                      "usuario_id": { "type": "integer", "example": 1 },
-                      "fecha_venta": { "type": "string", "example": "2026-03-21 10:30:00" },
-                      "fecha_entrega": { "type": "string", "example": "2026-03-25" },
-                      "total": { "type": "number", "example": 42000 },
-                      "total_abonado": { "type": "number", "example": 20000 },
-                      "saldo_pendiente": { "type": "number", "example": 22000 },
-                      "estado": { "type": "string", "example": "pendiente" }
+                  "type": "object",
+                  "properties": {
+                    "total":         { "type": "integer", "example": 9,  "description": "Total de ventas en la base de datos" },
+                    "pagina":        { "type": "integer", "example": 1,  "description": "Pagina actual" },
+                    "limite":        { "type": "integer", "example": 20, "description": "Registros por pagina" },
+                    "total_paginas": { "type": "integer", "example": 1,  "description": "Total de paginas disponibles" },
+                    "datos": {
+                      "type": "array",
+                      "description": "Lista de ventas de la pagina actual",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id":               { "type": "integer", "example": 1 },
+                          "cliente_id":       { "type": "integer", "example": 2 },
+                          "nombre_cliente":   { "type": "string",  "example": "Juan Rodriguez" },
+                          "corte_id":         { "type": "integer", "example": 1 },
+                          "usuario_id":       { "type": "integer", "example": 1 },
+                          "fecha_venta":      { "type": "string",  "example": "2026-03-21 10:30:00" },
+                          "fecha_entrega":    { "type": "string",  "example": "2026-03-25" },
+                          "total":            { "type": "number",  "example": 42000.0 },
+                          "total_abonado":    { "type": "number",  "example": 20000.0 },
+                          "saldo_pendiente":  { "type": "number",  "example": 22000.0 },
+                          "estado":           { "type": "string",  "example": "pendiente" }
+                        }
+                      }
                     }
+                  }
+                },
+                "examples": {
+                  "pagina_1": {
+                    "summary": "Primera pagina con 20 registros",
+                    "value": {
+                      "total": 9, "pagina": 1, "limite": 20, "total_paginas": 1,
+                      "datos": [{ "id": 1, "cliente_id": 2, "nombre_cliente": "Juan Rodriguez", "corte_id": 1, "usuario_id": 1, "fecha_venta": "2026-03-21 10:30:00", "fecha_entrega": "2026-03-25", "total": 42000.0, "total_abonado": 20000.0, "saldo_pendiente": 22000.0, "estado": "pendiente" }]
+                    }
+                  },
+                  "con_paginacion": {
+                    "summary": "Pagina 2 con limite de 5 registros",
+                    "value": { "total": 9, "pagina": 2, "limite": 5, "total_paginas": 2, "datos": [] }
                   }
                 }
               }
             }
           },
+          "400": { "description": "Pagina o limite invalido" },
           "401": { "description": "Token inválido o no enviado" },
           "500": { "description": "Error interno del servidor" }
         }
@@ -1159,7 +1186,7 @@
       "post": {
         "tags": ["Ventas"],
         "summary": "Registrar una nueva venta",
-        "description": "Crea una nueva venta. La fecha_venta, total_abonado y saldo_pendiente son asignados automáticamente. El campo total_abonado inicia en 0 y solo se actualiza mediante abonos.",
+        "description": "Crea una nueva venta con su detalle de productos. Opcionalmente puede incluir un abono inicial si el cliente paga algo al momento de registrar. El total_abonado y saldo_pendiente son calculados automaticamente por los triggers de la base de datos.",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1169,11 +1196,11 @@
                 "type": "object",
                 "required": ["cliente_id", "corte_id", "usuario_id", "fecha_entrega", "total"],
                 "properties": {
-                  "cliente_id": { "type": "integer", "example": 2, "description": "Debe existir en clientes y estar activo" },
-                  "corte_id": { "type": "integer", "example": 1, "description": "No puede ser un corte cerrado" },
-                  "usuario_id": { "type": "integer", "example": 1, "description": "Debe existir y estar activo" },
-                  "fecha_entrega": { "type": "string", "example": "25/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
-                  "total": { "type": "number", "example": 42000, "description": "Debe ser mayor a 0" }
+                  "cliente_id":    { "type": "integer", "example": 2,            "description": "Debe existir en clientes y estar activo" },
+                  "corte_id":      { "type": "integer", "example": 1,            "description": "No puede ser un corte cerrado" },
+                  "usuario_id":    { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
+                  "fecha_entrega": { "type": "string",  "example": "25/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
+                  "total":         { "type": "number",  "example": 42000,        "description": "Debe ser mayor a 0" }
                 }
               }
             }
@@ -1191,17 +1218,17 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 4 },
-                        "cliente_id": { "type": "integer", "example": 2 },
-                        "nombre_cliente": { "type": "string", "example": "Juan Rodriguez" },
-                        "corte_id": { "type": "integer", "example": 1 },
-                        "usuario_id": { "type": "integer", "example": 1 },
-                        "fecha_venta": { "type": "string", "example": "2026-03-21 10:30:00" },
-                        "fecha_entrega": { "type": "string", "example": "2026-03-25" },
-                        "total": { "type": "number", "example": 42000 },
-                        "total_abonado": { "type": "number", "example": 0 },
-                        "saldo_pendiente": { "type": "number", "example": 42000 },
-                        "estado": { "type": "string", "example": "pendiente" }
+                        "id":              { "type": "integer", "example": 4 },
+                        "cliente_id":      { "type": "integer", "example": 2 },
+                        "nombre_cliente":  { "type": "string",  "example": "Juan Rodriguez" },
+                        "corte_id":        { "type": "integer", "example": 1 },
+                        "usuario_id":      { "type": "integer", "example": 1 },
+                        "fecha_venta":     { "type": "string",  "example": "2026-03-21 10:30:00" },
+                        "fecha_entrega":   { "type": "string",  "example": "2026-03-25" },
+                        "total":           { "type": "number",  "example": 42000 },
+                        "total_abonado":   { "type": "number",  "example": 0 },
+                        "saldo_pendiente": { "type": "number",  "example": 42000 },
+                        "estado":          { "type": "string",  "example": "pendiente" }
                       }
                     }
                   }
@@ -1232,8 +1259,8 @@
                 "type": "object",
                 "properties": {
                   "fecha_entrega": { "type": "string", "example": "30/03/2026", "description": "Formato DD/MM/YYYY. Opcional" },
-                  "total": { "type": "number", "example": 50000, "description": "Debe ser mayor a 0. Opcional" },
-                  "estado": { "type": "string", "example": "entregada", "description": "Valores válidos: pendiente, entregada, anulada. Opcional" }
+                  "total":         { "type": "number", "example": 50000,        "description": "Debe ser mayor a 0. Opcional" },
+                  "estado":        { "type": "string", "example": "entregada",  "description": "Valores válidos: pendiente, entregada, anulada. Opcional" }
                 }
               }
             }
@@ -1248,7 +1275,7 @@
                   "type": "object",
                   "properties": {
                     "mensaje": { "type": "string", "example": "venta actualizada" },
-                    "datos": { "type": "object" }
+                    "datos":   { "type": "object" }
                   }
                 }
               }
@@ -1279,7 +1306,7 @@
                   "type": "object",
                   "properties": {
                     "mensaje": { "type": "string", "example": "venta anulada correctamente" },
-                    "datos": { "type": "object" }
+                    "datos":   { "type": "object" }
                   }
                 }
               }
@@ -1287,6 +1314,56 @@
           },
           "400": { "description": "La venta ya está anulada, ya fue entregada, o pertenece a un corte cerrado" },
           "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "La venta con ese id no existe" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+    "/ventas/{id}/comprobante": {
+      "get": {
+        "tags": ["Ventas"],
+        "summary": "Generar o consultar comprobante de venta",
+        "description": "Si la venta no tiene comprobante lo crea y lo devuelve. Si ya tiene comprobante simplemente lo devuelve. El numero se genera automaticamente con formato COMP-0001.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "description": "ID de la venta", "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comprobante generado o consultado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "numero":          { "type": "string",  "example": "COMP-0001" },
+                    "fecha_emision":   { "type": "string",  "example": "2026-03-21 10:30:00" },
+                    "venta_id":        { "type": "integer", "example": 1 },
+                    "nombre_cliente":  { "type": "string",  "example": "Juan Rodriguez" },
+                    "fecha_venta":     { "type": "string",  "example": "2026-03-21" },
+                    "fecha_entrega":   { "type": "string",  "example": "2026-03-25" },
+                    "total":           { "type": "number",  "example": 40000.0 },
+                    "total_abonado":   { "type": "number",  "example": 20000.0 },
+                    "saldo_pendiente": { "type": "number",  "example": 20000.0 },
+                    "estado":          { "type": "string",  "example": "pendiente" },
+                    "detalle": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "nombre_producto":  { "type": "string",  "example": "Bandeja de deditos" },
+                          "cantidad":         { "type": "integer", "example": 2 },
+                          "precio_unitario":  { "type": "number",  "example": 14000.0 },
+                          "subtotal":         { "type": "number",  "example": 28000.0 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Token invalido o no enviado" },
           "404": { "description": "La venta con ese id no existe" },
           "500": { "description": "Error interno del servidor" }
         }
@@ -1308,14 +1385,14 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "venta_id": { "type": "integer", "example": 1 },
-                      "corte_id": { "type": "integer", "example": 1 },
-                      "usuario_id": { "type": "integer", "example": 1 },
-                      "monto": { "type": "number", "example": 20000 },
-                      "fecha": { "type": "string", "example": "2026-03-21" },
-                      "observacion": { "type": "string", "example": "nequi" },
-                      "medio_pago": { "type": "string", "example": "efectivo" }
+                      "id":          { "type": "integer", "example": 1 },
+                      "venta_id":    { "type": "integer", "example": 1 },
+                      "corte_id":    { "type": "integer", "example": 1 },
+                      "usuario_id":  { "type": "integer", "example": 1 },
+                      "monto":       { "type": "number",  "example": 20000 },
+                      "fecha":       { "type": "string",  "example": "2026-03-21" },
+                      "observacion": { "type": "string",  "example": "nequi" },
+                      "medio_pago":  { "type": "string",  "example": "efectivo" }
                     }
                   }
                 }
@@ -1339,13 +1416,13 @@
                 "type": "object",
                 "required": ["venta_id", "corte_id", "usuario_id", "monto", "fecha", "medio_pago"],
                 "properties": {
-                  "venta_id": { "type": "integer", "example": 1, "description": "Debe existir y no estar entregada ni anulada" },
-                  "corte_id": { "type": "integer", "example": 1, "description": "No puede ser un corte cerrado" },
-                  "usuario_id": { "type": "integer", "example": 1, "description": "Debe existir y estar activo" },
-                  "monto": { "type": "number", "example": 15000, "description": "Debe ser mayor a 0 y no superar el saldo_pendiente" },
-                  "fecha": { "type": "string", "example": "21/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
-                  "observacion": { "type": "string", "example": "nequi", "description": "Opcional. Si no se envía se guarda como null" },
-                  "medio_pago": { "type": "string", "example": "efectivo", "description": "Valores válidos: efectivo, transferencia, otro" }
+                  "venta_id":    { "type": "integer", "example": 1,          "description": "Debe existir y no estar entregada ni anulada" },
+                  "corte_id":    { "type": "integer", "example": 1,          "description": "No puede ser un corte cerrado" },
+                  "usuario_id":  { "type": "integer", "example": 1,          "description": "Debe existir y estar activo" },
+                  "monto":       { "type": "number",  "example": 15000,      "description": "Debe ser mayor a 0 y no superar el saldo_pendiente" },
+                  "fecha":       { "type": "string",  "example": "21/03/2026","description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
+                  "observacion": { "type": "string",  "example": "nequi",    "description": "Opcional. Si no se envía se guarda como null" },
+                  "medio_pago":  { "type": "string",  "example": "efectivo", "description": "Valores válidos: efectivo, transferencia, otro" }
                 }
               }
             }
@@ -1363,14 +1440,14 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 4 },
-                        "venta_id": { "type": "integer", "example": 1 },
-                        "corte_id": { "type": "integer", "example": 1 },
-                        "usuario_id": { "type": "integer", "example": 1 },
-                        "monto": { "type": "number", "example": 15000 },
-                        "fecha": { "type": "string", "example": "2026-03-21" },
-                        "observacion": { "type": "string", "example": "vueltos" },
-                        "medio_pago": { "type": "string", "example": "efectivo" }
+                        "id":          { "type": "integer", "example": 4 },
+                        "venta_id":    { "type": "integer", "example": 1 },
+                        "corte_id":    { "type": "integer", "example": 1 },
+                        "usuario_id":  { "type": "integer", "example": 1 },
+                        "monto":       { "type": "number",  "example": 15000 },
+                        "fecha":       { "type": "string",  "example": "2026-03-21" },
+                        "observacion": { "type": "string",  "example": "vueltos" },
+                        "medio_pago":  { "type": "string",  "example": "efectivo" }
                       }
                     }
                   }
@@ -1402,10 +1479,10 @@
                 "type": "object",
                 "required": ["monto", "fecha", "medio_pago"],
                 "properties": {
-                  "monto": { "type": "number", "example": 20000, "description": "Nuevo monto. No puede superar saldo_pendiente + monto_actual" },
-                  "fecha": { "type": "string", "example": "22/03/2026", "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
+                  "monto":       { "type": "number", "example": 20000,           "description": "Nuevo monto. No puede superar saldo_pendiente + monto_actual" },
+                  "fecha":       { "type": "string", "example": "22/03/2026",    "description": "Formato DD/MM/YYYY. No puede ser fecha pasada" },
                   "observacion": { "type": "string", "example": "Pago transferencia", "description": "Opcional" },
-                  "medio_pago": { "type": "string", "example": "efectivo", "description": "Valores válidos: efectivo, transferencia, otro" }
+                  "medio_pago":  { "type": "string", "example": "efectivo",      "description": "Valores válidos: efectivo, transferencia, otro" }
                 }
               }
             }
@@ -1419,8 +1496,8 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "mensaje": { "type": "string", "example": "abono actualizado" },
-                    "datos": { "type": "object" },
+                    "mensaje":    { "type": "string", "example": "abono actualizado" },
+                    "datos":      { "type": "object" },
                     "medio_pago": { "type": "string", "example": "efectivo" }
                   }
                 }
@@ -1478,12 +1555,12 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "integer", "example": 1 },
-                      "numero": { "type": "integer", "example": 1 },
-                      "fecha_inicio": { "type": "string", "example": "2026-03-21 08:00:00" },
-                      "fecha_cierre": { "type": "string", "example": "2026-03-21 14:00:00" },
-                      "estado": { "type": "string", "example": "cerrado" },
-                      "saldo_inicial": { "type": "number", "example": 0 }
+                      "id":            { "type": "integer", "example": 1 },
+                      "numero":        { "type": "integer", "example": 1 },
+                      "fecha_inicio":  { "type": "string",  "example": "2026-03-21 08:00:00" },
+                      "fecha_cierre":  { "type": "string",  "example": "2026-03-21 14:00:00" },
+                      "estado":        { "type": "string",  "example": "cerrado" },
+                      "saldo_inicial": { "type": "number",  "example": 0 }
                     }
                   }
                 }
@@ -1513,12 +1590,12 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 1 },
-                        "numero": { "type": "integer", "example": 1 },
-                        "fecha_inicio": { "type": "string", "example": "2026-03-21 08:00:00" },
-                        "fecha_cierre": { "type": "string", "example": null, "nullable": true },
-                        "estado": { "type": "string", "example": "abierto" },
-                        "saldo_inicial": { "type": "number", "example": 0 }
+                        "id":            { "type": "integer",  "example": 1 },
+                        "numero":        { "type": "integer",  "example": 1 },
+                        "fecha_inicio":  { "type": "string",   "example": "2026-03-21 08:00:00" },
+                        "fecha_cierre":  { "type": "string",   "example": null, "nullable": true },
+                        "estado":        { "type": "string",   "example": "abierto" },
+                        "saldo_inicial": { "type": "number",   "example": 0 }
                       }
                     }
                   }
@@ -1550,12 +1627,12 @@
                     "datos": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "integer", "example": 2 },
-                        "numero": { "type": "integer", "example": 2 },
-                        "fecha_inicio": { "type": "string", "example": "2026-03-21 14:00:00" },
-                        "fecha_cierre": { "type": "string", "example": null, "nullable": true },
-                        "estado": { "type": "string", "example": "abierto" },
-                        "saldo_inicial": { "type": "number", "example": 35000 }
+                        "id":            { "type": "integer", "example": 2 },
+                        "numero":        { "type": "integer", "example": 2 },
+                        "fecha_inicio":  { "type": "string",  "example": "2026-03-21 14:00:00" },
+                        "fecha_cierre":  { "type": "string",  "example": null, "nullable": true },
+                        "estado":        { "type": "string",  "example": "abierto" },
+                        "saldo_inicial": { "type": "number",  "example": 35000 }
                       }
                     }
                   }
@@ -1601,7 +1678,7 @@
                   "type": "object",
                   "properties": {
                     "mensaje": { "type": "string", "example": "corte actualizado" },
-                    "datos": { "type": "object" }
+                    "datos":   { "type": "object" }
                   }
                 }
               }
