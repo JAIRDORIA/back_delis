@@ -228,6 +228,25 @@ def actualizar_corte(id, estado):
     c.close()
     return obtener_corte(id)
 
+def listar_historial_cortes(limite):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT id, numero, fecha_inicio, fecha_cierre, estado
+        FROM cortes
+        ORDER BY id DESC
+        LIMIT %s
+    """, (limite,))
+    cortes = c.fetchall()
+    c.close()
+    return [
+        {
+            "id": c[0],
+            "numero": c[1],
+            "fecha_inicio": str(c[2]) if c[2] else None,
+            "fecha_cierre": str(c[3]) if c[3] else None,
+            "estado": c[4]
+        } for c in cortes
+    ]
 
 def balance_corte_actual():
     c = current_app.mysql.connection.cursor()
@@ -273,17 +292,23 @@ def balance_corte_actual():
 
     # abonos en efectivo del corte actual
     c.execute("""
-        SELECT COALESCE(SUM(monto), 0)
-        FROM abonos
-        WHERE corte_id = %s AND medio_pago = 'efectivo'
+        SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            WHERE a.corte_id = %s 
+            AND a.medio_pago = 'efectivo' 
+            AND v.estado IN ('pendiente', 'entregada') 
     """, (corte_id,))
     total_efectivo = float(c.fetchone()[0])
 
     # abonos en transferencia del corte actual
     c.execute("""
-        SELECT COALESCE(SUM(monto), 0)
-        FROM abonos
-        WHERE corte_id = %s AND medio_pago = 'transferencia'
+        SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            WHERE a.corte_id = %s 
+            AND a.medio_pago = 'transferencia' 
+            AND v.estado IN ('pendiente', 'entregada')
     """, (corte_id,))
     total_transferencia = float(c.fetchone()[0])
 

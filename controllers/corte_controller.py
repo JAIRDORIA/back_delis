@@ -1,6 +1,6 @@
 from flask import jsonify , request
 from  services.cortes_services import listado_cortes,registrar_primer_corte, cerrar_corte,obtener_corte ,obtener_corte_abierto  , obtener_corte_futuro, actualizar_corte
-from services.cortes_services import balance_corte_actual
+from services.cortes_services import balance_corte_actual,listar_historial_cortes
 def cntListado():
     try:
         pagina = request.args.get("pagina", 1, type=int)
@@ -99,7 +99,13 @@ def cntActualizar(id):  # ← agrégale el id aquí
     
     
 
-
+def cntHistorial():
+    try:
+        limite = request.args.get('limite', 5, type=int)
+        datos = listar_historial_cortes(limite)
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def cntBalance():
     try:
