@@ -1,15 +1,24 @@
 from flask import Blueprint
 from controllers.proveedor_controller import (
-    cntListadoProveedores, cntRegistroProveedor,
-    cntActualizarProveedor, cntEliminarProveedor
+    cntListadoProveedores,
+    cntObtenerProveedor,
+    cntRegistroProveedor,
+    cntActualizarProveedor,
+    cntEliminarProveedor
 )
-from utils.decorators import token_requerido, rol_requerido
+from utils.decorators import token_requerido
+
 proveedores_bp = Blueprint('proveedores', __name__)
 
 @proveedores_bp.route('/', methods=['GET'])
 @token_requerido
 def listado():
     return cntListadoProveedores()
+
+@proveedores_bp.route('/<int:id>', methods=['GET'])
+@token_requerido
+def obtener(id):
+    return cntObtenerProveedor(id)
 
 @proveedores_bp.route('/', methods=['POST'])
 @token_requerido
