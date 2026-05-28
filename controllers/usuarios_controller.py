@@ -4,6 +4,7 @@ import re
 import bcrypt
 from services.usuarios_servicies import login
 from jwt_config import generar_token
+import re
 
 def hashear_password(password_plano: str) -> str:
     salt = bcrypt.gensalt(rounds=12)
@@ -62,9 +63,21 @@ def cntRegistro():
 
     if username.isdigit(): 
         return jsonify({"mensaje": "El username no puede contener solo números"}), 400
+    
+    if not re.match(r'^[a-zA-Z0-9_]+$', username):
+       return jsonify({
+        "mensaje": "El username solo puede contener letras, números y guion bajo"
+    }), 400
 
-    if len(password) < 6 or len(password) > 50:
-        return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
+    if len(password) < 8 or len(password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
+    
+    patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+
+    if not re.match(patron_password, password):
+      return jsonify({
+        "mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"
+    }), 400
     
     password = hashear_password(password)
     
@@ -112,6 +125,12 @@ def cntActualizar(id):
     if username.isdigit(): 
         return jsonify({"mensaje": "El username no puede contener solo números"}), 400
     
+    if not re.match(r'^[a-zA-Z0-9_]+$', username):
+       return jsonify({
+        "mensaje": "El username solo puede contener letras, números y guion bajo"
+    }), 400
+
+    
     if len(username) < 4 or len(username) > 50:
         return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
 
@@ -123,9 +142,16 @@ def cntActualizar(id):
 
     password_hash = None
     if password:
-        if len(password) < 6 or len(password) > 50:
-            return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
+        if len(password) < 8 or len(password) > 50:
+            return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
         password_hash = hashear_password(password)
+    
+    patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+
+    if not re.match(patron_password, password):
+      return jsonify({
+        "mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"
+    }), 400
 
     if existe_username_otro(username, id):
         return jsonify({"mensaje": "El username ya existe"}), 400
