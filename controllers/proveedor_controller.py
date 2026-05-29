@@ -27,7 +27,6 @@ def cntObtenerProveedor(id):
 
 
 def cntRegistroProveedor():
-    # ── Validar que venga JSON ──────────────────────────────────────
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
@@ -41,14 +40,14 @@ def cntRegistroProveedor():
     direccion = request.json['direccion'].strip()
     email     = request.json['email'].strip()
 
-    # ── Validaciones de formato ────────────────────────────────────
     if not nombre:
         return jsonify({"error": "El nombre no puede estar vacío"}), 400
     if not email or '@' not in email:
         return jsonify({"error": "El email no tiene un formato válido"}), 400
 
     try:
-        dato, error = registro_proveedor(None, nombre, telefono, direccion, email)
+        # ✅ Ya no se pasa 'None' como id — el service no lo recibe
+        dato, error = registro_proveedor(nombre, telefono, direccion, email)
         if error:
             return jsonify({"error": error}), 409
         return jsonify(dato), 201

@@ -67,10 +67,6 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
     }
     
     
-    
-    
-    
-    
 
 def obtener_venta_detalle(id):
     c = current_app.mysql.connection.cursor()
