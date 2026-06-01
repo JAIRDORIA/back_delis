@@ -4,7 +4,7 @@ from services.clientes_services import obtener_cliente
 from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
-from services.ventas_services import obtener_venta_detalle
+from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta
 
 def cntListado():
     try:
@@ -20,8 +20,33 @@ def cntListado():
         datos = listado_ventas(pagina, limite, corte_id)
         return jsonify(datos), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"errores": str(e)}), 500
 
+
+def cntActualizarDetalle(id):
+    try:
+        data = request.get_json()
+        detalle = data.get('detalle', [])
+
+        if not detalle or not isinstance(detalle, list):
+            return jsonify({"mensaje": "El campo 'detalle' es requerido y debe ser un array"}), 400
+
+        # Validar cada producto
+        for item in detalle:
+            if not all(k in item for k in ('producto_id', 'nombre_producto', 'cantidad', 'precio_unitario')):
+                return jsonify({"mensaje": "Cada producto debe tener producto_id, nombre_producto, cantidad y precio_unitario"}), 400
+            if item['cantidad'] <= 0 or item['precio_unitario'] <= 0:
+                return jsonify({"mensaje": "La cantidad y el precio deben ser mayores a 0"}), 400
+
+        # Llamar al servicio
+        resultado = actualizar_detalle_venta(id, detalle)
+        if resultado is None:
+            return jsonify({"mensaje": f"La venta con id {id} no existe o no está pendiente"}), 404
+
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 def cntDetalle(id):
@@ -193,16 +218,26 @@ def cntActualizar(id):
             return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
 
         # 6. validar fecha si viene en formato DD/MM/YYYY
-        try:
-            fecha = datetime.strptime(fecha_entrega, "%d/%m/%Y")
-            if fecha.date() < datetime.now().date():
-                return jsonify({"mensaje": "la fecha de entrega no puede ser en el pasado"}), 400
-            fecha_entrega = fecha.strftime("%Y-%m-%d")
-        except ValueError:
-            # si la fecha viene en formato YYYY-MM-DD desde la BD
-            # no necesita convertirse
-            pass
+        formatos = [
+            "%Y-%m-%dT%H:%M:%S.%fZ",
+            "%Y-%m-%dT%H:%M:%SZ",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d",
+            ]
 
+        fecha_convertida = None
+        for formato in formatos:
+            try:
+               fecha_convertida = datetime.strptime(fecha_entrega, formato)
+               break
+            except ValueError:
+                continue
+
+        if fecha_convertida:
+            fecha_entrega = fecha_convertida.strftime("%Y-%m-%d %H:%M:%S")
+       
         resultado = actualizar_venta(id, fecha_entrega, total, estado)
         return jsonify({"mensaje": "venta actualizada", "datos": resultado}), 200
 
@@ -221,9 +256,7 @@ def cntAnular(id):
         if venta["estado"] == "anulada":
             return jsonify({"mensaje": "la venta ya esta anulada"}), 400
 
-        # 3. validar que no este entregada
-        if venta["estado"] == "entregada":
-            return jsonify({"mensaje": "no puedes anular una venta ya entregada"}), 400
+        
 
         # 4. validar que pertenece al corte actual o futuro
         corte_abierto = obtener_corte_abierto()

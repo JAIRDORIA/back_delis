@@ -13,13 +13,13 @@ def listar_clientes():
 
 # 2. Ruta para REGISTRAR un cliente (POST)
 @clientes_bp.route('/', methods=['POST'])
-@token_requerido
+#@token_requerido
 def registrar_cliente():
     return cntRegistrar()
 
 
 @clientes_bp.route('/top', methods=['GET'])
-@token_requerido
+#@token_requerido
 def top():
     return cntClientesTop()
 

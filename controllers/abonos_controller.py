@@ -52,8 +52,7 @@ def cntregistrar():
         if not venta_db:
             return jsonify({"mensaje": f"la venta con id {id_venta} no existe"}), 404
 
-        if venta_db["estado"] == "entregada":
-            return jsonify({"mensaje": "no puedes abonar a una venta ya entregada"}), 400
+        
 
         if venta_db["estado"] == "anulada":
             return jsonify({"mensaje": "no puedes abonar a una venta anulada"}), 400
@@ -61,8 +60,7 @@ def cntregistrar():
         corte_db = obtener_corte(corte)
         if not corte_db:
             return jsonify({"mensaje": f"el corte con id {corte} no existe"}), 404
-        if corte_db["estado"] == "cerrado":
-            return jsonify({"mensaje": "no puedes registrar abonos en un corte cerrado"}), 400
+        
 
         usuario_db = obtener_usuario(usuario)
         if not usuario_db:

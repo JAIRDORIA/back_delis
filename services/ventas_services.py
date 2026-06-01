@@ -7,37 +7,64 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
     offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
 
-    # contar total según filtro
-    if corte_id:
-        c.execute("""
-            SELECT COUNT(*) FROM ventas
-            WHERE corte_id = %s
-        """, (corte_id,))
+    # Si no se especifica un corte, se trabaja con el corte abierto
+    if corte_id is None:
+        c.execute("SELECT id FROM cortes WHERE estado = 'abierto' LIMIT 1")
+        corte_abierto = c.fetchone()
+        corte_actual = corte_abierto[0] if corte_abierto else None
     else:
-        c.execute("SELECT COUNT(*) FROM ventas")
+        corte_actual = corte_id
+
+    # Construir cláusulas WHERE según si tenemos un corte de referencia
+    if corte_actual is not None:
+        where_clause = """
+            WHERE v.estado != 'anulada'
+              AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND v.corte_id != %(corte)s))
+        """
+        params_count = {'corte': corte_actual}
+        params_data  = {'corte': corte_actual, 'limite': limite, 'offset': offset}
+    else:
+        # Si no hay corte abierto y no se pidió uno específico, mostrar todas las activas
+        where_clause = "WHERE v.estado != 'anulada'"
+        params_count = {}
+        params_data  = {'limite': limite, 'offset': offset}
+
+    # Consulta de total
+    sql_count = f"""
+        SELECT COUNT(*)
+        FROM ventas v
+        JOIN clientes cl ON cl.id = v.cliente_id
+    JOIN cortes co ON co.id = v.corte_id
+    WHERE v.estado != 'anulada'
+      AND (
+            v.corte_id = %(corte)s
+            OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado')
+          )
+        """
+    c.execute(sql_count, params_count)
     total = c.fetchone()[0]
 
-    # traer registros según filtro
-    if corte_id:
-        c.execute("""
-            SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, v.usuario_id,
-                   v.fecha_venta, v.fecha_entrega, v.total,
-                   v.total_abonado, v.saldo_pendiente, v.estado
-            FROM ventas v
-            JOIN clientes cl ON cl.id = v.cliente_id
-            WHERE v.corte_id = %s
-            LIMIT %s OFFSET %s
-        """, (corte_id, limite, offset))
-    else:
-        c.execute("""
-            SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, v.usuario_id,
-                   v.fecha_venta, v.fecha_entrega, v.total,
-                   v.total_abonado, v.saldo_pendiente, v.estado
-            FROM ventas v
-            JOIN clientes cl ON cl.id = v.cliente_id
-            LIMIT %s OFFSET %s
-        """, (limite, offset))
+    # Consulta de datos paginada
+    # En listado_ventas, después de obtener el corte_actual
 
+    # En listado_ventas, después de obtener el corte_actual
+
+    sql_data = f"""
+    SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
+           v.usuario_id, v.fecha_venta, v.fecha_entrega,
+           v.total, v.total_abonado, v.saldo_pendiente, v.estado
+    FROM ventas v
+    JOIN clientes cl ON cl.id = v.cliente_id
+    JOIN cortes co ON co.id = v.corte_id
+    WHERE v.estado != 'anulada'
+      AND (
+            v.corte_id = %(corte)s
+            OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado')
+          )
+    ORDER BY v.id DESC
+    LIMIT %(limite)s OFFSET %(offset)s
+        """
+    c.execute(sql_data, params_data)
     datos = c.fetchall()
     c.close()
 
@@ -48,13 +75,14 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
             cliente_id      = p[1],
             nombre_cliente  = p[2],
             corte_id        = p[3],
-            usuario_id      = p[4],
-            fecha_venta     = p[5],
-            fecha_entrega   = p[6],
-            total           = p[7],
-            total_abonado   = p[8],
-            saldo_pendiente = p[9],
-            estado          = p[10]
+            corte_numero    =p[4],
+            usuario_id      = p[5],
+            fecha_venta     = p[6],
+            fecha_entrega   = p[7],
+            total           = p[8],
+            total_abonado   = p[9],
+            saldo_pendiente = p[10],
+            estado          = p[11]
         ).to_dict()
         lista.append(venta)
 
@@ -62,11 +90,50 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
         "total"        : total,
         "pagina"       : pagina,
         "limite"       : limite,
-        "total_paginas": -(-total // limite),
+        "total_paginas": -(-total // limite) if limite else 0,
         "datos"        : lista
     }
     
     
+    
+    
+    
+def actualizar_detalle_venta(id, nuevo_detalle):
+    c = current_app.mysql.connection.cursor()
+
+    # Verificar que la venta existe y está pendiente
+    c.execute("SELECT id, total_abonado, estado FROM ventas WHERE id = %s", (id,))
+    venta = c.fetchone()
+    if not venta or venta[2] != 'pendiente':
+        c.close()
+        return None
+
+    total_abonado = float(venta[1])
+
+    # Borrar el detalle actual
+    c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
+
+    # Insertar los nuevos productos y calcular el nuevo total
+    nuevo_total = 0
+    for item in nuevo_detalle:
+        subtotal = item['cantidad'] * float(item['precio_unitario'])
+        c.execute("""
+            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto, cantidad, precio_unitario, subtotal)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (id, item['producto_id'], item['nombre_producto'], item['cantidad'], float(item['precio_unitario']), subtotal))
+        nuevo_total += subtotal
+
+    # Actualizar la venta: total y saldo pendiente
+    saldo_pendiente = nuevo_total - total_abonado
+    c.execute("""
+        UPDATE ventas SET total = %s, saldo_pendiente = %s WHERE id = %s
+    """, (nuevo_total, saldo_pendiente, id))
+
+    current_app.mysql.connection.commit()
+    c.close()
+
+    # Devolver el detalle actualizado (igual que el endpoint de consulta)
+    return obtener_venta_detalle(id)    
 
 def obtener_venta_detalle(id):
     c = current_app.mysql.connection.cursor()
@@ -293,11 +360,7 @@ def obtener_venta(id):
 
 def actualizar_venta(id, fecha_entrega, total, estado):
     # total_abonado ya no se toca aqui
-    try:
-        fecha_entrega = datetime.strptime(
-            fecha_entrega, "%d/%m/%Y").strftime("%Y-%m-%d")
-    except ValueError:
-        pass
+   
 
     c = current_app.mysql.connection.cursor()
     c.execute("""
