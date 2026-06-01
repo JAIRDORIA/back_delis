@@ -286,7 +286,7 @@ def balance_corte_actual():
             COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) -
             COALESCE(SUM(CASE WHEN tipo = 'egreso'  THEN monto ELSE 0 END), 0)
         FROM movimientos_caja
-        WHERE corte_id = %s
+        WHERE corte_id = %s 
     """, (corte_id,))
     dinero_caja = float(c.fetchone()[0])
 
@@ -311,6 +311,37 @@ def balance_corte_actual():
             AND v.estado IN ('pendiente', 'entregada')
     """, (corte_id,))
     total_transferencia = float(c.fetchone()[0])
+    
+    # Dinero en caja REAL (solo ventas del corte actual, excluye pagos de ventas futuras)
+    c.execute("""
+    SELECT
+        COALESCE(SUM(CASE WHEN m.tipo = 'ingreso' THEN m.monto ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN m.tipo = 'egreso'  THEN m.monto ELSE 0 END), 0)
+    FROM movimientos_caja m
+    LEFT JOIN ventas v ON v.id = m.referencia_id AND m.concepto = 'abono'
+    WHERE m.corte_id = %s
+      AND (v.corte_id IS NULL OR v.corte_id = %s)
+    """, (corte_id, corte_id))
+    dinero_caja_real = float(c.fetchone()[0])
+      
+        # Saldo pendiente de las ventas del corte actual (solo las no anuladas)
+    c.execute("""
+    SELECT COALESCE(SUM(saldo_pendiente), 0)
+    FROM ventas
+    WHERE corte_id = %s AND estado != 'anulada'
+    """, (corte_id,))
+    saldo_pendiente_ventas = float(c.fetchone()[0])
+    
+    # Saldo pendiente de cortes cerrados (deuda histórica)
+    c.execute("""
+    SELECT COALESCE(SUM(v.saldo_pendiente), 0)
+    FROM ventas v
+    JOIN cortes c ON c.id = v.corte_id
+    WHERE c.estado = 'cerrado'
+      AND v.estado != 'anulada'
+      AND v.saldo_pendiente > 0
+    """)
+    saldo_pendiente_anteriores = float(c.fetchone()[0])
 
     c.close()
 
@@ -321,7 +352,10 @@ def balance_corte_actual():
         "saldo_inicial"     : float(corte[3]),
         "total_ventas"      : total_ventas,
         "total_compras"     : total_compras,
+        "saldo_pendiente_ventas" : saldo_pendiente_ventas,
+        "saldo_pendiente_anteriores" : saldo_pendiente_anteriores,
         "dinero_caja"       : dinero_caja,
+        "dinero_caja_real"  : dinero_caja_real, 
         "total_efectivo"    : total_efectivo,
         "total_transferencia": total_transferencia,
         "resultado"         : total_ventas - total_compras

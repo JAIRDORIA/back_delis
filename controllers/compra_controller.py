@@ -1,16 +1,33 @@
 from flask import jsonify, request
 from services.compra_services import (
-    listado_compra,
-    obtener_compra,
-    registro_compra,
-    actualizar_compra,
-    eliminar_compra
+    listado_compra, obtener_compra, registro_compra,
+    actualizar_compra, eliminar_compra
 )
+from services.cortes_services import obtener_corte_abierto, obtener_corte
 
 
 def cntListadoCompra():
     try:
-        datos = listado_compras()
+        pagina   = request.args.get("pagina", 1, type=int)
+        limite   = request.args.get("limite", 20, type=int)
+        corte_id = request.args.get("corte_id", None, type=int)
+
+        if pagina < 1:
+            return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
+        if limite < 1 or limite > 100:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
+
+        if corte_id is None:
+            corte_abierto = obtener_corte_abierto()
+            if not corte_abierto:
+                return jsonify({"mensaje": "no hay corte abierto"}), 404
+            corte_id = corte_abierto["id"]
+        else:
+            corte_db = obtener_corte(corte_id)
+            if not corte_db:
+                return jsonify({"mensaje": f"el corte con id {corte_id} no existe"}), 404
+
+        datos = listado_compra(pagina, limite, corte_id)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -30,44 +47,23 @@ def cntRegistroCompra():
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'corte_id', 'usuario_id', 'fecha', 'total']
+    requeridos = ['proveedor_id', 'usuario_id', 'fecha', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
-    corte_id     = request.json['corte_id']
     usuario_id   = request.json['usuario_id']
     fecha        = request.json['fecha']
     total        = request.json['total']
-    descripcion  = request.json['descripcion'].strip()
-
-    if total <= 0:
-        return jsonify({"mensaje": "El total debe ser mayor a 0"}), 400
-
-    try:
-        c = registrar_compra(proveedor_id, corte_id, usuario_id, fecha, total, descripcion)
-        return jsonify({"mensaje": "Compra registrada", "datos": c}), 201
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-def cntActualizarCompra(id):
-    if not str(id).isdigit():
-        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
-
-    requeridos = ['proveedor_id', 'corte_id', 'usuario_id', 'fecha', 'total', 'descripcion']
-    faltantes = [d for d in requeridos if d not in request.json]
-    if faltantes:
-        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
     descripcion  = request.json.get('descripcion', None)
 
-    # ── Validaciones de tipo ───────────────────────────────────────
-    if not isinstance(proveedor_id, int) or proveedor_id <= 0:
-        return jsonify({"error": "proveedor_id debe ser un entero positivo"}), 400
-    if not isinstance(corte_id, int) or corte_id <= 0:
-        return jsonify({"error": "corte_id debe ser un entero positivo"}), 400
-    if not isinstance(usuario_id, int) or usuario_id <= 0:
-        return jsonify({"error": "usuario_id debe ser un entero positivo"}), 400
+    # corte_id automático desde el corte abierto
+    corte_abierto = obtener_corte_abierto()
+    if not corte_abierto:
+        return jsonify({"error": "no hay corte abierto para registrar la compra"}), 400
+    corte_id = corte_abierto["id"]
+
     try:
         total = float(total)
     except (TypeError, ValueError):
@@ -86,24 +82,22 @@ def cntActualizarCompra(id):
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'corte_id', 'usuario_id', 'fecha', 'total']
+    requeridos = ['proveedor_id', 'usuario_id', 'fecha', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
-    corte_id     = request.json['corte_id']
     usuario_id   = request.json['usuario_id']
     fecha        = request.json['fecha']
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
 
-    if not isinstance(proveedor_id, int) or proveedor_id <= 0:
-        return jsonify({"error": "proveedor_id debe ser un entero positivo"}), 400
-    if not isinstance(corte_id, int) or corte_id <= 0:
-        return jsonify({"error": "corte_id debe ser un entero positivo"}), 400
-    if not isinstance(usuario_id, int) or usuario_id <= 0:
-        return jsonify({"error": "usuario_id debe ser un entero positivo"}), 400
+    corte_abierto = obtener_corte_abierto()
+    if not corte_abierto:
+        return jsonify({"error": "no hay corte abierto"}), 400
+    corte_id = corte_abierto["id"]
+
     try:
         total = float(total)
     except (TypeError, ValueError):

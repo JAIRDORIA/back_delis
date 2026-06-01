@@ -45,8 +45,10 @@ def cntRegistro():
     if len(nombre) < 3 or len(nombre) > 150:
         return jsonify({"mensaje": "El nombre debe tener entre 3 y 150 caracteres"}), 400
     
-    if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', nombre):
-        return jsonify({"mensaje": "El nombre solo puede contener letras"}), 400
+    if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s]+$', nombre):
+        return jsonify({
+            "mensaje": "Nombre inválido"
+        }), 400
 
     if len(descripcion) < 4 or len(descripcion) > 255:
         return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400
@@ -58,6 +60,9 @@ def cntRegistro():
 
     if precio_venta <= 0:
         return jsonify({"mensaje": "El precio debe ser mayor a 0"}), 400
+    
+    if precio_venta > 999999:
+        return jsonify({"mensaje": "Precio demasiado alto"}), 400
 
     try:
         unidades_por_bandeja = int(unidades_por_bandeja)
@@ -66,6 +71,11 @@ def cntRegistro():
 
     if unidades_por_bandeja <= 0:
         return jsonify({"mensaje": "Las unidades deben ser mayor a 0"}), 400
+    
+    if unidades_por_bandeja > 10000:
+        return jsonify({
+            "mensaje": "Cantidad inválida"
+        }), 400
 
     p             = registro(nombre=nombre, descripcion=descripcion, precio_venta=precio_venta, unidades_por_bandeja=unidades_por_bandeja)
     return jsonify({"mensaje":"Producto registrado","datos":p}), 201
@@ -97,15 +107,17 @@ def cntActualizar(id):
         return jsonify({"mensaje": "Debe enviar al menos un campo"}), 400
 
     if nombre:
+        
+        if existe_nombre_otro(nombre, id):
+            return jsonify({"mensaje": "El nombre ya existe"}), 400
+        
         if len(nombre) < 3 or len(nombre) > 150:
             return jsonify({"mensaje": "El nombre debe tener entre 3 y 150 caracteres"}), 400
 
-        if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', nombre):
-            return jsonify({"mensaje": "El nombre solo puede contener letras"}), 400
+        if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s]+$', nombre):
+            return jsonify({"mensaje": "Nombre inválido" }), 400
 
-        if existe_nombre_otro(nombre, id):
-            return jsonify({"mensaje": "El nombre ya existe"}), 400
-
+    
     if descripcion:
         if len(descripcion) < 4 or len(descripcion) > 255:
             return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400
@@ -116,6 +128,10 @@ def cntActualizar(id):
         return jsonify({"mensaje": "El precio debe ser numérico"}), 400
     if precio_venta <= 0:
         return jsonify({"mensaje": "El precio debe ser mayor a 0"}), 400
+    if precio_venta > 999999:
+        return jsonify({
+            "mensaje": "Precio demasiado alto"
+        }), 400
 
     if unidades_por_bandeja is not None:
      try:
@@ -124,6 +140,11 @@ def cntActualizar(id):
         return jsonify({"mensaje": "Las unidades deben ser un número entero"}), 400
     if unidades_por_bandeja <= 0:
         return jsonify({"mensaje": "Las unidades deben ser mayor a 0"}), 400
+    
+    if unidades_por_bandeja > 10000:
+        return jsonify({
+            "mensaje": "Cantidad inválida"
+        }), 400
     
     producto_actual = obtener_producto(id)
     if not producto_actual:

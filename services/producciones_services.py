@@ -9,7 +9,7 @@ def listado_producciones(pagina=1, limite=20):
     total = c.fetchone()[0]
 
     sql = """
-    SELECT p.id, p.producto_id, pr.nombre, p.cantidad, 
+    SELECT p.id, p.producto_id, p.cantidad, p.unidades_sueltas,
            p.usuario_id, u.nombre, p.fecha, p.observacion, p.created_at
     FROM producciones p
     JOIN productos pr ON pr.id = p.producto_id
@@ -27,10 +27,11 @@ def listado_producciones(pagina=1, limite=20):
             id                   = p[0],
             producto_id          = p[1],
             cantidad             = p[2],
-            usuario_id           = p[3],
-            fecha                = p[4],
-            observacion          = p[5],
-            created_at           = p[6]
+            unidades_sueltas     = p[3],
+            usuario_id           = p[4],
+            fecha                = p[5],
+            observacion          = p[6],
+            created_at           = p[7]
         ).toDic()
         lista.append(producto)
         
@@ -42,24 +43,24 @@ def listado_producciones(pagina=1, limite=20):
         "total_paginas": -(-total // limite)
     } 
 
-def registro(producto_id, cantidad, usuario_id, fecha, observacion):
+def registro(producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion):
     c = current_app.mysql.connection.cursor()
     sql = """
-             INSERT INTO producciones (producto_id, cantidad, usuario_id, fecha, observacion)
+             INSERT INTO producciones (producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion)
              VALUES 
-             (%s, %s, %s, %s, %s)
+             (%s, %s, %s, %s, %s, %s)
              """
-    c.execute(sql, (producto_id, cantidad, usuario_id, fecha, observacion))
+    c.execute(sql, (producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion))
     current_app.mysql.connection.commit()
     id = c.lastrowid
     c.close()
-    return producciones(id, producto_id, cantidad, usuario_id, fecha, observacion, None).toDic() 
+    return producciones(id, producto_id, cantidad, unidades_sueltas , usuario_id, fecha, observacion, None).toDic() 
 
 
 def obtener_produccion(id):
     c = current_app.mysql.connection.cursor()
     c.execute("""
-        SELECT p.id, p.producto_id, pr.nombre, p.cantidad, 
+        SELECT p.id, p.producto_id, pr.nombre, p.cantidad, p.unidades_sueltas,
                p.usuario_id, p.fecha, p.observacion, p.created_at
         FROM producciones p
         JOIN productos pr ON pr.id = p.producto_id
@@ -69,14 +70,15 @@ def obtener_produccion(id):
     c.close()
     if dato:
         return {
-            "id"          : dato[0],
-            "producto_id" : dato[1],
-            "nombre_producto": dato[2],
-            "cantidad"    : dato[3],
-            "usuario_id"  : dato[4],
-            "fecha"       : str(dato[5]),
-            "observacion" : dato[6],
-            "created_at"  : str(dato[7]) if dato[7] else None
+            "id"               : dato[0],
+            "producto_id"      : dato[1],
+            "nombre_producto"  : dato[2],
+            "cantidad"         : dato[3],
+            "unidades_sueltas" : dato[4],
+            "usuario_id"       : dato[5],
+            "fecha"            : str(dato[6]),
+            "observacion"      : dato[7],
+            "created_at"       : str(dato[8]) if dato[8] else None
         }
     return None
    

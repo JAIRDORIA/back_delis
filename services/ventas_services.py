@@ -34,22 +34,36 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
         SELECT COUNT(*)
         FROM ventas v
         JOIN clientes cl ON cl.id = v.cliente_id
-        {where_clause}
-    """
+    JOIN cortes co ON co.id = v.corte_id
+    WHERE v.estado != 'anulada'
+      AND (
+            v.corte_id = %(corte)s
+            OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado')
+          )
+        """
     c.execute(sql_count, params_count)
     total = c.fetchone()[0]
 
     # Consulta de datos paginada
+    # En listado_ventas, después de obtener el corte_actual
+
+    # En listado_ventas, después de obtener el corte_actual
+
     sql_data = f"""
-        SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, v.usuario_id,
-               v.fecha_venta, v.fecha_entrega, v.total,
-               v.total_abonado, v.saldo_pendiente, v.estado
-        FROM ventas v
-        JOIN clientes cl ON cl.id = v.cliente_id
-        {where_clause}
-        ORDER BY v.id DESC
-        LIMIT %(limite)s OFFSET %(offset)s
-    """
+    SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
+           v.usuario_id, v.fecha_venta, v.fecha_entrega,
+           v.total, v.total_abonado, v.saldo_pendiente, v.estado
+    FROM ventas v
+    JOIN clientes cl ON cl.id = v.cliente_id
+    JOIN cortes co ON co.id = v.corte_id
+    WHERE v.estado != 'anulada'
+      AND (
+            v.corte_id = %(corte)s
+            OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado')
+          )
+    ORDER BY v.id DESC
+    LIMIT %(limite)s OFFSET %(offset)s
+        """
     c.execute(sql_data, params_data)
     datos = c.fetchall()
     c.close()
@@ -61,13 +75,14 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
             cliente_id      = p[1],
             nombre_cliente  = p[2],
             corte_id        = p[3],
-            usuario_id      = p[4],
-            fecha_venta     = p[5],
-            fecha_entrega   = p[6],
-            total           = p[7],
-            total_abonado   = p[8],
-            saldo_pendiente = p[9],
-            estado          = p[10]
+            corte_numero    =p[4],
+            usuario_id      = p[5],
+            fecha_venta     = p[6],
+            fecha_entrega   = p[7],
+            total           = p[8],
+            total_abonado   = p[9],
+            saldo_pendiente = p[10],
+            estado          = p[11]
         ).to_dict()
         lista.append(venta)
 

@@ -20,7 +20,7 @@ def cntListado():
         datos = listado_ventas(pagina, limite, corte_id)
         return jsonify(datos), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"errores": str(e)}), 500
 
 
 def cntActualizarDetalle(id):
