@@ -1,10 +1,9 @@
 from flask import jsonify , request
-from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro, existe_admin
+from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro, existe_admin,  verificar_clave_maestra, cambiar_password_maestra
 import re
 import bcrypt
 from services.usuarios_servicies import login
-from jwt_config import generar_token
-import re
+from jwt_config import generar_token 
 
 def hashear_password(password_plano: str) -> str:
     salt = bcrypt.gensalt(rounds=12)
@@ -63,11 +62,6 @@ def cntRegistro():
 
     if username.isdigit(): 
         return jsonify({"mensaje": "El username no puede contener solo números"}), 400
-    
-    if not re.match(r'^[a-zA-Z0-9_]+$', username):
-       return jsonify({
-        "mensaje": "El username solo puede contener letras, números y guion bajo"
-    }), 400
 
     if len(password) < 8 or len(password) > 50:
         return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
@@ -75,14 +69,12 @@ def cntRegistro():
     patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
 
     if not re.match(patron_password, password):
-      return jsonify({
-        "mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"
-    }), 400
+        return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
     
     password = hashear_password(password)
     
-    if rol not in ['admin', 'cajero']:
-        return jsonify({"mensaje": "El rol debe ser admin o cajero"}), 400
+    if rol not in ['admin']:
+        return jsonify({"mensaje": "El rol debe ser admin"}), 400
     
     p             = registro(nombre=nombre, username=username, password_hash=password, rol=rol)
     return jsonify({"mensaje":"Usuario registrado","datos":p}), 201
@@ -125,33 +117,31 @@ def cntActualizar(id):
     if username.isdigit(): 
         return jsonify({"mensaje": "El username no puede contener solo números"}), 400
     
-    if not re.match(r'^[a-zA-Z0-9_]+$', username):
-       return jsonify({
-        "mensaje": "El username solo puede contener letras, números y guion bajo"
-    }), 400
-
-    
     if len(username) < 4 or len(username) > 50:
         return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
 
-    if rol not in ['admin', 'cajero']:
-        return jsonify({"mensaje": "El rol debe ser admin o cajero"}), 400
+    if rol not in ['admin']:
+        return jsonify({"mensaje": "El rol debe ser admin"}), 400
     
     if not str(id).isdigit():
        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
 
+    PASS_FICTICIA = '__sin_cambios__'
+    password = request.json.get('password')
     password_hash = None
-    if password:
+
+    if password == PASS_FICTICIA:
+         password = None
+         password_hash = None
+    else:
+        if not password:
+            return jsonify({"mensaje": "La contraseña es requerida"}), 400
+        patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+        if not re.match(patron_password, password):
+            return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
         if len(password) < 8 or len(password) > 50:
             return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
         password_hash = hashear_password(password)
-    
-    patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
-
-    if not re.match(patron_password, password):
-      return jsonify({
-        "mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"
-    }), 400
 
     if existe_username_otro(username, id):
         return jsonify({"mensaje": "El username ya existe"}), 400
@@ -280,8 +270,8 @@ def cntPrimerAdmin():
         return jsonify({"mensaje": "El username ya existe"}), 400
     
     # 8. Validar contraseña
-    if len(password) < 6 or len(password) > 50:
-        return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
+    if len(password) < 8 or len(password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
     
     # 9. Hashear contraseña
     password_hash = hashear_password(password)
@@ -302,3 +292,38 @@ def cntPrimerAdmin():
         return jsonify({
             "mensaje": f"Error al crear administrador: {str(e)}"
         }), 500
+    
+def cntVerificarClaveMaestra():
+    data = request.get_json()
+    clave    = data.get('clave', '').strip()
+    username = data.get('username', '').strip()
+
+    if not clave or not username:
+        return jsonify({"mensaje": "Faltan campos requeridos"}), 400
+
+    if not existe_username(username):
+        return jsonify({"mensaje": "El usuario no existe"}), 404
+
+    if not verificar_clave_maestra(clave):
+        return jsonify({"mensaje": "Clave maestra incorrecta"}), 401
+
+    return jsonify({"valida": True}), 200
+
+
+def cntCambiarPasswordMaestra():
+    data = request.get_json()
+    username         = data.get('username', '').strip()
+    nueva_password   = data.get('nueva_password', '')
+
+    if not username or not nueva_password:
+        return jsonify({"mensaje": "Faltan campos requeridos"}), 400
+
+    patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+    if not re.match(patron, nueva_password):
+        return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
+
+    resultado = cambiar_password_maestra(username, nueva_password)
+    if not resultado:
+        return jsonify({"mensaje": "Usuario no encontrado"}), 404
+
+    return jsonify({"mensaje": "Contraseña actualizada correctamente"}), 200

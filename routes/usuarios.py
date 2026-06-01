@@ -1,5 +1,5 @@
 from flask import Blueprint,jsonify
-from controllers.usuarios_controller import cntListado , cntRegistro, cntEliminar, cntActualizar, obtenerUsuario, cntPrimerAdmin
+from controllers.usuarios_controller import cntListado , cntRegistro, cntEliminar, cntActualizar, obtenerUsuario, cntPrimerAdmin, cntVerificarClaveMaestra, cntCambiarPasswordMaestra
 from utils.decorators import token_requerido, rol_requerido
 from controllers.usuarios_controller import login_post
 
@@ -53,4 +53,11 @@ def actualizar(id):
 def obtener_usuario(id):
     return obtenerUsuario(id)
 
+@auth_bp.route('/verificar-clave-maestra', methods=['POST'])
+def verificar_clave_maestra():
+    return cntVerificarClaveMaestra()
+
+@auth_bp.route('/recuperar-password', methods=['POST'])
+def recuperar_password():
+    return cntCambiarPasswordMaestra()
 
