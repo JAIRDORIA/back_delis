@@ -1,5 +1,14 @@
 from flask import current_app
 from models.usuarios_model import usuarios
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+CLAVE_MAESTRA = os.getenv("CLAVE_MAESTRA", "SnackFlow2026*")
+
+def verificar_clave_maestra(clave):
+    return clave == CLAVE_MAESTRA
+
 import bcrypt   
 def listado_usuarios(pagina=1, limite=20):
     offset = (pagina - 1) * limite
@@ -172,3 +181,23 @@ def eliminar(id):
     filas_afectadas = c.rowcount
     c.close()
     return filas_afectadas > 0
+
+
+CLAVE_MAESTRA = "SnackFlow2026*"  # cámbiala por la tuya
+
+def verificar_clave_maestra(clave):
+    return clave == CLAVE_MAESTRA
+
+def cambiar_password_maestra(username, nueva_password):
+    c = current_app.mysql.connection.cursor()
+    c.execute("SELECT id FROM usuarios WHERE username = %s AND activo = 1", (username,))
+    usuario = c.fetchone()
+    c.close()
+    if not usuario:
+        return None
+    nuevo_hash = bcrypt.hashpw(nueva_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    c = current_app.mysql.connection.cursor()
+    c.execute("UPDATE usuarios SET password_hash = %s WHERE username = %s", (nuevo_hash, username))
+    current_app.mysql.connection.commit()
+    c.close()
+    return True
