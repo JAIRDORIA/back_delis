@@ -125,23 +125,23 @@ def cntActualizar(id):
     
     if not str(id).isdigit():
        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
-    
 
     PASS_FICTICIA = '__sin_cambios__'
     password = request.json.get('password')
-    
+    password_hash = None
+
     if password == PASS_FICTICIA:
-        password = None
-        password_hash = None
+         password = None
+         password_hash = None
     else:
-      if not password:
-        return jsonify({"mensaje": "La contraseña es requerida"}), 400
-    patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
-    if not re.match(patron_password, password):
-        return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
-    if len(password) < 8 or len(password) > 50:
-        return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
-    password_hash = hashear_password(password)
+        if not password:
+            return jsonify({"mensaje": "La contraseña es requerida"}), 400
+        patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+        if not re.match(patron_password, password):
+            return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
+        if len(password) < 8 or len(password) > 50:
+            return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
+        password_hash = hashear_password(password)
 
     if existe_username_otro(username, id):
         return jsonify({"mensaje": "El username ya existe"}), 400
@@ -270,8 +270,8 @@ def cntPrimerAdmin():
         return jsonify({"mensaje": "El username ya existe"}), 400
     
     # 8. Validar contraseña
-    if len(password) < 6 or len(password) > 50:
-        return jsonify({"mensaje": "La contraseña debe tener entre 6 y 50 caracteres"}), 400
+    if len(password) < 8 or len(password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
     
     # 9. Hashear contraseña
     password_hash = hashear_password(password)
