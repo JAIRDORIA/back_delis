@@ -10,12 +10,12 @@ class producciones:
           self.created_at           = created_at
       def toDic(self):
           return {
-               "id":self.id                                     ,
-               "producto_id":self.producto_id                   ,
-               "cantidad":self.cantidad                         ,
-               "unidades_sueltas":self.unidades_sueltas         ,
-               "usuario_id":self.usuario_id                     ,
-               "fecha":self.fecha                               ,
-               "observacion":self.observacion                   ,
-               "created_at":self.created_at                     
+               "id":               self.id                ,
+               "producto_id":      self.producto_id       ,
+               "cantidad":         self.cantidad          ,
+               "unidades_sueltas": self.unidades_sueltas  ,
+               "usuario_id":       self.usuario_id        ,
+               "fecha":            self.fecha             ,
+               "observacion":      self.observacion       ,
+               "created_at":       self.created_at                     
           }      

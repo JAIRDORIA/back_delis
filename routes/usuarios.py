@@ -33,8 +33,7 @@ def listado():
     return cntListado()
 
 @usuarios_bp.route('/', methods=["POST"])
-#@token_requerido
-@rol_requerido('admin')
+@token_requerido
 def registro():
     return cntRegistro()
 
