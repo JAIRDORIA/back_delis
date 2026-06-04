@@ -124,14 +124,6 @@ def cerrar_corte():
     # Calcular saldo inicial del proximo corte
     # son los abonos que entraron en el corte actual
     # pero pertenecen a ventas del corte futuro
-    c.execute("""
-        SELECT COALESCE(SUM(a.monto), 0)
-        FROM abonos a
-        JOIN ventas v ON v.id = a.venta_id
-        WHERE a.corte_id = %s
-        AND v.corte_id = %s
-    """, (corte_abierto[0], corte_futuro[0]))
-    saldo_heredado = c.fetchone()[0]
     
     # 1. Cerrar el corte actual
     c.execute("""
@@ -140,13 +132,7 @@ def cerrar_corte():
         WHERE id = %s
     """, (corte_abierto[0],))
     
-    # 2. Abrir el corte futuro y asignarle fecha inicio ahora
-    c.execute("""
-        UPDATE cortes
-        SET estado = 'abierto', fecha_inicio = NOW(),
-            saldo_inicial = %s
-        WHERE id = %s
-    """, (float(saldo_heredado), corte_futuro[0]))
+    
     
     # 3. Crear el siguiente corte futuro automaticamente
     siguiente_numero = corte_futuro[1] + 1

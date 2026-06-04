@@ -11,25 +11,35 @@ def listado_abonos(pagina=1, limite=20):
     total = c.fetchone()[0]
 
     c.execute("""
-        SELECT id, venta_id, corte_id, usuario_id,
-               monto, fecha, observacion, medio_pago
-        FROM abonos
-        LIMIT %s OFFSET %s
-    """, (limite, offset))
+       SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
+       a.corte_id, a.usuario_id,
+       v.estado AS venta_estado,
+       v.saldo_pendiente AS venta_saldo_pendiente,
+       cl.nombre AS nombre_cliente
+FROM abonos a
+JOIN ventas v ON v.id = a.venta_id
+JOIN clientes cl ON cl.id = v.cliente_id
+ORDER BY a.id DESC
+LIMIT %(limite)s OFFSET %(offset)s
+    """, {"limite":limite,"offset": offset})
     datos = c.fetchall()
     c.close()
 
     lista = []
     for p in datos:
+        
         abono = Abono(
             id          = p[0],
             venta_id    = p[1],
-            corte_id    = p[2],
-            usuario_id  = p[3],
-            monto       = p[4],
-            fecha       = p[5],
-            observacion = p[6],
-            medio_pago  = p[7]
+            corte_id    = p[6],
+            usuario_id  = p[7],
+            monto       = p[2],
+            fecha       = p[4],
+            observacion = p[5],
+            medio_pago  = p[3],
+            venta_estado=p[8],
+            venta_saldo_pendiente=p[9],
+            nombre_cliente= p[10],
         ).to_dict()
         lista.append(abono)
 
@@ -51,6 +61,7 @@ def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pa
     """, (venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago))
     current_app.mysql.connection.commit()
     id = c.lastrowid
+    
     c.close()
     return obtener_abono(id)
     
@@ -111,22 +122,31 @@ def generar_recibo(abono_id):
 def obtener_abono(id):
     c = current_app.mysql.connection.cursor()
     c.execute("""
-        SELECT id, venta_id, corte_id, usuario_id,
-               monto, fecha, observacion, medio_pago
-        FROM abonos WHERE id = %s
+        SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
+               a.corte_id, a.usuario_id,
+               v.estado AS venta_estado,
+               v.saldo_pendiente AS venta_saldo_pendiente,
+               cl.nombre AS nombre_cliente
+        FROM abonos a
+        JOIN ventas v ON v.id = a.venta_id
+        JOIN clientes cl ON cl.id = v.cliente_id
+        WHERE a.id = %s
     """, (id,))
     abono = c.fetchone()
     c.close()
     if abono:
         return Abono(
-            id          = abono[0],
+             id          = abono[0],
             venta_id    = abono[1],
-            corte_id    = abono[2],
-            usuario_id  = abono[3],
-            monto       = abono[4],
-            fecha       = abono[5],
-            observacion = abono[6],
-            medio_pago  = abono[7]
+            corte_id    = abono[6],
+            usuario_id  =   abono[7],
+            monto       = abono[2],
+            fecha       = abono[4],
+            observacion =   abono[5],
+            medio_pago  =  abono[3],
+            venta_estado=abono[8],
+            venta_saldo_pendiente=abono[9],
+            nombre_cliente= abono[10],
         ).to_dict()
     return None
 

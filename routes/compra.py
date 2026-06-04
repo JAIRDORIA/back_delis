@@ -11,7 +11,7 @@ from utils.decorators import token_requerido
 compra_bp = Blueprint('compra', __name__)
 
 @compra_bp.route('/', methods=['GET'])
-@token_requerido
+#@token_requerido
 def listado():
     return cntListadoCompra()
 
