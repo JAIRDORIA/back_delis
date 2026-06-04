@@ -10,7 +10,9 @@ def listado_producciones(pagina=1, limite=20):
 
     sql = """
     SELECT p.id, p.producto_id, p.cantidad, p.unidades_sueltas,
-           p.usuario_id, u.nombre, p.fecha, p.observacion, p.created_at
+           p.usuario_id, u.nombre as nombre_usuario, 
+           pr.nombre as nombre_producto,
+           p.fecha, p.observacion, p.created_at
     FROM producciones p
     JOIN productos pr ON pr.id = p.producto_id
     JOIN usuarios u ON u.id = p.usuario_id
@@ -23,25 +25,27 @@ def listado_producciones(pagina=1, limite=20):
 
     lista = []
     for p in datos:
-        producto = producciones(
-            id                   = p[0],
-            producto_id          = p[1],
-            cantidad             = p[2],
-            unidades_sueltas     = p[3],
-            usuario_id           = p[4],
-            fecha                = p[5],
-            observacion          = p[6],
-            created_at           = p[7]
-        ).toDic()
-        lista.append(producto)
+        # Ahora con 10 columnas (incluyendo los nuevos nombres)
+        lista.append({
+            "id":                 p[0],
+            "producto_id":        p[1],
+            "cantidad":           p[2],
+            "unidades_sueltas":   p[3],
+            "usuario_id":         p[4],
+            "nombre_usuario":     p[5],      
+            "nombre_producto":    p[6],     
+            "fecha":          str(p[7]),          
+            "observacion":        p[8],         
+            "created_at":     str(p[9]) if p[9] else None
+        })
         
     return {
-        "datos"        : lista,
-        "total"        : total,
-        "pagina"       : pagina,
-        "limite"       : limite,
+        "datos": lista,
+        "total": total,
+        "pagina": pagina,
+        "limite": limite,
         "total_paginas": -(-total // limite)
-    } 
+    }
 
 def registro(producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion):
     c = current_app.mysql.connection.cursor()
@@ -60,25 +64,28 @@ def registro(producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observa
 def obtener_produccion(id):
     c = current_app.mysql.connection.cursor()
     c.execute("""
-        SELECT p.id, p.producto_id, pr.nombre, p.cantidad, p.unidades_sueltas,
-               p.usuario_id, p.fecha, p.observacion, p.created_at
+        SELECT p.id, p.producto_id, pr.nombre as nombre_producto, 
+               p.cantidad, p.unidades_sueltas,
+               p.usuario_id, u.nombre as nombre_usuario,
+               p.fecha, p.observacion, p.created_at
         FROM producciones p
         JOIN productos pr ON pr.id = p.producto_id
+        JOIN usuarios u ON u.id = p.usuario_id
         WHERE p.id = %s
     """, (id,))
     dato = c.fetchone()
     c.close()
     if dato:
         return {
-            "id"               : dato[0],
-            "producto_id"      : dato[1],
-            "nombre_producto"  : dato[2],
-            "cantidad"         : dato[3],
-            "unidades_sueltas" : dato[4],
-            "usuario_id"       : dato[5],
-            "fecha"            : str(dato[6]),
-            "observacion"      : dato[7],
-            "created_at"       : str(dato[8]) if dato[8] else None
+            "id":                dato[0],
+            "producto_id":       dato[1],
+            "nombre_producto":   dato[2],
+            "cantidad":          dato[3],
+            "unidades_sueltas":  dato[4],
+            "usuario_id":        dato[5],
+            "nombre_usuario":    dato[6],
+            "fecha":          str(dato[7]),
+            "observacion":        dato[8],
+            "created_at":     str(dato[9]) if dato[9] else None
         }
     return None
-   
