@@ -6,7 +6,7 @@ from services.combos_services import (
 )
 from utils.decorators import token_requerido
 
-@token_requerido
+#@token_requerido
 def get_combos():
     """
     Listar combos paginados (RF24)

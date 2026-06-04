@@ -7,6 +7,7 @@ import os
 from flask_cors import CORS
 from routes.usuarios import auth_bp
 
+
 app = Flask(__name__)
 app.config.from_object(config)
 app.register_blueprint(auth_bp)
