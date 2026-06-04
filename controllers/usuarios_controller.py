@@ -269,9 +269,13 @@ def cntPrimerAdmin():
     if existe_username(username):
         return jsonify({"mensaje": "El username ya existe"}), 400
     
-    # 8. Validar contraseña
+   # 8. Validar contraseña
     if len(password) < 8 or len(password) > 50:
         return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
+
+    patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,50}$'
+    if not re.match(patron_password, password):
+       return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
     
     # 9. Hashear contraseña
     password_hash = hashear_password(password)
@@ -317,8 +321,11 @@ def cntCambiarPasswordMaestra():
 
     if not username or not nueva_password:
         return jsonify({"mensaje": "Faltan campos requeridos"}), 400
+    
+    if len(nueva_password) < 8 or len(nueva_password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
 
-    patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+    patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,50}$'
     if not re.match(patron, nueva_password):
         return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
 
