@@ -10,13 +10,13 @@ class combos:
 
 
     def toDic(self):
-          return {
-            "ID_Combos":self.ID_Combos     ,
-            "Comb_Nombre":self.Comb_Nombre     ,
-            "Comb_Descripcion":self.Comb_Descripcion ,
-            "Comb_Precio":self.Comb_Precio ,
-            "Comb_Activo":self.Comb_Activo ,
-            "Comb_Creado":self.Comb_Creado ,
-            "Comb_Actualizado":self.Comb_Actualizado
-          }
+       return {
+        "id": self.ID_Combos,
+        "nombre": self.Comb_Nombre,
+        "descripcion": self.Comb_Descripcion,
+        "precio": self.Comb_Precio,
+        "activo": self.Comb_Activo,
+        "created_at": str(self.Comb_Creado),
+        "updated_at": str(self.Comb_Actualizado)
+    }
       
