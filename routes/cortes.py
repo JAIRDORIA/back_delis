@@ -10,6 +10,9 @@ cortes_bp = Blueprint ('cortes', __name__)
 def listado():
     return cntListado()
 
+@cortes_bp.route('/historial', methods=['GET'])
+def historial():
+    return cntHistorial()
 
 @cortes_bp.route('/<int:id>', methods=['PUT'])
 @token_requerido

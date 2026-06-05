@@ -1,5 +1,5 @@
 from flask import Blueprint,jsonify
-from controllers.usuarios_controller import cntListado , cntRegistro, cntEliminar, cntActualizar, obtenerUsuario, cntPrimerAdmin
+from controllers.usuarios_controller import cntListado , cntRegistro, cntEliminar, cntActualizar, obtenerUsuario, cntPrimerAdmin, cntVerificarClaveMaestra, cntCambiarPasswordMaestra
 from utils.decorators import token_requerido, rol_requerido
 from controllers.usuarios_controller import login_post
 
@@ -28,29 +28,35 @@ def login():
     return login_post()
 
 @usuarios_bp.route('/')
-@token_requerido
+#@token_requerido
 def listado():  
     return cntListado()
 
 @usuarios_bp.route('/', methods=["POST"])
 @token_requerido
-@rol_requerido('admin')
 def registro():
     return cntRegistro()
 
 @usuarios_bp.route('/<int:id>', methods=["DELETE"])
-@token_requerido
+#@token_requerido
 def eliminar(id):
     return cntEliminar(id)
 
 @usuarios_bp.route('/<int:id>', methods=["PUT"])
-@token_requerido
+#@token_requerido
 def actualizar(id):
     return cntActualizar(id)
 
 @usuarios_bp.route('/<int:id>', methods=["GET"])
-@token_requerido
+#@token_requerido
 def obtener_usuario(id):
     return obtenerUsuario(id)
 
+@auth_bp.route('/verificar-clave-maestra', methods=['POST'])
+def verificar_clave_maestra():
+    return cntVerificarClaveMaestra()
+
+@auth_bp.route('/recuperar-password', methods=['POST'])
+def recuperar_password():
+    return cntCambiarPasswordMaestra()
 

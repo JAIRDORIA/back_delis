@@ -1,5 +1,5 @@
 from flask import current_app
-from models.proveedores_model import proveedores
+from models.proveedor_model import proveedores
 
 
 # ─────────────────────────────────────────────
@@ -69,7 +69,7 @@ def obtener_proveedor(id):
 #  REGISTRO
 # ─────────────────────────────────────────────
 
-def registro_proveedor(id, nombre, telefono, direccion, email):
+def registro_proveedor(nombre, telefono, direccion, email):
     try:
         con    = current_app.mysql.connection
         cursor = con.cursor()
@@ -86,7 +86,7 @@ def registro_proveedor(id, nombre, telefono, direccion, email):
         con.commit()
         nuevo_id = cursor.lastrowid
         cursor.close()
-        return proveedores(nuevo_id, nombre, telefono, direccion, email).todic(), None
+        return proveedores(nuevo_id, nombre, telefono, direccion, email, 1).todic(), None
     except Exception as e:
         raise Exception(str(e))
 

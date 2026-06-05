@@ -124,14 +124,6 @@ def cerrar_corte():
     # Calcular saldo inicial del proximo corte
     # son los abonos que entraron en el corte actual
     # pero pertenecen a ventas del corte futuro
-    c.execute("""
-        SELECT COALESCE(SUM(a.monto), 0)
-        FROM abonos a
-        JOIN ventas v ON v.id = a.venta_id
-        WHERE a.corte_id = %s
-        AND v.corte_id = %s
-    """, (corte_abierto[0], corte_futuro[0]))
-    saldo_heredado = c.fetchone()[0]
     
     # 1. Cerrar el corte actual
     c.execute("""
@@ -140,13 +132,7 @@ def cerrar_corte():
         WHERE id = %s
     """, (corte_abierto[0],))
     
-    # 2. Abrir el corte futuro y asignarle fecha inicio ahora
-    c.execute("""
-        UPDATE cortes
-        SET estado = 'abierto', fecha_inicio = NOW(),
-            saldo_inicial = %s
-        WHERE id = %s
-    """, (float(saldo_heredado), corte_futuro[0]))
+    
     
     # 3. Crear el siguiente corte futuro automaticamente
     siguiente_numero = corte_futuro[1] + 1
@@ -228,6 +214,25 @@ def actualizar_corte(id, estado):
     c.close()
     return obtener_corte(id)
 
+def listar_historial_cortes(limite):
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT id, numero, fecha_inicio, fecha_cierre, estado
+        FROM cortes
+        ORDER BY id DESC
+        LIMIT %s
+    """, (limite,))
+    cortes = c.fetchall()
+    c.close()
+    return [
+        {
+            "id": c[0],
+            "numero": c[1],
+            "fecha_inicio": str(c[2]) if c[2] else None,
+            "fecha_cierre": str(c[3]) if c[3] else None,
+            "estado": c[4]
+        } for c in cortes
+    ]
 
 def balance_corte_actual():
     c = current_app.mysql.connection.cursor()
@@ -267,35 +272,76 @@ def balance_corte_actual():
             COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) -
             COALESCE(SUM(CASE WHEN tipo = 'egreso'  THEN monto ELSE 0 END), 0)
         FROM movimientos_caja
-        WHERE corte_id = %s
+        WHERE corte_id = %s 
     """, (corte_id,))
     dinero_caja = float(c.fetchone()[0])
 
     # abonos en efectivo del corte actual
     c.execute("""
-        SELECT COALESCE(SUM(monto), 0)
-        FROM abonos
-        WHERE corte_id = %s AND medio_pago = 'efectivo'
+        SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            WHERE a.corte_id = %s 
+            AND a.medio_pago = 'efectivo' 
+            AND v.estado IN ('pendiente', 'entregada') 
     """, (corte_id,))
     total_efectivo = float(c.fetchone()[0])
 
     # abonos en transferencia del corte actual
     c.execute("""
-        SELECT COALESCE(SUM(monto), 0)
-        FROM abonos
-        WHERE corte_id = %s AND medio_pago = 'transferencia'
+        SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            WHERE a.corte_id = %s 
+            AND a.medio_pago = 'transferencia' 
+            AND v.estado IN ('pendiente', 'entregada')
     """, (corte_id,))
     total_transferencia = float(c.fetchone()[0])
+    
+    # Dinero en caja REAL (solo ventas del corte actual, excluye pagos de ventas futuras)
+    c.execute("""
+    SELECT
+        COALESCE(SUM(CASE WHEN m.tipo = 'ingreso' THEN m.monto ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN m.tipo = 'egreso'  THEN m.monto ELSE 0 END), 0)
+    FROM movimientos_caja m
+    LEFT JOIN ventas v ON v.id = m.referencia_id AND m.concepto = 'abono'
+    WHERE m.corte_id = %s
+      AND (v.corte_id IS NULL OR v.corte_id = %s)
+    """, (corte_id, corte_id))
+    dinero_caja_real = float(c.fetchone()[0])
+      
+        # Saldo pendiente de las ventas del corte actual (solo las no anuladas)
+    c.execute("""
+    SELECT COALESCE(SUM(saldo_pendiente), 0)
+    FROM ventas
+    WHERE corte_id = %s AND estado != 'anulada'
+    """, (corte_id,))
+    saldo_pendiente_ventas = float(c.fetchone()[0])
+    
+    # Saldo pendiente de cortes cerrados (deuda histórica)
+    c.execute("""
+    SELECT COALESCE(SUM(v.saldo_pendiente), 0)
+    FROM ventas v
+    JOIN cortes c ON c.id = v.corte_id
+    WHERE c.estado = 'cerrado'
+      AND v.estado != 'anulada'
+      AND v.saldo_pendiente > 0
+    """)
+    saldo_pendiente_anteriores = float(c.fetchone()[0])
 
     c.close()
 
     return {
+        "corte_id"          : corte[0], 
         "corte_numero"      : corte[1],
         "fecha_inicio"      : str(corte[2]) if corte[2] else None,
         "saldo_inicial"     : float(corte[3]),
         "total_ventas"      : total_ventas,
         "total_compras"     : total_compras,
+        "saldo_pendiente_ventas" : saldo_pendiente_ventas,
+        "saldo_pendiente_anteriores" : saldo_pendiente_anteriores,
         "dinero_caja"       : dinero_caja,
+        "dinero_caja_real"  : dinero_caja_real, 
         "total_efectivo"    : total_efectivo,
         "total_transferencia": total_transferencia,
         "resultado"         : total_ventas - total_compras

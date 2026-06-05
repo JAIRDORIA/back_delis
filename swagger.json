@@ -5,19 +5,10 @@
     "description": "API REST para gestión contable e inventario del negocio DELIS. Pasabocas fritos.",
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost:5000"
-    }
-  ],
+  "servers": [{ "url": "http://127.0.0.1:4000", "description": "Servidor Local Flask" }],
   "components": {
     "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Token JWT obtenido desde POST /auth/login"
-      }
+      "BearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Token JWT obtenido desde POST /auth/login" }
     }
   },
   "tags": [
@@ -32,6 +23,7 @@
     { "name": "Cortes",    "description": "Gestión de cortes de caja" }
   ],
   "paths": {
+
     "/auth/login": {
       "post": {
         "tags": ["Auth"],
@@ -81,7 +73,8 @@
         }
       }
     },
-    "/api/usuarios/setup": {
+
+    "/usuarios/setup": {
       "post": {
         "tags": ["Auth"],
         "summary": "Registrar primer administrador",
@@ -133,7 +126,8 @@
         }
       }
     },
-    "/api/usuarios/check-setup": {
+
+    "/usuarios/check-setup": {
       "get": {
         "tags": ["Auth"],
         "summary": "Verificar si el sistema está configurado",
@@ -156,7 +150,8 @@
         }
       }
     },
-    "/api/usuarios/": {
+
+    "/usuarios/": {
       "get": {
         "tags": ["Usuarios"],
         "summary": "Listar usuarios activos",
@@ -241,7 +236,8 @@
         }
       }
     },
-    "/api/usuarios/{id}": {
+
+    "/usuarios/{id}": {
       "get": {
         "tags": ["Usuarios"],
         "summary": "Obtener un usuario por ID",
@@ -320,7 +316,8 @@
         }
       }
     },
-    "/api/productos/": {
+
+    "/productos/": {
       "get": {
         "tags": ["Productos"],
         "summary": "Listar productos activos",
@@ -406,7 +403,8 @@
         }
       }
     },
-    "/api/productos/{id}": {
+
+    "/productos/{id}": {
       "get": {
         "tags": ["Productos"],
         "summary": "Obtener un producto por ID",
@@ -942,7 +940,8 @@
         }
       }
     },
-    "/api/inventarios/": {
+
+    "/inventarios/": {
       "get": {
         "tags": ["Inventario"],
         "summary": "Listar inventario",
@@ -1024,7 +1023,8 @@
         }
       }
     },
-    "/api/inventarios/bajo-stock": {
+
+    "/inventarios/bajo-stock": {
       "get": {
         "tags": ["Inventario"],
         "summary": "Productos bajo stock mínimo",
@@ -1055,7 +1055,8 @@
         }
       }
     },
-    "/api/inventarios/{id}": {
+
+    "/inventarios/{id}": {
       "get": {
         "tags": ["Inventario"],
         "summary": "Obtener inventario por ID",
@@ -1118,6 +1119,16 @@
         }
       }
     },
+
+    "/producciones/{id}": {
+      "get": {
+        "tags": ["Producciones"], "summary": "Obtener una producción por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Producción encontrada" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Producción no encontrada" } }
+      }
+    },
+
     "/ventas/": {
       "get": {
         "tags": ["Ventas"],
@@ -1243,6 +1254,7 @@
         }
       }
     },
+
     "/ventas/{id}": {
       "put": {
         "tags": ["Ventas"],
@@ -1288,6 +1300,7 @@
         }
       }
     },
+
     "/ventas/{id}/anulacion": {
       "put": {
         "tags": ["Ventas"],
@@ -1319,6 +1332,7 @@
         }
       }
     },
+
     "/ventas/{id}/comprobante": {
       "get": {
         "tags": ["Ventas"],
@@ -1369,6 +1383,7 @@
         }
       }
     },
+
     "/abonos/": {
       "get": {
         "tags": ["Abonos"],
@@ -1462,6 +1477,7 @@
         }
       }
     },
+
     "/abonos/{id}": {
       "put": {
         "tags": ["Abonos"],
@@ -1539,6 +1555,7 @@
         }
       }
     },
+
     "/cortes/": {
       "get": {
         "tags": ["Cortes"],
@@ -1572,6 +1589,7 @@
         }
       }
     },
+
     "/cortes/iniciar": {
       "post": {
         "tags": ["Cortes"],
@@ -1609,6 +1627,7 @@
         }
       }
     },
+
     "/cortes/cerrar": {
       "post": {
         "tags": ["Cortes"],
@@ -1646,6 +1665,7 @@
         }
       }
     },
+
     "/cortes/{id}": {
       "put": {
         "tags": ["Cortes"],
@@ -1691,5 +1711,6 @@
         }
       }
     }
+
   }
 }

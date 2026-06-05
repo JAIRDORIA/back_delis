@@ -1,5 +1,3 @@
-# __init__.py
-# __init__.py
 from .ventas import ventas_bp
 from .cortes import cortes_bp
 from .usuarios import usuarios_bp
@@ -11,6 +9,7 @@ from .abonos import abono_bp
 from .documentacion import documentacion_bp
 from .compra import compra_bp
 from .proovedores import proveedores_bp
+from .producciones import producciones_bp
 
 def cargarRuta(app):
     app.register_blueprint(ventas_bp, url_prefix='/ventas')
@@ -24,7 +23,7 @@ def cargarRuta(app):
     app.register_blueprint(compra_bp, url_prefix='/compras')
     app.register_blueprint(proveedores_bp, url_prefix='/proveedores')
     app.register_blueprint(documentacion_bp, url_prefix='/documentacion')
-
+    app.register_blueprint(producciones_bp, url_prefix='/producciones')
     
 
 

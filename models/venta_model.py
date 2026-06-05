@@ -1,12 +1,13 @@
     
 class Ventas:
-    def __init__(self, id, cliente_id, nombre_cliente, corte_id, 
+    def __init__(self, id, cliente_id, nombre_cliente, corte_id, corte_numero,
                  usuario_id, fecha_venta, fecha_entrega, total, 
                  total_abonado, saldo_pendiente, estado):
         self.id = id
         self.cliente_id = cliente_id
         self.nombre_cliente = nombre_cliente  # ← viene del JOIN
         self.corte_id = corte_id
+        self.corte_numero = corte_numero
         self.usuario_id = usuario_id
         self.fecha_venta = fecha_venta
         self.fecha_entrega = fecha_entrega
@@ -21,6 +22,7 @@ class Ventas:
             "cliente_id"      : self.cliente_id,
             "nombre_cliente"  : self.nombre_cliente,
             "corte_id"        : self.corte_id,
+            "corte_numero"    :self.corte_numero,
             "usuario_id"      : self.usuario_id,
             "fecha_venta"     : str(self.fecha_venta),
             "fecha_entrega"   : str(self.fecha_entrega),
