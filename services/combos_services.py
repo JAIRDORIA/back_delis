@@ -24,6 +24,20 @@ def listado_combos(page, per_page):
             id=p[0], nombre=p[1], descripcion=p[2], precio=p[3],
             activo=p[4], created_at=p[5], updated_at=p[6]
         ).toDic()
+
+        # Traer productos del combo desde combo_detalle
+        c.execute("""
+            SELECT cd.producto_id, pr.nombre, cd.cantidad_unidades
+            FROM combo_detalle cd
+            JOIN productos pr ON pr.id = cd.producto_id
+            WHERE cd.combo_id = %s
+        """, (combo['id'],))
+        prods = c.fetchall()
+        combo['productos'] = [
+            {'producto_id': r[0], 'nombre': r[1], 'cantidad_unidades': r[2]}
+            for r in prods
+        ]
+
         lista.append(combo)
         
     return {
@@ -55,7 +69,21 @@ def obtener_combo_id(id):
     c.execute(sql, (id,))
     p = c.fetchone()
     if p:
-        return combos(p[0], p[1], p[2], p[3], p[4], p[5], p[6]).toDic()
+        combo = combos(p[0], p[1], p[2], p[3], p[4], p[5], p[6]).toDic()
+
+        # Traer productos del combo
+        c.execute("""
+            SELECT cd.producto_id, pr.nombre, cd.cantidad_unidades
+            FROM combo_detalle cd
+            JOIN productos pr ON pr.id = cd.producto_id
+            WHERE cd.combo_id = %s
+        """, (combo['id'],))
+        prods = c.fetchall()
+        combo['productos'] = [
+            {'producto_id': r[0], 'nombre': r[1], 'cantidad_unidades': r[2]}
+            for r in prods
+        ]
+        return combo
     return None
 
 def crear_combos(nombre, descripcion, precio):
@@ -90,7 +118,6 @@ def eliminar_combos(id):
     Realiza el borrado lógico de un producto (RF23).
     """
     c = current_app.mysql.connection.cursor()
-    # Se cambia el estado a 0 para conservar historial pero quitar de la lista disponible [cite: 30]
     sql = "UPDATE combos SET activo = 0, updated_at = NOW() WHERE id = %s"
     c.execute(sql, (id,))
     current_app.mysql.connection.commit()
