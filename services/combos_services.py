@@ -86,20 +86,65 @@ def obtener_combo_id(id):
         return combo
     return None
 
-def crear_combos(nombre, descripcion, precio):
-    """
-    Registra un nuevo producto/combo (RF21).
-    """
+def crear_combo(nombre, precio, productos):
+    
     if existe_combo(nombre):
         return {"error": f"Ya existe un combo con el nombre '{nombre}'"}, 400
 
     c = current_app.mysql.connection.cursor()
-    sql = """INSERT INTO combos(nombre, descripcion, precio, activo, created_at, updated_at)
-             VALUES (%s, %s, %s, 1, NOW(), NOW())"""
-    c.execute(sql, (nombre, descripcion, precio))
+
+    # 1. insertar el combo
+    c.execute("""
+        INSERT INTO combos (nombre, precio, activo, created_at, updated_at)
+        VALUES (%s, %s, 1, NOW(), NOW())
+    """, (nombre, precio))
+
+    combo_id = c.lastrowid
+
+    # 2. insertar cada producto del detalle
+    for item in productos:
+        c.execute("""
+            INSERT INTO combo_detalle (combo_id, producto_id, cantidad_unidades)
+            VALUES (%s, %s, %s)
+        """, (
+            combo_id,
+            item["producto_id"],
+            item["cantidad_unidades"]
+        ))
+
     current_app.mysql.connection.commit()
-    
-    return {"nombre": nombre, "precio": precio}
+
+    # 3. traer el combo recién creado con su detalle
+    c.execute("""
+        SELECT id, nombre, descripcion, precio, activo
+        FROM combos WHERE id = %s
+    """, (combo_id,))
+    combo = c.fetchone()
+
+    c.execute("""
+        SELECT cd.producto_id, p.nombre, cd.cantidad_unidades
+        FROM combo_detalle cd
+        JOIN productos p ON p.id = cd.producto_id
+        WHERE cd.combo_id = %s
+    """, (combo_id,))
+    detalle = c.fetchall()
+
+    c.close()
+
+    return {
+        "id"         : combo[0],
+        "nombre"     : combo[1],
+        "descripcion": combo[2],
+        "precio"     : float(combo[3]),
+        "activo"     : combo[4],
+        "productos"  : [
+            {
+                "producto_id"      : d[0],
+                "nombre_producto"  : d[1],
+                "cantidad_unidades": d[2]
+            } for d in detalle
+        ]
+    }
 
 def actualizar_combos(id, nombre, descripcion, precio):
     """

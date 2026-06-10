@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required
 from services.combos_services import (
-    listado_combos, crear_combos, existe_combo, 
+    listado_combos, crear_combo, existe_combo, 
     obtener_combo_id, actualizar_combos, eliminar_combos
 )
 from utils.decorators import token_requerido
@@ -30,7 +30,7 @@ def get_combos():
     w = listado_combos(page, per_page)
     return jsonify(w)
 
-@jwt_required()
+#@jwt_required()
 def get_combo_por_id(id):
     """
     Visualizar detalle de un combo
@@ -48,48 +48,58 @@ def get_combo_por_id(id):
         return jsonify({"mensaje": "Combo no encontrado"}), 404
     return jsonify(res)
 
-@jwt_required()
+#@jwt_required()
 def cntRegistrarCombo():
-    """
-    Registrar un nuevo producto/combo (RF21)
-    ---
-    tags: [Combos]
-    security: [{ Bearer: [] }]
-    """
-    # 1. Validar campos requeridos
-    requeridos = ["nombre", "descripcion", "precio"]
+    # 1. validar que venga JSON
     if not request.json:
-        return jsonify({"mensaje": "No se recibió información en formato JSON"}), 400
-        
+        return jsonify({"mensaje": "No se recibio informacion en formato JSON"}), 400
+
+    # 2. validar campos requeridos
+    requeridos = ["nombre", "precio", "productos"]
     faltantes = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
 
-    # 2. Validar que no estén vacíos y limpiar espacios
-    nombre = str(request.json["nombre"]).strip()
-    descripcion = str(request.json["descripcion"]).strip()
-    precio = request.json["precio"]
+    # 3. validar campos vacios
+    nombre      = str(request.json["nombre"]).strip()
+   
+    precio      = request.json["precio"]
+    productos   = request.json["productos"]
 
-    if not nombre or not descripcion:
-        return jsonify({"mensaje": "El nombre y la descripción no pueden estar vacíos"}), 400
+    if not nombre:
+        return jsonify({"mensaje": "el nombre no puede estar vacio"}), 400
+   
 
-    # 3. Validar que el precio sea un número válido y positivo (RF25)
+    # 4. validar precio
     try:
         precio_num = float(precio)
         if precio_num <= 0:
-            return jsonify({"mensaje": "El precio debe ser un número mayor a cero"}), 400
+            return jsonify({"mensaje": "el precio debe ser mayor a 0"}), 400
     except (ValueError, TypeError):
-        return jsonify({"mensaje": "El precio debe ser un formato numérico válido"}), 400
+        return jsonify({"mensaje": "el precio debe ser un numero valido"}), 400
 
-    # 4. Llamar al servicio y capturar posibles errores (como nombre duplicado)
-    resultado = crear_combos(nombre, descripcion, precio_num)
-    
+    # 5. validar que productos no este vacio
+    if not productos or len(productos) == 0:
+        return jsonify({"mensaje": "el combo debe tener al menos un producto"}), 400
+
+    # 6. validar cada producto del detalle
+    for item in productos:
+        if "producto_id" not in item:
+            return jsonify({"mensaje": "cada producto debe tener producto_id"}), 400
+        if "cantidad_unidades" not in item:
+            return jsonify({"mensaje": "cada producto debe tener cantidad"}), 400
+        if item["cantidad_unidades"] <= 0:
+            return jsonify({"mensaje": "la cantidad debe ser mayor a 0"}), 400
+
+    # 7. registrar el combo
+    resultado = crear_combo(nombre, precio_num, productos)
+
     if isinstance(resultado, tuple):
         return jsonify(resultado[0]), resultado[1]
-    
-    return jsonify({"mensaje": "Combo registrado con éxito", "datos": resultado}), 201
 
-@jwt_required()
+    return jsonify({"mensaje": "combo registrado exitosamente", "datos": resultado}), 201
+
+#@jwt_required()
 def cntActualizarCombo(id):
     """
     Editar un producto/combo (RF22)
@@ -124,7 +134,7 @@ def cntActualizarCombo(id):
     resultado = actualizar_combos(id, nombre, descripcion, precio_num)
     return jsonify({"mensaje": "Combo actualizado con éxito", "datos": resultado}), 200
 
-@jwt_required()
+#@jwt_required()
 def cntEliminarCombo(id):
     """
     Eliminar combo - Borrado lógico (RF23)

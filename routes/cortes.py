@@ -1,5 +1,5 @@
 from flask import Blueprint
-from controllers.corte_controller import cntListado,cntPrimerCorte,cntCerrarCorte,cntActualizar,cntBalance
+from controllers.corte_controller import cntListado,cntPrimerCorte,cntCerrarCorte,cntActualizar,cntBalance,cntHistorial
 from utils.decorators import token_requerido
 
 cortes_bp = Blueprint ('cortes', __name__)
@@ -20,17 +20,17 @@ def actualizar(id):
     return cntActualizar(id)
 
 @cortes_bp.route('/iniciar', methods=['POST'])
-@token_requerido
+#@token_requerido
 def iniciar():
     return cntPrimerCorte()
 
 # Se llama cada vez que el admin decide cerrar el corte
 @cortes_bp.route('/cerrar', methods=['POST'])
-@token_requerido
+#@token_requerido
 def cerrar():
     return cntCerrarCorte()
 
 @cortes_bp.route('/balance', methods=['GET'])
-@token_requerido
+#@token_requerido
 def balance():
     return cntBalance()

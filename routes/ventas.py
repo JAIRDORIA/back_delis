@@ -7,7 +7,7 @@ ventas_bp = Blueprint ('ventas', __name__)
 
 
 @ventas_bp.route('/')
-@token_requerido
+#@token_requerido
 def listado():
     return cntListado()
 

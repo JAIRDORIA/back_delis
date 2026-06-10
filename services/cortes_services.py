@@ -19,7 +19,7 @@ def listado_cortes(pagina=1, limite=20):
     """, (limite, offset))
     datos = c.fetchall()
     c.close()
-
+    print(datos)
     lista = []
     for p in datos:
         lista.append({
@@ -30,14 +30,13 @@ def listado_cortes(pagina=1, limite=20):
             "estado"       : p[4],
             "saldo_inicial": float(p[5])
         })
-
     return {
-        "total"        : total,
-        "pagina"       : pagina,
-        "limite"       : limite,
-        "total_paginas": -(-total // limite),
-        "datos"        : lista
-    }
+         "total"        : total,
+         "pagina"       : pagina,
+         "limite"       : limite,
+         "total_paginas": -(-total // limite),
+         "datos"        : lista
+     }
 
 def obtener_corte(id):
     c = current_app.mysql.connection.cursor()
@@ -132,7 +131,12 @@ def cerrar_corte():
         WHERE id = %s
     """, (corte_abierto[0],))
     
-    
+    #2 abrir el corte en estado abierto
+    c.execute("""
+            UPDATE cortes 
+            set estado='abierto',fecha_inicio = NOW(),fecha_cierre=NULL
+            WHERE id = %s
+            """,(corte_futuro[0],))
     
     # 3. Crear el siguiente corte futuro automaticamente
     siguiente_numero = corte_futuro[1] + 1
@@ -301,13 +305,26 @@ def balance_corte_actual():
     # Dinero en caja REAL (solo ventas del corte actual, excluye pagos de ventas futuras)
     c.execute("""
     SELECT
-        COALESCE(SUM(CASE WHEN m.tipo = 'ingreso' THEN m.monto ELSE 0 END), 0) -
-        COALESCE(SUM(CASE WHEN m.tipo = 'egreso'  THEN m.monto ELSE 0 END), 0)
+        COALESCE(
+            (SELECT saldo_inicial FROM cortes WHERE id = %s), 0
+        )
+        +
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN m.tipo = 'ingreso' THEN m.monto
+                    WHEN m.tipo = 'egreso'  THEN -m.monto
+                    ELSE 0
+                END
+            ),
+            0
+        )
     FROM movimientos_caja m
     LEFT JOIN ventas v ON v.id = m.referencia_id AND m.concepto = 'abono'
+    LEFT JOIN cortes c ON c.id = v.corte_id
     WHERE m.corte_id = %s
-      AND (v.corte_id IS NULL OR v.corte_id = %s)
-    """, (corte_id, corte_id))
+      AND (c.estado IS NULL OR c.estado != 'futuro')
+""", (corte_id, corte_id))
     dinero_caja_real = float(c.fetchone()[0])
       
         # Saldo pendiente de las ventas del corte actual (solo las no anuladas)
