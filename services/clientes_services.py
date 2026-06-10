@@ -61,25 +61,22 @@ def service_actualizar_cliente(id, nombre, telefono, direccion, email):
     return {"id": id, "nombre": nombre}
 
 def service_eliminar_cliente(id):
-    """Eliminar clientes mediante borrado lógico (RF12)[cite: 1, 16]."""
     c = current_app.mysql.connection.cursor()
+
     c.execute("""
-        SELECT id, nombre, telefono, direccion, email, activo
-        FROM clientes
-        WHERE id = %s AND activo = 1
+        UPDATE clientes
+        SET activo = 0
+        WHERE id = %s
     """, (id,))
-    cliente = c.fetchone()
+
+    current_app.mysql.connection.commit()
+
+    if c.rowcount > 0:
+        c.close()
+        return True
+
     c.close()
-    if cliente:
-        return {
-            "id"       : cliente[0],
-            "nombre"   : cliente[1],
-            "telefono" : cliente[2],
-            "direccion": cliente[3],
-            "email"    : cliente[4],
-            "activo"   : cliente[5]
-        }
-    return None
+    return False
 
 
 def clientes_top(limite=5):

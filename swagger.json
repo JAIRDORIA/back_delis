@@ -74,439 +74,132 @@
   "paths": {
     "/auth/login": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Iniciar sesión",
+        "tags": ["Auth"], "summary": "Iniciar sesión",
         "description": "Verifica las credenciales del usuario y retorna un token JWT.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "username",
-                  "password"
-                ],
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "example": "cperez"
-                  },
-                  "password": {
-                    "type": "string",
-                    "example": "clave123"
-                  }
-                }
-              }
-            }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["username","password"],
+          "properties": {
+            "username": { "type": "string", "example": "cperez" },
+            "password": { "type": "string", "example": "clave123" }
           }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Login exitoso. Retorna el token JWT.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "access_token": {
-                      "type": "string",
-                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "token_type": {
-                      "type": "string",
-                      "example": "bearer"
-                    },
-                    "usuario": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "nombre": {
-                          "type": "string",
-                          "example": "Carlos Pérez"
-                        },
-                        "username": {
-                          "type": "string",
-                          "example": "cperez"
-                        },
-                        "rol": {
-                          "type": "string",
-                          "example": "admin"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+          "200": { "description": "Login exitoso. Retorna el token JWT.", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "access_token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+              "token_type":   { "type": "string", "example": "bearer" },
+              "usuario": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 1 }, "nombre": { "type": "string", "example": "Carlos Pérez" },
+                "username": { "type": "string", "example": "cperez" }, "rol": { "type": "string", "example": "admin" }
+              }}
             }
-          },
-          "400": {
-            "description": "Faltan credenciales"
-          },
-          "401": {
-            "description": "Credenciales inválidas"
-          }
+          }}}},
+          "400": { "description": "Faltan credenciales" },
+          "401": { "description": "Credenciales inválidas" }
         }
       }
     },
     "/usuarios/setup": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Registrar primer administrador",
+        "tags": ["Auth"], "summary": "Registrar primer administrador",
         "description": "Crea el primer usuario administrador. Solo funciona si no existe ningún admin. No requiere token JWT.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "username",
-                  "password",
-                  "rol"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Carlos Pérez",
-                    "description": "Entre 3 y 100 caracteres, solo letras"
-                  },
-                  "username": {
-                    "type": "string",
-                    "example": "cperez",
-                    "description": "Entre 4 y 50 caracteres"
-                  },
-                  "password": {
-                    "type": "string",
-                    "example": "clave123",
-                    "description": "Entre 6 y 50 caracteres"
-                  },
-                  "rol": {
-                    "type": "string",
-                    "example": "admin",
-                    "description": "Debe ser exactamente admin"
-                  }
-                }
-              }
-            }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","username","password","rol"],
+          "properties": {
+            "nombre":   { "type": "string", "example": "Carlos Pérez", "description": "Entre 3 y 100 caracteres, solo letras" },
+            "username": { "type": "string", "example": "cperez",       "description": "Entre 4 y 50 caracteres" },
+            "password": { "type": "string", "example": "clave123",     "description": "Entre 6 y 50 caracteres" },
+            "rol":      { "type": "string", "example": "admin",        "description": "Debe ser exactamente admin" }
           }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Administrador inicial creado exitosamente"
-          },
-          "400": {
-            "description": "Campos faltantes, rol distinto de admin o username duplicado"
-          },
-          "403": {
-            "description": "Ya existe un administrador registrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Administrador inicial creado exitosamente" },
+          "400": { "description": "Campos faltantes, rol distinto de admin o username duplicado" },
+          "403": { "description": "Ya existe un administrador registrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
     "/usuarios/check-setup": {
       "get": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Verificar si el sistema está configurado",
+        "tags": ["Auth"], "summary": "Verificar si el sistema está configurado",
         "description": "Indica si ya existe un administrador activo. No requiere token JWT.",
-        "responses": {
-          "200": {
-            "description": "Estado del sistema",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "setup_completado": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "mensaje": {
-                      "type": "string",
-                      "example": "Sistema configurado"
-                    }
-                  }
-                }
-              }
-            }
+        "responses": { "200": { "description": "Estado del sistema", "content": { "application/json": { "schema": {
+          "type": "object", "properties": {
+            "setup_completado": { "type": "boolean", "example": true },
+            "mensaje": { "type": "string", "example": "Sistema configurado" }
           }
-        }
+        }}}}}
       }
     },
     "/usuarios/": {
       "get": {
-        "tags": [
-          "Usuarios"
-        ],
-        "summary": "Listar usuarios activos",
+        "tags": ["Usuarios"], "summary": "Listar usuarios activos",
         "description": "Retorna usuarios con activo = 1 de forma paginada. No incluye password_hash.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
-          {
-            "name": "pagina",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "limite",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 20
-            }
-          }
+          { "name": "pagina", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "limite", "in": "query", "required": false, "schema": { "type": "integer", "example": 20 } }
         ],
         "responses": {
-          "200": {
-            "description": "Lista paginada de usuarios",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "datos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "nombre": {
-                            "type": "string",
-                            "example": "Carlos Pérez"
-                          },
-                          "username": {
-                            "type": "string",
-                            "example": "cperez"
-                          },
-                          "rol": {
-                            "type": "string",
-                            "example": "admin"
-                          },
-                          "activo": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "example": "2026-03-24 09:01:45"
-                          },
-                          "updated_at": {
-                            "type": "string",
-                            "example": "2026-03-24 09:01:45"
-                          }
-                        }
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "example": 5
-                    },
-                    "pagina": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "limite": {
-                      "type": "integer",
-                      "example": 20
-                    },
-                    "total_paginas": {
-                      "type": "integer",
-                      "example": 1
-                    }
-                  }
-                }
-              }
+          "200": { "description": "Lista paginada de usuarios", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "datos": { "type": "array", "items": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 1 }, "nombre": { "type": "string", "example": "Carlos Pérez" },
+                "username": { "type": "string", "example": "cperez" }, "rol": { "type": "string", "example": "admin" },
+                "activo": { "type": "integer", "example": 1 }, "created_at": { "type": "string", "example": "2026-03-24 09:01:45" },
+                "updated_at": { "type": "string", "example": "2026-03-24 09:01:45" }
+              }}},
+              "total": { "type": "integer", "example": 5 }, "pagina": { "type": "integer", "example": 1 },
+              "limite": { "type": "integer", "example": 20 }, "total_paginas": { "type": "integer", "example": 1 }
             }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          }}}},
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Usuarios"
-        ],
-        "summary": "Registrar un nuevo usuario",
+        "tags": ["Usuarios"], "summary": "Registrar un nuevo usuario",
         "description": "La contraseña se envía en texto plano y se almacena como hash bcrypt.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","username","password","rol"],
+          "properties": {
+            "nombre":   { "type": "string", "example": "Ana Gómez",  "description": "Entre 3 y 100 caracteres, solo letras" },
+            "username": { "type": "string", "example": "agomez",     "description": "Entre 4 y 50 caracteres" },
+            "password": { "type": "string", "example": "clave123",   "description": "Entre 6 y 50 caracteres" },
+            "rol":      { "type": "string", "example": "cajero",     "description": "Valores válidos: admin, cajero" }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "username",
-                  "password",
-                  "rol"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Ana Gómez",
-                    "description": "Entre 3 y 100 caracteres, solo letras"
-                  },
-                  "username": {
-                    "type": "string",
-                    "example": "agomez",
-                    "description": "Entre 4 y 50 caracteres"
-                  },
-                  "password": {
-                    "type": "string",
-                    "example": "clave123",
-                    "description": "Entre 6 y 50 caracteres"
-                  },
-                  "rol": {
-                    "type": "string",
-                    "example": "cajero",
-                    "description": "Valores válidos: admin, cajero"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Usuario registrado correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes, username duplicado o rol inválido"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Usuario registrado correctamente" },
+          "400": { "description": "Campos faltantes, username duplicado o rol inválido" },
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
     "/usuarios/{id}": {
       "get": {
-        "tags": [
-          "Usuarios"
-        ],
-        "summary": "Obtener un usuario por ID",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Usuario encontrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Usuario no encontrado"
-          }
-        }
+        "tags": ["Usuarios"], "summary": "Obtener un usuario por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Usuario encontrado" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Usuario no encontrado" } }
       },
       "put": {
-        "tags": [
-          "Usuarios"
-        ],
-        "summary": "Actualizar un usuario",
+        "tags": ["Usuarios"], "summary": "Actualizar un usuario",
         "description": "Si no se envía password se conserva la actual. No actualiza si no hay cambios reales.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","username","rol"],
+          "properties": {
+            "nombre":   { "type": "string", "example": "Ana Gómez" },
+            "username": { "type": "string", "example": "agomez2" },
+            "password": { "type": "string", "example": "nuevaClave123", "description": "Opcional" },
+            "rol":      { "type": "string", "example": "admin", "description": "Valores válidos: admin, cajero" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "username",
-                  "rol"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Ana Gómez"
-                  },
-                  "username": {
-                    "type": "string",
-                    "example": "agomez2"
-                  },
-                  "password": {
-                    "type": "string",
-                    "example": "nuevaClave123",
-                    "description": "Opcional"
-                  },
-                  "rol": {
-                    "type": "string",
-                    "example": "admin",
-                    "description": "Valores válidos: admin, cajero"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
           "200": {
             "description": "Usuario actualizado correctamente"
@@ -526,27 +219,10 @@
         }
       },
       "delete": {
-        "tags": [
-          "Usuarios"
-        ],
-        "summary": "Desactivar un usuario (soft delete)",
+        "tags": ["Usuarios"], "summary": "Desactivar un usuario (soft delete)",
         "description": "Pone activo = 0. El usuario con id = 1 no puede desactivarse.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 2
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 2 } }],
         "responses": {
           "200": {
             "description": "Usuario desactivado correctamente"
@@ -565,265 +241,70 @@
     },
     "/productos/": {
       "get": {
-        "tags": [
-          "Productos"
-        ],
-        "summary": "Listar productos activos",
+        "tags": ["Productos"], "summary": "Listar productos activos",
         "description": "Retorna productos con activo = 1 de forma paginada.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
-          {
-            "name": "pagina",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "limite",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 20
-            }
-          }
+          { "name": "pagina", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "limite", "in": "query", "required": false, "schema": { "type": "integer", "example": 20 } }
         ],
         "responses": {
-          "200": {
-            "description": "Lista paginada de productos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "datos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "nombre": {
-                            "type": "string",
-                            "example": "Bandeja de deditos"
-                          },
-                          "descripcion": {
-                            "type": "string",
-                            "example": "22 unidades de deditos"
-                          },
-                          "precio_venta": {
-                            "type": "number",
-                            "example": 14000
-                          },
-                          "unidades_por_bandeja": {
-                            "type": "integer",
-                            "example": 22
-                          },
-                          "activo": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "example": "2026-03-24 09:02:57"
-                          },
-                          "updated_at": {
-                            "type": "string",
-                            "example": "2026-03-24 09:02:57"
-                          }
-                        }
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "example": 10
-                    },
-                    "pagina": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "limite": {
-                      "type": "integer",
-                      "example": 20
-                    },
-                    "total_paginas": {
-                      "type": "integer",
-                      "example": 1
-                    }
-                  }
-                }
-              }
+          "200": { "description": "Lista paginada de productos", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "datos": { "type": "array", "items": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 1 }, "nombre": { "type": "string", "example": "Bandeja de deditos" },
+                "descripcion": { "type": "string", "example": "22 unidades de deditos" }, "precio_venta": { "type": "number", "example": 14000 },
+                "unidades_por_bandeja": { "type": "integer", "example": 22 }, "activo": { "type": "integer", "example": 1 },
+                "created_at": { "type": "string", "example": "2026-03-24 09:02:57" }, "updated_at": { "type": "string", "example": "2026-03-24 09:02:57" }
+              }}},
+              "total": { "type": "integer", "example": 10 }, "pagina": { "type": "integer", "example": 1 },
+              "limite": { "type": "integer", "example": 20 }, "total_paginas": { "type": "integer", "example": 1 }
             }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          }}}},
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Productos"
-        ],
-        "summary": "Registrar un nuevo producto",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Productos"], "summary": "Registrar un nuevo producto",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","descripcion","precio_venta","unidades_por_bandeja"],
+          "properties": {
+            "nombre":               { "type": "string",  "example": "Bandeja de deditos",    "description": "Entre 3 y 150 caracteres" },
+            "descripcion":          { "type": "string",  "example": "22 unidades de deditos", "description": "Entre 4 y 255 caracteres" },
+            "precio_venta":         { "type": "number",  "example": 14000,                    "description": "Debe ser mayor a 0" },
+            "unidades_por_bandeja": { "type": "integer", "example": 22,                       "description": "Debe ser mayor a 0" }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "descripcion",
-                  "precio_venta",
-                  "unidades_por_bandeja"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Bandeja de deditos",
-                    "description": "Entre 3 y 150 caracteres"
-                  },
-                  "descripcion": {
-                    "type": "string",
-                    "example": "22 unidades de deditos",
-                    "description": "Entre 4 y 255 caracteres"
-                  },
-                  "precio_venta": {
-                    "type": "number",
-                    "example": 14000,
-                    "description": "Debe ser mayor a 0"
-                  },
-                  "unidades_por_bandeja": {
-                    "type": "integer",
-                    "example": 22,
-                    "description": "Debe ser mayor a 0"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Producto registrado correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes, nombre duplicado o valores inválidos"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Producto registrado correctamente" },
+          "400": { "description": "Campos faltantes, nombre duplicado o valores inválidos" },
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
     "/productos/{id}": {
       "get": {
-        "tags": [
-          "Productos"
-        ],
-        "summary": "Obtener un producto por ID",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Producto encontrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Producto no encontrado"
-          }
-        }
+        "tags": ["Productos"], "summary": "Obtener un producto por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Producto encontrado" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Producto no encontrado" } }
       },
       "put": {
-        "tags": [
-          "Productos"
-        ],
-        "summary": "Actualizar un producto",
+        "tags": ["Productos"], "summary": "Actualizar un producto",
         "description": "Todos los campos son opcionales. No actualiza si no hay cambios reales.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "properties": {
+            "nombre":               { "type": "string",  "example": "Bandeja especial",    "description": "Opcional" },
+            "descripcion":          { "type": "string",  "example": "25 unidades grandes", "description": "Opcional" },
+            "precio_venta":         { "type": "number",  "example": 16000,                 "description": "Opcional. Mayor a 0" },
+            "unidades_por_bandeja": { "type": "integer", "example": 25,                    "description": "Opcional. Mayor a 0" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Bandeja especial",
-                    "description": "Opcional"
-                  },
-                  "descripcion": {
-                    "type": "string",
-                    "example": "25 unidades grandes",
-                    "description": "Opcional"
-                  },
-                  "precio_venta": {
-                    "type": "number",
-                    "example": 16000,
-                    "description": "Opcional. Mayor a 0"
-                  },
-                  "unidades_por_bandeja": {
-                    "type": "integer",
-                    "example": 25,
-                    "description": "Opcional. Mayor a 0"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
           "200": {
             "description": "Producto actualizado correctamente"
@@ -843,27 +324,10 @@
         }
       },
       "delete": {
-        "tags": [
-          "Productos"
-        ],
-        "summary": "Desactivar un producto (soft delete)",
+        "tags": ["Productos"], "summary": "Desactivar un producto (soft delete)",
         "description": "Pone activo = 0. No se elimina físicamente.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
           "200": {
             "description": "Producto desactivado correctamente"
@@ -880,2369 +344,682 @@
         }
       }
     },
+
     "/inventarios/": {
       "get": {
-        "tags": [
-          "Inventario"
-        ],
-        "summary": "Listar inventario",
+        "tags": ["Inventario"], "summary": "Listar inventario",
         "description": "Retorna inventario paginado de productos activos. Incluye nombre del producto por JOIN.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
-          {
-            "name": "pagina",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "limite",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 20
-            }
-          }
+          { "name": "pagina", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "limite", "in": "query", "required": false, "schema": { "type": "integer", "example": 20 } }
         ],
         "responses": {
-          "200": {
-            "description": "Inventario paginado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "datos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "producto_id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "nombre_producto": {
-                            "type": "string",
-                            "example": "Bandeja de deditos"
-                          },
-                          "stock_actual": {
-                            "type": "integer",
-                            "example": 10
-                          },
-                          "unidades_sueltas": {
-                            "type": "integer",
-                            "example": 0
-                          },
-                          "stock_minimo": {
-                            "type": "integer",
-                            "example": 5
-                          },
-                          "updated_at": {
-                            "type": "string",
-                            "example": "2026-03-24 09:04:00"
-                          }
-                        }
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "example": 8
-                    },
-                    "pagina": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "limite": {
-                      "type": "integer",
-                      "example": 20
-                    },
-                    "total_paginas": {
-                      "type": "integer",
-                      "example": 1
-                    }
-                  }
-                }
-              }
+          "200": { "description": "Inventario paginado", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "datos": { "type": "array", "items": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 1 }, "producto_id": { "type": "integer", "example": 1 },
+                "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
+                "stock_actual": { "type": "integer", "example": 10 }, "unidades_sueltas": { "type": "integer", "example": 0 },
+                "stock_minimo": { "type": "integer", "example": 5 }, "updated_at": { "type": "string", "example": "2026-03-24 09:04:00" }
+              }}},
+              "total": { "type": "integer", "example": 8 }, "pagina": { "type": "integer", "example": 1 },
+              "limite": { "type": "integer", "example": 20 }, "total_paginas": { "type": "integer", "example": 1 }
             }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          }}}},
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Inventario"
-        ],
-        "summary": "Registrar inventario para un producto",
+        "tags": ["Inventario"], "summary": "Registrar inventario para un producto",
         "description": "Crea el registro inicial. stock_actual inicia en 0 y lo manejan los triggers.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "producto_id"
-                ],
-                "properties": {
-                  "producto_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "Debe existir en productos y no tener inventario previo"
-                  }
-                }
-              }
-            }
-          }
-        },
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["producto_id"],
+          "properties": { "producto_id": { "type": "integer", "example": 1, "description": "Debe existir en productos y no tener inventario previo" } }
+        }}}},
         "responses": {
-          "201": {
-            "description": "Inventario registrado correctamente"
-          },
-          "400": {
-            "description": "Producto no existe o ya tiene inventario"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Inventario registrado correctamente" },
+          "400": { "description": "Producto no existe o ya tiene inventario" },
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/inventarios/bajo-stock": {
       "get": {
-        "tags": [
-          "Inventario"
-        ],
-        "summary": "Productos bajo stock mínimo",
+        "tags": ["Inventario"], "summary": "Productos bajo stock mínimo",
         "description": "Retorna productos con stock_actual <= stock_minimo. Usa la vista v_productos_bajo_stock.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "Lista de productos bajo stock",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "example": 2
-                      },
-                      "nombre": {
-                        "type": "string",
-                        "example": "Bandeja de empanadas"
-                      },
-                      "stock_actual": {
-                        "type": "integer",
-                        "example": 3
-                      },
-                      "stock_minimo": {
-                        "type": "integer",
-                        "example": 5
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Lista de productos bajo stock", "content": { "application/json": { "schema": {
+            "type": "array", "items": { "type": "object", "properties": {
+              "id": { "type": "integer", "example": 2 }, "nombre": { "type": "string", "example": "Bandeja de empanadas" },
+              "stock_actual": { "type": "integer", "example": 3 }, "stock_minimo": { "type": "integer", "example": 5 }
+            }}
+          }}}},
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/inventarios/{id}": {
       "get": {
-        "tags": [
-          "Inventario"
-        ],
-        "summary": "Obtener inventario por ID",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Inventario encontrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Inventario no encontrado"
-          }
-        }
+        "tags": ["Inventario"], "summary": "Obtener inventario por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Inventario encontrado" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Inventario no encontrado" } }
       },
       "put": {
-        "tags": [
-          "Inventario"
-        ],
-        "summary": "Actualizar stock mínimo",
+        "tags": ["Inventario"], "summary": "Actualizar stock mínimo",
         "description": "Solo se puede editar stock_minimo. El stock_actual lo manejan los triggers.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "stock_minimo"
-                ],
-                "properties": {
-                  "stock_minimo": {
-                    "type": "integer",
-                    "example": 10,
-                    "description": "Mayor o igual a 0"
-                  }
-                }
-              }
-            }
-          }
-        },
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["stock_minimo"],
+          "properties": { "stock_minimo": { "type": "integer", "example": 10, "description": "Mayor o igual a 0" } }
+        }}}},
         "responses": {
-          "200": {
-            "description": "Stock mínimo actualizado correctamente"
-          },
-          "400": {
-            "description": "Sin cambios o valor inválido"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Inventario no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Stock mínimo actualizado correctamente" },
+          "400": { "description": "Sin cambios o valor inválido" },
+          "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Inventario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/producciones/": {
       "get": {
-        "tags": [
-          "Producciones"
-        ],
-        "summary": "Listar producciones",
+        "tags": ["Producciones"], "summary": "Listar producciones",
         "description": "Retorna producciones paginadas con nombre del producto y usuario.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
-          {
-            "name": "pagina",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "limite",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 20
-            }
-          }
+          { "name": "pagina", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "limite", "in": "query", "required": false, "schema": { "type": "integer", "example": 20 } }
         ],
         "responses": {
-          "200": {
-            "description": "Lista paginada de producciones",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "datos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "producto_id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "nombre_producto": {
-                            "type": "string",
-                            "example": "Bandeja de deditos"
-                          },
-                          "cantidad": {
-                            "type": "integer",
-                            "example": 10
-                          },
-                          "unidades_sueltas": {
-                            "type": "integer",
-                            "example": 5,
-                            "description": "Unidades sueltas producidas (no en bandeja completa)"
-                          },
-                          "usuario_id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "nombre_usuario": {
-                            "type": "string",
-                            "example": "Carlos Pérez"
-                          },
-                          "fecha": {
-                            "type": "string",
-                            "example": "2026-03-21"
-                          },
-                          "observacion": {
-                            "type": "string",
-                            "example": "Producción del lunes"
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "example": "2026-03-21 08:00:00"
-                          }
-                        }
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "example": 3
-                    },
-                    "pagina": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "limite": {
-                      "type": "integer",
-                      "example": 20
-                    },
-                    "total_paginas": {
-                      "type": "integer",
-                      "example": 1
-                    }
-                  }
-                }
-              }
+          "200": { "description": "Lista paginada de producciones", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "datos": { "type": "array", "items": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 1 }, "producto_id": { "type": "integer", "example": 1 },
+                "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
+                "cantidad": { "type": "integer", "example": 10 },
+                "unidades_sueltas": { "type": "integer", "example": 5, "description": "Unidades sueltas producidas (no en bandeja completa)" },
+                "usuario_id": { "type": "integer", "example": 1 }, "nombre_usuario": { "type": "string", "example": "Carlos Pérez" },
+                "fecha": { "type": "string", "example": "2026-03-21" }, "observacion": { "type": "string", "example": "Producción del lunes" },
+                "created_at": { "type": "string", "example": "2026-03-21 08:00:00" }
+              }}},
+              "total": { "type": "integer", "example": 3 }, "pagina": { "type": "integer", "example": 1 },
+              "limite": { "type": "integer", "example": 20 }, "total_paginas": { "type": "integer", "example": 1 }
             }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          }}}},
+          "401": { "description": "Token inválido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Producciones"
-        ],
-        "summary": "Registrar una producción",
+        "tags": ["Producciones"], "summary": "Registrar una producción",
         "description": "Registra una producción. El trigger trg_produccion_insert aumenta automáticamente el stock_actual en inventario.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["producto_id","cantidad","usuario_id","fecha"],
+          "properties": {
+            "producto_id":      { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
+            "cantidad":         { "type": "integer", "example": 10,           "description": "Bandejas completas. Debe ser mayor a 0" },
+            "unidades_sueltas": { "type": "integer", "example": 5,            "description": "Opcional. Unidades sueltas que no completan una bandeja. Por defecto 0" },
+            "usuario_id":       { "type": "integer", "example": 1,            "description": "Debe existir y estar activo" },
+            "fecha":            { "type": "string",  "example": "20/05/2026", "description": "Formato DD/MM/YYYY" },
+            "observacion":      { "type": "string",  "example": "Producción del lunes", "description": "Opcional" }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "producto_id",
-                  "cantidad",
-                  "usuario_id",
-                  "fecha"
-                ],
-                "properties": {
-                  "producto_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "Debe existir y estar activo"
-                  },
-                  "cantidad": {
-                    "type": "integer",
-                    "example": 10,
-                    "description": "Bandejas completas. Debe ser mayor a 0"
-                  },
-                  "unidades_sueltas": {
-                    "type": "integer",
-                    "example": 5,
-                    "description": "Opcional. Unidades sueltas que no completan una bandeja. Por defecto 0"
-                  },
-                  "usuario_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "Debe existir y estar activo"
-                  },
-                  "fecha": {
-                    "type": "string",
-                    "example": "20/05/2026",
-                    "description": "Formato DD/MM/YYYY"
-                  },
-                  "observacion": {
-                    "type": "string",
-                    "example": "Producción del lunes",
-                    "description": "Opcional"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Producción registrada correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "mensaje": {
-                      "type": "string",
-                      "example": "Producción registrada"
-                    },
-                    "datos": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "integer",
-                          "example": 4
-                        },
-                        "producto_id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "cantidad": {
-                          "type": "integer",
-                          "example": 10
-                        },
-                        "unidades_sueltas": {
-                          "type": "integer",
-                          "example": 5
-                        },
-                        "usuario_id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "fecha": {
-                          "type": "string",
-                          "example": "2026-05-20"
-                        },
-                        "observacion": {
-                          "type": "string",
-                          "example": "Producción del lunes"
-                        },
-                        "created_at": {
-                          "type": "string",
-                          "example": "2026-05-20 08:00:00"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+          "201": { "description": "Producción registrada correctamente", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "mensaje": { "type": "string", "example": "Producción registrada" },
+              "datos": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 4 }, "producto_id": { "type": "integer", "example": 1 },
+                "cantidad": { "type": "integer", "example": 10 }, "unidades_sueltas": { "type": "integer", "example": 5 },
+                "usuario_id": { "type": "integer", "example": 1 }, "fecha": { "type": "string", "example": "2026-05-20" },
+                "observacion": { "type": "string", "example": "Producción del lunes" }, "created_at": { "type": "string", "example": "2026-05-20 08:00:00" }
+              }}
             }
-          },
-          "400": {
-            "description": "Campos faltantes, cantidad <= 0 o formato de fecha incorrecto"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Producto o usuario no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          }}}},
+          "400": { "description": "Campos faltantes, cantidad <= 0 o formato de fecha incorrecto" },
+          "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Producto o usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/producciones/{id}": {
       "get": {
-        "tags": [
-          "Producciones"
-        ],
-        "summary": "Obtener una producción por ID",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Producción encontrada"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Producción no encontrada"
-          }
-        }
+        "tags": ["Producciones"], "summary": "Obtener una producción por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Producción encontrada" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Producción no encontrada" } }
       }
     },
+
     "/ventas/": {
       "get": {
-        "tags": [
-          "Ventas"
-        ],
-        "summary": "Listar todas las ventas",
+        "tags": ["Ventas"], "summary": "Listar todas las ventas",
         "description": "Retorna el listado paginado de ventas. Permite filtrar por corte_id.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
-          {
-            "name": "corte_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            },
-            "description": "Filtra por corte"
-          },
-          {
-            "name": "pagina",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "limite",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 20
-            }
-          }
+          { "name": "corte_id", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 }, "description": "Filtra por corte" },
+          { "name": "pagina",   "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "limite",   "in": "query", "required": false, "schema": { "type": "integer", "example": 20 } }
         ],
         "responses": {
-          "200": {
-            "description": "Lista de ventas obtenida correctamente"
-          },
-          "400": {
-            "description": "Pagina, limite o corte_id invalido"
-          },
-          "401": {
-            "description": "Token invalido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Lista de ventas obtenida correctamente" },
+          "400": { "description": "Pagina, limite o corte_id invalido" },
+          "401": { "description": "Token invalido o no enviado" },
+          "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Ventas"
-        ],
-        "summary": "Registrar una nueva venta",
+        "tags": ["Ventas"], "summary": "Registrar una nueva venta",
         "description": "Crea una nueva venta con su detalle de productos. El total_abonado y saldo_pendiente son calculados automáticamente por los triggers.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "cliente_id",
-                  "corte_id",
-                  "usuario_id",
-                  "fecha_entrega",
-                  "total",
-                  "detalle"
-                ],
-                "properties": {
-                  "cliente_id": {
-                    "type": "integer",
-                    "example": 2
-                  },
-                  "corte_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "usuario_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "fecha_entrega": {
-                    "type": "string",
-                    "example": "25/03/2026",
-                    "description": "Formato DD/MM/YYYY"
-                  },
-                  "total": {
-                    "type": "number",
-                    "example": 40000
-                  },
-                  "detalle": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "producto_id",
-                        "nombre_producto",
-                        "cantidad",
-                        "precio_unitario"
-                      ],
-                      "properties": {
-                        "producto_id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "nombre_producto": {
-                          "type": "string",
-                          "example": "Bandeja de deditos"
-                        },
-                        "cantidad": {
-                          "type": "integer",
-                          "example": 2
-                        },
-                        "precio_unitario": {
-                          "type": "number",
-                          "example": 14000
-                        }
-                      }
-                    }
-                  },
-                  "abono_inicial": {
-                    "type": "object",
-                    "description": "Opcional",
-                    "properties": {
-                      "monto": {
-                        "type": "number",
-                        "example": 20000
-                      },
-                      "medio_pago": {
-                        "type": "string",
-                        "example": "efectivo"
-                      },
-                      "observacion": {
-                        "type": "string",
-                        "example": "pago en caja"
-                      }
-                    }
-                  }
-                }
-              }
-            }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["cliente_id","corte_id","usuario_id","fecha_entrega","total","detalle"],
+          "properties": {
+            "cliente_id":    { "type": "integer", "example": 2 }, "corte_id": { "type": "integer", "example": 1 },
+            "usuario_id":    { "type": "integer", "example": 1 },
+            "fecha_entrega": { "type": "string",  "example": "25/03/2026", "description": "Formato DD/MM/YYYY" },
+            "total":         { "type": "number",  "example": 40000 },
+            "detalle": { "type": "array", "items": { "type": "object", "required": ["producto_id","nombre_producto","cantidad","precio_unitario"], "properties": {
+              "producto_id": { "type": "integer", "example": 1 }, "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
+              "cantidad": { "type": "integer", "example": 2 }, "precio_unitario": { "type": "number", "example": 14000 }
+            }}},
+            "abono_inicial": { "type": "object", "description": "Opcional", "properties": {
+              "monto": { "type": "number", "example": 20000 }, "medio_pago": { "type": "string", "example": "efectivo" }, "observacion": { "type": "string", "example": "pago en caja" }
+            }}
           }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Venta registrada correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes o inválidos"
-          },
-          "404": {
-            "description": "Cliente, corte o usuario no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Venta registrada correctamente" },
+          "400": { "description": "Campos faltantes o inválidos" },
+          "404": { "description": "Cliente, corte o usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/ventas/{id}": {
       "put": {
-        "tags": [
-          "Ventas"
-        ],
-        "summary": "Actualizar una venta",
+        "tags": ["Ventas"], "summary": "Actualizar una venta",
         "description": "Solo si está pendiente. Se envía solo el campo a cambiar.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "content": { "application/json": { "schema": {
+          "type": "object", "properties": {
+            "fecha_entrega": { "type": "string", "example": "30/03/2026" },
+            "total":         { "type": "number", "example": 50000 },
+            "estado":        { "type": "string", "example": "entregada" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "fecha_entrega": {
-                    "type": "string",
-                    "example": "30/03/2026"
-                  },
-                  "total": {
-                    "type": "number",
-                    "example": 50000
-                  },
-                  "estado": {
-                    "type": "string",
-                    "example": "entregada"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Venta actualizada correctamente"
-          },
-          "400": {
-            "description": "Venta no pendiente o datos inválidos"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Venta no encontrada"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Venta actualizada correctamente" },
+          "400": { "description": "Venta no pendiente o datos inválidos" },
+          "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Venta no encontrada" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/ventas/{id}/anulacion": {
       "put": {
-        "tags": [
-          "Ventas"
-        ],
-        "summary": "Anular una venta",
+        "tags": ["Ventas"], "summary": "Anular una venta",
         "description": "Cambia estado a anulada. Activa trigger que devuelve stock. No requiere body.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Venta anulada correctamente"
-          },
-          "400": {
-            "description": "Venta ya anulada, entregada o corte cerrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Venta no encontrada"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Venta anulada correctamente" },
+          "400": { "description": "Venta ya anulada, entregada o corte cerrado" },
+          "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Venta no encontrada" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/ventas/{id}/comprobante": {
       "get": {
-        "tags": [
-          "Ventas"
-        ],
-        "summary": "Generar o consultar comprobante de venta",
+        "tags": ["Ventas"], "summary": "Generar o consultar comprobante de venta",
         "description": "Si la venta no tiene comprobante lo crea. Si ya tiene lo retorna. Formato: COMP-0001.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Comprobante generado o consultado correctamente"
-          },
-          "401": {
-            "description": "Token invalido o no enviado"
-          },
-          "404": {
-            "description": "Venta no encontrada"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Comprobante generado o consultado correctamente" },
+          "401": { "description": "Token invalido o no enviado" },
+          "404": { "description": "Venta no encontrada" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/abonos/": {
       "get": {
-        "tags": [
-          "Abonos"
-        ],
-        "summary": "Listar todos los abonos",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Lista de abonos obtenida correctamente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
-        }
+        "tags": ["Abonos"], "summary": "Listar todos los abonos",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Lista de abonos obtenida correctamente" }, "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" } }
       },
       "post": {
-        "tags": [
-          "Abonos"
-        ],
-        "summary": "Registrar un nuevo abono",
+        "tags": ["Abonos"], "summary": "Registrar un nuevo abono",
         "description": "El trigger trg_abono_insert actualiza automáticamente total_abonado y saldo_pendiente.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["venta_id","corte_id","usuario_id","monto","fecha","medio_pago"],
+          "properties": {
+            "venta_id":    { "type": "integer", "example": 1 }, "corte_id": { "type": "integer", "example": 1 },
+            "usuario_id":  { "type": "integer", "example": 1 }, "monto": { "type": "number", "example": 15000 },
+            "fecha":       { "type": "string",  "example": "21/03/2026", "description": "Formato DD/MM/YYYY" },
+            "observacion": { "type": "string",  "example": "nequi", "description": "Opcional" },
+            "medio_pago":  { "type": "string",  "example": "efectivo", "description": "Valores válidos: efectivo, transferencia, otro" }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "venta_id",
-                  "corte_id",
-                  "usuario_id",
-                  "monto",
-                  "fecha",
-                  "medio_pago"
-                ],
-                "properties": {
-                  "venta_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "corte_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "usuario_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "monto": {
-                    "type": "number",
-                    "example": 15000
-                  },
-                  "fecha": {
-                    "type": "string",
-                    "example": "21/03/2026",
-                    "description": "Formato DD/MM/YYYY"
-                  },
-                  "observacion": {
-                    "type": "string",
-                    "example": "nequi",
-                    "description": "Opcional"
-                  },
-                  "medio_pago": {
-                    "type": "string",
-                    "example": "efectivo",
-                    "description": "Valores válidos: efectivo, transferencia, otro"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Abono registrado correctamente"
-          },
-          "400": {
-            "description": "Datos inválidos o monto supera saldo pendiente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Venta, corte o usuario no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Abono registrado correctamente" },
+          "400": { "description": "Datos inválidos o monto supera saldo pendiente" },
+          "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Venta, corte o usuario no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/abonos/{id}": {
       "put": {
-        "tags": [
-          "Abonos"
-        ],
-        "summary": "Actualizar un abono",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Abonos"], "summary": "Actualizar un abono",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["monto","fecha","medio_pago"],
+          "properties": {
+            "monto": { "type": "number", "example": 20000 }, "fecha": { "type": "string", "example": "22/03/2026" },
+            "observacion": { "type": "string", "example": "Pago transferencia", "description": "Opcional" },
+            "medio_pago": { "type": "string", "example": "efectivo" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "monto",
-                  "fecha",
-                  "medio_pago"
-                ],
-                "properties": {
-                  "monto": {
-                    "type": "number",
-                    "example": 20000
-                  },
-                  "fecha": {
-                    "type": "string",
-                    "example": "22/03/2026"
-                  },
-                  "observacion": {
-                    "type": "string",
-                    "example": "Pago transferencia",
-                    "description": "Opcional"
-                  },
-                  "medio_pago": {
-                    "type": "string",
-                    "example": "efectivo"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Abono actualizado correctamente"
-          },
-          "400": {
-            "description": "Datos inválidos"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Abono no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Abono actualizado correctamente" }, "400": { "description": "Datos inválidos" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Abono no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       },
       "delete": {
-        "tags": [
-          "Abonos"
-        ],
-        "summary": "Eliminar un abono",
+        "tags": ["Abonos"], "summary": "Eliminar un abono",
         "description": "El trigger trg_abono_delete revierte el total_abonado. Solo del corte actual con venta pendiente.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Abono eliminado correctamente"
-          },
-          "400": {
-            "description": "Venta no pendiente o abono fuera del corte actual"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Abono no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Abono eliminado correctamente" },
+          "400": { "description": "Venta no pendiente o abono fuera del corte actual" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Abono no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/cortes/": {
       "get": {
-        "tags": [
-          "Cortes"
-        ],
-        "summary": "Listar todos los cortes",
+        "tags": ["Cortes"], "summary": "Listar todos los cortes",
         "description": "Retorna cortes ordenados por numero ascendente.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Lista de cortes obtenida correctamente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
-        }
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Lista de cortes obtenida correctamente" }, "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" } }
       }
     },
+
     "/cortes/iniciar": {
       "post": {
-        "tags": [
-          "Cortes"
-        ],
-        "summary": "Iniciar primer corte",
+        "tags": ["Cortes"], "summary": "Iniciar primer corte",
         "description": "Solo funciona una vez. Crea corte 1 abierto y corte 2 futuro. No requiere body.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
-          "201": {
-            "description": "Primer corte iniciado correctamente"
-          },
-          "400": {
-            "description": "Ya existen cortes registrados"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Primer corte iniciado correctamente" },
+          "400": { "description": "Ya existen cortes registrados" },
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/cortes/cerrar": {
       "post": {
-        "tags": [
-          "Cortes"
-        ],
-        "summary": "Cerrar corte actual",
+        "tags": ["Cortes"], "summary": "Cerrar corte actual",
         "description": "Cierra el corte abierto y activa el futuro. Calcula saldo heredado. No requiere body.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "Corte cerrado correctamente"
-          },
-          "400": {
-            "description": "No existe corte abierto o futuro"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Corte cerrado correctamente" },
+          "400": { "description": "No existe corte abierto o futuro" },
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/cortes/{id}": {
       "put": {
-        "tags": [
-          "Cortes"
-        ],
-        "summary": "Actualizar estado de un corte",
+        "tags": ["Cortes"], "summary": "Actualizar estado de un corte",
         "description": "Uso administrativo. No usar en flujo normal. No se puede modificar un corte cerrado.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "estado"
-                ],
-                "properties": {
-                  "estado": {
-                    "type": "string",
-                    "example": "futuro",
-                    "description": "Valores válidos: abierto, futuro"
-                  }
-                }
-              }
-            }
-          }
-        },
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["estado"],
+          "properties": { "estado": { "type": "string", "example": "futuro", "description": "Valores válidos: abierto, futuro" } }
+        }}}},
         "responses": {
-          "200": {
-            "description": "Corte actualizado correctamente"
-          },
-          "400": {
-            "description": "Estado inválido o corte ya cerrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Corte no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Corte actualizado correctamente" }, "400": { "description": "Estado inválido o corte ya cerrado" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Corte no encontrado" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/clientes/": {
       "get": {
-        "tags": [
-          "Clientes"
-        ],
-        "summary": "Listar clientes activos",
+        "tags": ["Clientes"], "summary": "Listar clientes activos",
         "description": "Retorna todos los clientes con activo = 1. Soporta paginación opcional.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            },
-            "description": "Número de página (por defecto 1)"
-          },
-          {
-            "name": "per_page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 10
-            },
-            "description": "Resultados por página (por defecto 10)"
-          }
+          { "name": "page",     "in": "query", "required": false, "schema": { "type": "integer", "example": 1  }, "description": "Número de página (por defecto 1)" },
+          { "name": "per_page", "in": "query", "required": false, "schema": { "type": "integer", "example": 10 }, "description": "Resultados por página (por defecto 10)" }
         ],
         "responses": {
-          "200": {
-            "description": "Lista de clientes obtenida correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "total": {
-                      "type": "integer",
-                      "example": 25
-                    },
-                    "page": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "per_page": {
-                      "type": "integer",
-                      "example": 10
-                    },
-                    "datos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "example": 1
-                          },
-                          "nombre": {
-                            "type": "string",
-                            "example": "Juan Rodriguez"
-                          },
-                          "telefono": {
-                            "type": "string",
-                            "example": "3001234567"
-                          },
-                          "direccion": {
-                            "type": "string",
-                            "example": "Calle 10 # 5-20"
-                          },
-                          "email": {
-                            "type": "string",
-                            "example": "juan@correo.com"
-                          },
-                          "activo": {
-                            "type": "integer",
-                            "example": 1
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+          "200": { "description": "Lista de clientes obtenida correctamente", "content": { "application/json": { "schema": {
+            "type": "object", "properties": {
+              "total": { "type": "integer", "example": 25 }, "page": { "type": "integer", "example": 1 }, "per_page": { "type": "integer", "example": 10 },
+              "datos": { "type": "array", "items": { "type": "object", "properties": {
+                "id": { "type": "integer", "example": 1 }, "nombre": { "type": "string", "example": "Juan Rodriguez" },
+                "telefono": { "type": "string", "example": "3001234567" }, "direccion": { "type": "string", "example": "Calle 10 # 5-20" },
+                "email": { "type": "string", "example": "juan@correo.com" }, "activo": { "type": "integer", "example": 1 }
+              }}}
             }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          }}}},
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Clientes"
-        ],
-        "summary": "Registrar un nuevo cliente",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Clientes"], "summary": "Registrar un nuevo cliente",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","telefono","direccion","email"],
+          "properties": {
+            "nombre":    { "type": "string", "example": "Juan Rodriguez" },
+            "telefono":  { "type": "string", "example": "3001234567" },
+            "direccion": { "type": "string", "example": "Calle 10 # 5-20" },
+            "email":     { "type": "string", "example": "juan@correo.com" }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "telefono",
-                  "direccion",
-                  "email"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Juan Rodriguez"
-                  },
-                  "telefono": {
-                    "type": "string",
-                    "example": "3001234567"
-                  },
-                  "direccion": {
-                    "type": "string",
-                    "example": "Calle 10 # 5-20"
-                  },
-                  "email": {
-                    "type": "string",
-                    "example": "juan@correo.com"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Cliente registrado correctamente"
-          },
-          "400": {
-            "description": "Campos inválidos o duplicados"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Cliente registrado correctamente" },
+          "400": { "description": "Campos inválidos o duplicados" },
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/clientes/{id}": {
       "put": {
-        "tags": [
-          "Clientes"
-        ],
-        "summary": "Actualizar un cliente",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Clientes"], "summary": "Actualizar un cliente",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "properties": {
+            "nombre":    { "type": "string", "example": "Juan Rodriguez" }, "telefono": { "type": "string", "example": "3009876543" },
+            "direccion": { "type": "string", "example": "Carrera 5 # 10-30" }, "email": { "type": "string", "example": "juanr@correo.com" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Juan Rodriguez"
-                  },
-                  "telefono": {
-                    "type": "string",
-                    "example": "3009876543"
-                  },
-                  "direccion": {
-                    "type": "string",
-                    "example": "Carrera 5 # 10-30"
-                  },
-                  "email": {
-                    "type": "string",
-                    "example": "juanr@correo.com"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Cliente actualizado correctamente"
-          },
-          "400": {
-            "description": "Sin cambios o datos inválidos"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Cliente no encontrado"
-          }
+          "200": { "description": "Cliente actualizado correctamente" }, "400": { "description": "Sin cambios o datos inválidos" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Cliente no encontrado" }
         }
       },
       "delete": {
-        "tags": [
-          "Clientes"
-        ],
-        "summary": "Desactivar un cliente (soft delete)",
+        "tags": ["Clientes"], "summary": "Desactivar un cliente (soft delete)",
         "description": "Pone activo = 0.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Cliente desactivado correctamente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Cliente no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Cliente desactivado correctamente" }, "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Cliente no encontrado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/combos/": {
       "get": {
-        "tags": [
-          "Combos"
-        ],
-        "summary": "Listar combos activos",
+        "tags": ["Combos"], "summary": "Listar combos activos",
         "description": "Retorna todos los combos con activo = 1, incluyendo sus productos asociados.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "Lista de combos obtenida correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "nombre": {
-                        "type": "string",
-                        "example": "Combo Familiar"
-                      },
-                      "descripcion": {
-                        "type": "string",
-                        "example": "2 bandejas de deditos + 1 bandeja de empanadas"
-                      },
-                      "precio_venta": {
-                        "type": "number",
-                        "example": 35000
-                      },
-                      "activo": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "productos": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "producto_id": {
-                              "type": "integer",
-                              "example": 1
-                            },
-                            "nombre_producto": {
-                              "type": "string",
-                              "example": "Bandeja de deditos"
-                            },
-                            "cantidad": {
-                              "type": "integer",
-                              "example": 2
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Lista de combos obtenida correctamente", "content": { "application/json": { "schema": {
+            "type": "array", "items": { "type": "object", "properties": {
+              "id": { "type": "integer", "example": 1 }, "nombre": { "type": "string", "example": "Combo Familiar" },
+              "descripcion": { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
+              "precio_venta": { "type": "number", "example": 35000 }, "activo": { "type": "integer", "example": 1 },
+              "productos": { "type": "array", "items": { "type": "object", "properties": {
+                "producto_id": { "type": "integer", "example": 1 }, "nombre_producto": { "type": "string", "example": "Bandeja de deditos" },
+                "cantidad": { "type": "integer", "example": 2 }
+              }}}
+            }}
+          }}}},
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Combos"
-        ],
-        "summary": "Registrar un nuevo combo",
+        "tags": ["Combos"], "summary": "Registrar un nuevo combo",
         "description": "Crea un nuevo combo con sus productos asociados.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","descripcion","precio_venta","productos"],
+          "properties": {
+            "nombre":       { "type": "string", "example": "Combo Familiar" },
+            "descripcion":  { "type": "string", "example": "2 bandejas de deditos + 1 bandeja de empanadas" },
+            "precio_venta": { "type": "number", "example": 35000 },
+            "productos": { "type": "array", "items": { "type": "object", "required": ["producto_id","cantidad"], "properties": {
+              "producto_id": { "type": "integer", "example": 1 }, "cantidad": { "type": "integer", "example": 2 }
+            }}}
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "descripcion",
-                  "precio_venta",
-                  "productos"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Combo Familiar"
-                  },
-                  "descripcion": {
-                    "type": "string",
-                    "example": "2 bandejas de deditos + 1 bandeja de empanadas"
-                  },
-                  "precio_venta": {
-                    "type": "number",
-                    "example": 35000
-                  },
-                  "productos": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "producto_id",
-                        "cantidad"
-                      ],
-                      "properties": {
-                        "producto_id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "cantidad": {
-                          "type": "integer",
-                          "example": 2
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Combo registrado correctamente"
-          },
-          "400": {
-            "description": "Campos inválidos, productos vacíos o nombre duplicado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Combo registrado correctamente" },
+          "400": { "description": "Campos inválidos, productos vacíos o nombre duplicado" },
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/combos/{id}": {
       "put": {
-        "tags": [
-          "Combos"
-        ],
-        "summary": "Actualizar un combo",
+        "tags": ["Combos"], "summary": "Actualizar un combo",
         "description": "Actualiza los datos del combo. Si se envía productos, reemplaza toda la lista.",
-        "security": [
-          {
-            "BearerAuth": []
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "properties": {
+            "nombre": { "type": "string", "example": "Combo Familiar Grande" },
+            "descripcion": { "type": "string", "example": "3 bandejas de deditos + 1 bandeja de empanadas" },
+            "precio_venta": { "type": "number", "example": 45000 },
+            "productos": { "type": "array", "items": { "type": "object", "properties": {
+              "producto_id": { "type": "integer", "example": 1 }, "cantidad": { "type": "integer", "example": 3 }
+            }}}
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Combo Familiar Grande"
-                  },
-                  "descripcion": {
-                    "type": "string",
-                    "example": "3 bandejas de deditos + 1 bandeja de empanadas"
-                  },
-                  "precio_venta": {
-                    "type": "number",
-                    "example": 45000
-                  },
-                  "productos": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "producto_id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "cantidad": {
-                          "type": "integer",
-                          "example": 3
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Combo actualizado correctamente"
-          },
-          "400": {
-            "description": "Datos inválidos o sin cambios"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Combo no encontrado"
-          }
+          "200": { "description": "Combo actualizado correctamente" }, "400": { "description": "Datos inválidos o sin cambios" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Combo no encontrado" }
         }
       },
       "delete": {
-        "tags": [
-          "Combos"
-        ],
-        "summary": "Desactivar un combo (soft delete)",
+        "tags": ["Combos"], "summary": "Desactivar un combo (soft delete)",
         "description": "Pone activo = 0.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Combo desactivado correctamente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Combo no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Combo desactivado correctamente" }, "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Combo no encontrado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/proveedores/": {
       "get": {
-        "tags": [
-          "Proveedores"
-        ],
-        "summary": "Listar proveedores activos",
+        "tags": ["Proveedores"], "summary": "Listar proveedores activos",
         "description": "Retorna todos los proveedores con activo = 1.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "Lista de proveedores obtenida correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "nombre": {
-                        "type": "string",
-                        "example": "Distribuidora XYZ"
-                      },
-                      "telefono": {
-                        "type": "string",
-                        "example": "3109876543"
-                      },
-                      "direccion": {
-                        "type": "string",
-                        "example": "Carrera 5 #10-20"
-                      },
-                      "email": {
-                        "type": "string",
-                        "example": "contacto@xyz.com"
-                      },
-                      "activo": {
-                        "type": "integer",
-                        "example": 1
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Lista de proveedores obtenida correctamente", "content": { "application/json": { "schema": {
+            "type": "array", "items": { "type": "object", "properties": {
+              "id": { "type": "integer", "example": 1 }, "nombre": { "type": "string", "example": "Distribuidora XYZ" },
+              "telefono": { "type": "string", "example": "3109876543" }, "direccion": { "type": "string", "example": "Carrera 5 #10-20" },
+              "email": { "type": "string", "example": "contacto@xyz.com" }, "activo": { "type": "integer", "example": 1 }
+            }}
+          }}}},
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       },
       "post": {
-        "tags": [
-          "Proveedores"
-        ],
-        "summary": "Registrar un nuevo proveedor",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Proveedores"], "summary": "Registrar un nuevo proveedor",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","telefono","direccion","email"],
+          "properties": {
+            "nombre":    { "type": "string", "example": "Distribuidora XYZ" },
+            "telefono":  { "type": "string", "example": "3109876543" },
+            "direccion": { "type": "string", "example": "Carrera 5 #10-20" },
+            "email":     { "type": "string", "example": "contacto@xyz.com", "description": "Debe tener formato de correo válido. No puede repetirse." }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "telefono",
-                  "direccion",
-                  "email"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Distribuidora XYZ"
-                  },
-                  "telefono": {
-                    "type": "string",
-                    "example": "3109876543"
-                  },
-                  "direccion": {
-                    "type": "string",
-                    "example": "Carrera 5 #10-20"
-                  },
-                  "email": {
-                    "type": "string",
-                    "example": "contacto@xyz.com",
-                    "description": "Debe tener formato de correo válido. No puede repetirse."
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "201": {
-            "description": "Proveedor registrado correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes, vacíos o email sin formato válido"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "409": {
-            "description": "Ya existe un proveedor con ese email"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "201": { "description": "Proveedor registrado correctamente" },
+          "400": { "description": "Campos faltantes, vacíos o email sin formato válido" },
+          "401": { "description": "Token inválido o no enviado" },
+          "409": { "description": "Ya existe un proveedor con ese email" },
+          "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/proveedores/{id}": {
       "get": {
-        "tags": [
-          "Proveedores"
-        ],
-        "summary": "Obtener un proveedor por ID",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Proveedor encontrado"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Proveedor no encontrado"
-          }
-        }
+        "tags": ["Proveedores"], "summary": "Obtener un proveedor por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Proveedor encontrado" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Proveedor no encontrado" } }
       },
       "put": {
-        "tags": [
-          "Proveedores"
-        ],
-        "summary": "Actualizar un proveedor",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Proveedores"], "summary": "Actualizar un proveedor",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["nombre","telefono","direccion","email","activo"],
+          "properties": {
+            "nombre":    { "type": "string",  "example": "Distribuidora ABC" }, "telefono": { "type": "string", "example": "3001112222" },
+            "direccion": { "type": "string",  "example": "Calle 50 #30-40" },  "email":    { "type": "string", "example": "nuevo@abc.com" },
+            "activo":    { "type": "integer", "example": 1, "description": "0 o 1" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "nombre",
-                  "telefono",
-                  "direccion",
-                  "email",
-                  "activo"
-                ],
-                "properties": {
-                  "nombre": {
-                    "type": "string",
-                    "example": "Distribuidora ABC"
-                  },
-                  "telefono": {
-                    "type": "string",
-                    "example": "3001112222"
-                  },
-                  "direccion": {
-                    "type": "string",
-                    "example": "Calle 50 #30-40"
-                  },
-                  "email": {
-                    "type": "string",
-                    "example": "nuevo@abc.com"
-                  },
-                  "activo": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "0 o 1"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Proveedor actualizado correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes, email inválido o activo fuera de rango"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Proveedor no encontrado"
-          },
-          "409": {
-            "description": "Ya existe otro proveedor con ese email"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Proveedor actualizado correctamente" },
+          "400": { "description": "Campos faltantes, email inválido o activo fuera de rango" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Proveedor no encontrado" },
+          "409": { "description": "Ya existe otro proveedor con ese email" }, "500": { "description": "Error interno del servidor" }
         }
       },
       "delete": {
-        "tags": [
-          "Proveedores"
-        ],
-        "summary": "Desactivar un proveedor (soft delete)",
+        "tags": ["Proveedores"], "summary": "Desactivar un proveedor (soft delete)",
         "description": "Pone activo = 0.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Proveedor eliminado correctamente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Proveedor no encontrado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Proveedor eliminado correctamente" }, "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Proveedor no encontrado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
     "/api/compras/": {
       "get": {
-        "tags": [
-          "Compras"
-        ],
-        "summary": "Listar todas las compras",
+        "tags": ["Compras"], "summary": "Listar todas las compras",
         "description": "Retorna todas las compras con eliminada = 0, ordenadas por fecha descendente.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "Lista de compras obtenida correctamente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "proveedor_id": {
-                        "type": "integer",
-                        "example": 2
-                      },
-                      "corte_id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "usuario_id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "fecha": {
-                        "type": "string",
-                        "example": "2026-03-21"
-                      },
-                      "total": {
-                        "type": "number",
-                        "example": 150000.0
-                      },
-                      "descripcion": {
-                        "type": "string",
-                        "example": "Compra de insumos semana 12"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Compras"
-        ],
-        "summary": "Registrar una nueva compra",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "proveedor_id",
-                  "corte_id",
-                  "usuario_id",
-                  "fecha",
-                  "total"
-                ],
-                "properties": {
-                  "proveedor_id": {
-                    "type": "integer",
-                    "example": 2,
-                    "description": "Debe existir y estar activo"
-                  },
-                  "corte_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "Debe existir"
-                  },
-                  "usuario_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "Debe existir y estar activo"
-                  },
-                  "fecha": {
-                    "type": "string",
-                    "example": "2026-03-21",
-                    "description": "Fecha de la compra"
-                  },
-                  "total": {
-                    "type": "number",
-                    "example": 150000,
-                    "description": "Debe ser mayor a 0"
-                  },
-                  "descripcion": {
-                    "type": "string",
-                    "example": "Compra de insumos semana 12",
-                    "description": "Opcional"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Compra registrada correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes, total <= 0 o tipo de dato inválido"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "409": {
-            "description": "Proveedor, corte o usuario no existe o no está activo"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Lista de compras obtenida correctamente", "content": { "application/json": { "schema": {
+            "type": "array", "items": { "type": "object", "properties": {
+              "id": { "type": "integer", "example": 1 }, "proveedor_id": { "type": "integer", "example": 2 },
+              "corte_id": { "type": "integer", "example": 1 }, "usuario_id": { "type": "integer", "example": 1 },
+              "fecha": { "type": "string", "example": "2026-03-21" }, "total": { "type": "number", "example": 150000.0 },
+              "descripcion": { "type": "string", "example": "Compra de insumos semana 12" }
+            }}
+          }}}},
+          "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
+
+    "/cortes/iniciar": {
+      "post": {
+        "tags": ["Compras"], "summary": "Registrar una nueva compra",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["proveedor_id","corte_id","usuario_id","fecha","total"],
+          "properties": {
+            "proveedor_id": { "type": "integer", "example": 2,           "description": "Debe existir y estar activo" },
+            "corte_id":     { "type": "integer", "example": 1,           "description": "Debe existir" },
+            "usuario_id":   { "type": "integer", "example": 1,           "description": "Debe existir y estar activo" },
+            "fecha":        { "type": "string",  "example": "2026-03-21","description": "Fecha de la compra" },
+            "total":        { "type": "number",  "example": 150000,      "description": "Debe ser mayor a 0" },
+            "descripcion":  { "type": "string",  "example": "Compra de insumos semana 12", "description": "Opcional" }
+          }
+        }}}},
+        "responses": {
+          "201": { "description": "Compra registrada correctamente" },
+          "400": { "description": "Campos faltantes, total <= 0 o tipo de dato inválido" },
+          "401": { "description": "Token inválido o no enviado" },
+          "409": { "description": "Proveedor, corte o usuario no existe o no está activo" },
+          "500": { "description": "Error interno del servidor" }
+        }
+      }
+    },
+
     "/api/compras/{id}": {
       "get": {
-        "tags": [
-          "Compras"
-        ],
-        "summary": "Obtener una compra por ID",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Compra encontrada"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Compra no encontrada"
-          }
-        }
+        "tags": ["Compras"], "summary": "Obtener una compra por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "responses": { "200": { "description": "Compra encontrada" }, "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Compra no encontrada" } }
       },
       "put": {
-        "tags": [
-          "Compras"
-        ],
-        "summary": "Actualizar una compra",
-        "security": [
-          {
-            "BearerAuth": []
+        "tags": ["Compras"], "summary": "Actualizar una compra",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["proveedor_id","corte_id","usuario_id","fecha","total"],
+          "properties": {
+            "proveedor_id": { "type": "integer", "example": 2 }, "corte_id": { "type": "integer", "example": 1 },
+            "usuario_id":   { "type": "integer", "example": 1 }, "fecha": { "type": "string", "example": "2026-03-22" },
+            "total":        { "type": "number",  "example": 200000 }, "descripcion": { "type": "string", "example": "Compra corregida", "description": "Opcional" }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "proveedor_id",
-                  "corte_id",
-                  "usuario_id",
-                  "fecha",
-                  "total"
-                ],
-                "properties": {
-                  "proveedor_id": {
-                    "type": "integer",
-                    "example": 2
-                  },
-                  "corte_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "usuario_id": {
-                    "type": "integer",
-                    "example": 1
-                  },
-                  "fecha": {
-                    "type": "string",
-                    "example": "2026-03-22"
-                  },
-                  "total": {
-                    "type": "number",
-                    "example": 200000
-                  },
-                  "descripcion": {
-                    "type": "string",
-                    "example": "Compra corregida",
-                    "description": "Opcional"
-                  }
-                }
-              }
-            }
-          }
-        },
+        }}}},
         "responses": {
-          "200": {
-            "description": "Compra actualizada correctamente"
-          },
-          "400": {
-            "description": "Campos faltantes o inválidos"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Compra no encontrada"
-          },
-          "409": {
-            "description": "Proveedor, corte o usuario no existe o no está activo"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Compra actualizada correctamente" }, "400": { "description": "Campos faltantes o inválidos" },
+          "401": { "description": "Token inválido o no enviado" }, "404": { "description": "Compra no encontrada" },
+          "409": { "description": "Proveedor, corte o usuario no existe o no está activo" }, "500": { "description": "Error interno del servidor" }
         }
       },
       "delete": {
-        "tags": [
-          "Compras"
-        ],
-        "summary": "Eliminar una compra (soft delete)",
+        "tags": ["Compras"], "summary": "Eliminar una compra (soft delete)",
         "description": "Pone eliminada = 1. La compra no se borra físicamente.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }],
         "responses": {
-          "200": {
-            "description": "Compra eliminada correctamente"
-          },
-          "401": {
-            "description": "Token inválido o no enviado"
-          },
-          "404": {
-            "description": "Compra no encontrada"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          }
+          "200": { "description": "Compra eliminada correctamente" }, "401": { "description": "Token inválido o no enviado" },
+          "404": { "description": "Compra no encontrada" }, "500": { "description": "Error interno del servidor" }
         }
       }
     },
