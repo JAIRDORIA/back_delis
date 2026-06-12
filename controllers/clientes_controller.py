@@ -53,14 +53,8 @@ def get_cliente_por_id(id):
 
 #@jwt_required()
 def cntRegistrar():
-    """
-    Registrar un nuevo cliente (RF10)
-    ---
-    tags: [Clientes]
-    security: [{ Bearer: [] }]
-    """
-    # 1. Validar campos requeridos
-    requeridos = ["nombre", "telefono", "direccion", "email"]
+    # 1. Validar campos requeridos (email ya no es obligatorio)
+    requeridos = ["nombre", "telefono", "direccion"]
     if not request.json:
         return jsonify({"mensaje": "No se recibió información en formato JSON"}), 400
         
@@ -68,26 +62,27 @@ def cntRegistrar():
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
 
-    # 2. Extraer y limpiar datos (Sanitización)
-    nombre = str(request.json["nombre"]).strip()
-    telefono = str(request.json["telefono"]).strip()
-    direccion = str(request.json["direccion"]).strip()
-    email = str(request.json["email"]).strip()
+    # 2. Extraer y limpiar datos
+    nombre = str(request.json.get("nombre", "")).strip()
+    telefono = str(request.json.get("telefono", "")).strip()
+    direccion = str(request.json.get("direccion", "")).strip()
+    email = request.json.get("email", None)
+    if email is not None:
+        email = str(email).strip()
 
-    # 3. Validar que no estén vacíos
-    if not nombre or not telefono or not direccion or not email:
-        return jsonify({"mensaje": "Todos los campos son obligatorios"}), 400
+    # 3. Validar que los obligatorios no estén vacíos
+    if not nombre or not telefono or not direccion:
+        return jsonify({"mensaje": "Nombre, teléfono y dirección son obligatorios"}), 400
 
-    # 4. Validar formato de Email (Regex)
-    regex_email = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
-    if not re.match(regex_email, email.lower()):
-        return jsonify({"mensaje": "El formato del correo electrónico no es válido"}), 400
+    # 4. Validar email solo si se envió y no está vacío
+    if email:
+        regex_email = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
+        if not re.match(regex_email, email.lower()):
+            return jsonify({"mensaje": "El formato del correo electrónico no es válido"}), 400
+        if existe_email(email):
+            return jsonify({"mensaje": "Este correo ya se encuentra registrado"}), 400
 
-    # 5. Validar si el email ya existe (Unicidad)
-    if existe_email(email):
-        return jsonify({"mensaje": "Este correo ya se encuentra registrado"}), 400
-
-    # 6. Llamar al servicio
+    # 5. Llamar al servicio
     resultado = crear_clientes(nombre, telefono, direccion, email)
     
     if isinstance(resultado, tuple):
@@ -124,13 +119,19 @@ def cntActualizar(id):
     nombre = str(request.json.get("nombre", "")).strip()
     telefono = str(request.json.get("telefono", "")).strip()
     direccion = str(request.json.get("direccion", "")).strip()
-    email = str(request.json.get("email", "")).strip()
+    
+    # Email opcional
+    email = request.json.get("email")
+    if email is not None:
+        email = str(email).strip()
+        if not email:          # si es cadena vacía
+            email = None
 
-    if not nombre or not email:
-        return jsonify({"mensaje": "Nombre y Email son obligatorios"}), 400
+    if not nombre:
+        return jsonify({"mensaje": "El nombre es obligatorio"}), 400
 
-    # Validar Email duplicado (excluyendo al ID actual)
-    if existe_email(email, excluir_id=id):
+    # Validar duplicado solo si se proporcionó un email
+    if email and existe_email(email, excluir_id=id):
         return jsonify({"mensaje": "El correo ya pertenece a otro cliente"}), 400
 
     resultado = service_actualizar_cliente(id, nombre, telefono, direccion, email)
