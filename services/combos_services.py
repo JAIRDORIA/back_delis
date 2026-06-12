@@ -47,18 +47,23 @@ def listado_combos(page, per_page):
         "per_page": per_page
     }
 
-def existe_combo(nombre, excluir_id=None):
-    """
-    Verifica duplicados de nombre, permitiendo excluir un ID en caso de edición.
-    """
+def existe_combo(nombre, solo_activos=True, excluir_id=None):
     c = current_app.mysql.connection.cursor()
-    if excluir_id:
-        sql = "SELECT id FROM combos WHERE nombre = %s AND id != %s"
-        c.execute(sql, (nombre, excluir_id))
-    else:
-        sql = "SELECT id FROM combos WHERE nombre = %s"
-        c.execute(sql, (nombre,))
-    return c.fetchone() is not None
+    
+    sql = "SELECT id FROM combos WHERE nombre = %s"
+    params = [nombre]
+    
+    if solo_activos:
+        sql += " AND activo = 1"
+    
+    if excluir_id is not None:
+        sql += " AND id != %s"
+        params.append(excluir_id)
+    
+    c.execute(sql, params)
+    resultado = c.fetchone()
+    c.close()
+    return resultado is not None
 
 def obtener_combo_id(id):
     """
@@ -87,9 +92,9 @@ def obtener_combo_id(id):
     return None
 
 def crear_combo(nombre, precio, productos):
-    
-    if existe_combo(nombre):
-        return {"error": f"Ya existe un combo con el nombre '{nombre}'"}, 400
+    # Solo verifica combos activos
+    if existe_combo(nombre, solo_activos=True):
+        return {"error": f"Ya existe un combo activo con el nombre '{nombre}'"}, 400
 
     c = current_app.mysql.connection.cursor()
 
@@ -147,9 +152,10 @@ def crear_combo(nombre, precio, productos):
     }
 
 def actualizar_combos(id, nombre, descripcion, precio):
-    """
-    Permite editar la información de los productos (RF22).
-    """
+    # Verifica que no exista otro combo activo con el mismo nombre
+    if existe_combo(nombre, solo_activos=True, excluir_id=id):
+        return {"error": f"Ya existe otro combo activo con el nombre '{nombre}'"}, 400
+
     c = current_app.mysql.connection.cursor()
     sql = """UPDATE combos 
              SET nombre=%s, descripcion=%s, precio=%s, updated_at=NOW() 
