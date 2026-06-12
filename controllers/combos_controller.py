@@ -117,8 +117,8 @@ def cntActualizarCombo(id):
     descripcion = str(request.json.get("descripcion", "")).strip()
     precio = request.json.get("precio")
 
-    if not nombre or not descripcion or precio is None:
-        return jsonify({"mensaje": "Nombre, descripción y precio son obligatorios"}), 400
+    if not nombre or   precio is None:
+        return jsonify({"mensaje": "Nombres, descripción y precio son obligatorios"}), 400
 
     try:
         precio_num = float(precio)

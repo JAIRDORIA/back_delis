@@ -26,7 +26,7 @@ def top():
     return cntClientesTop()
 
 @clientes_bp.route('/<int:id>', methods=['PUT'])
-@token_requerido
+#@token_requerido
 def actualizar_cliente(id):
     return cntActualizar(id)
 

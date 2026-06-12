@@ -1,7 +1,7 @@
 from flask import current_app
 from models.venta_model import Ventas
 from datetime import datetime
-
+import math
 
 def listado_ventas(pagina=1, limite=20, corte_id=None):
     offset = (pagina - 1) * limite
@@ -205,7 +205,66 @@ def obtener_venta_detalle(id):
         ]
     }
     
+def descontar_inventario_combo(combo_id, cantidad_combos, c):
+        
+    # traer productos del combo
+        c = current_app.mysql.connection.cursor()
+    
+        c.execute("""
+        SELECT cd.producto_id, cd.cantidad_unidades,
+               p.unidades_por_bandeja
+        FROM combo_detalle cd
+        JOIN productos p ON p.id = cd.producto_id
+        WHERE cd.combo_id = %s
+        """, (combo_id,))
+        productos = c.fetchall()
 
+        for producto in productos:
+            
+            producto_id          = producto[0]
+            unidades_necesarias  = producto[1] * cantidad_combos
+            unidades_por_bandeja = producto[2]
+
+        # traer inventario actual
+        c.execute("""
+            SELECT stock_actual, unidades_sueltas
+            FROM inventario WHERE producto_id = %s
+        """, (producto_id,))
+        inv = c.fetchone()
+
+        if inv:
+            stock_actual     = inv[0]
+            unidades_sueltas = inv[1]
+        else:
+            stock_actual     = 0
+            unidades_sueltas = 0
+
+        # calcular total disponible en unidades
+        total_disponible = (stock_actual * unidades_por_bandeja) + unidades_sueltas
+
+        # restar unidades necesarias (puede quedar negativo RF18)
+        total_restante = total_disponible - unidades_necesarias
+
+        # calcular nuevas bandejas y sueltas
+        
+        nuevas_bandejas = math.floor(total_restante / unidades_por_bandeja)
+        nuevas_sueltas  = total_restante % unidades_por_bandeja
+
+        # actualizar inventario
+        if inv:
+            c.execute("""
+                UPDATE inventario
+                SET stock_actual     = %s,
+                    unidades_sueltas = %s
+                WHERE producto_id = %s
+            """, (nuevas_bandejas, nuevas_sueltas, producto_id))
+        else:
+            c.execute("""
+                INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
+                VALUES (%s, %s, %s)
+            """, (producto_id, nuevas_bandejas, nuevas_sueltas))  
+            
+            
 def registro(cliente_id, corte_id, usuario_id,
              fecha_entrega, total, detalle, abono_inicial=None):
     c = current_app.mysql.connection.cursor()
@@ -221,18 +280,34 @@ def registro(cliente_id, corte_id, usuario_id,
 
     # 2. insertar cada producto del detalle
     for item in detalle:
+        es_combo = 1 if item.get("tipo") == "combo" else 0
+        combo_id = item.get("combo_id", None)
+
         c.execute("""
-            INSERT INTO venta_detalle (venta_id, producto_id,
-                                       nombre_producto, cantidad,
-                                       precio_unitario)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
+                                       cantidad, precio_unitario, es_combo, combo_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
             venta_id,
-            item["producto_id"],
+            item.get("producto_id"),
             item["nombre_producto"],
             item["cantidad"],
-            item["precio_unitario"]
+            item["precio_unitario"],
+            es_combo,
+            combo_id
         ))
+
+        # si es combo descontar inventario con lógica de unidades y sueltas
+        if es_combo:
+            descontar_inventario_combo(
+                item["combo_id"],
+                item["cantidad"],
+                c
+            )
+    
+    
+          
+
 
     # 3. insertar abono inicial si el cliente pago algo
     if abono_inicial and abono_inicial.get("monto", 0) > 0:
