@@ -22,7 +22,7 @@ def actualizar_detalle(id):
     return cntActualizarDetalle(id)
 
 @ventas_bp.route('/', methods = ["POST"])
-@token_requerido
+#@token_requerido
 def registro():
     return cntregistrar()
 
