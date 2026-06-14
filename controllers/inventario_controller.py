@@ -75,7 +75,6 @@ def cntActualizar(id):
     if not inventario_actual:
         return jsonify({"mensaje": "Inventario no encontrado"}), 404
 
-    # verificar si hay cambio real
     if stock_minimo == inventario_actual["stock_minimo"]:
         return jsonify({"mensaje": "No hay cambios para actualizar"}), 400
 
