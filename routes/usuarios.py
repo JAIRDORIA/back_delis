@@ -28,7 +28,7 @@ def login():
     return login_post()
 
 @usuarios_bp.route('/')
-#@token_requerido
+@token_requerido
 def listado():  
     return cntListado()
 
@@ -38,17 +38,17 @@ def registro():
     return cntRegistro()
 
 @usuarios_bp.route('/<int:id>', methods=["DELETE"])
-#@token_requerido
+@token_requerido
 def eliminar(id):
     return cntEliminar(id)
 
 @usuarios_bp.route('/<int:id>', methods=["PUT"])
-#@token_requerido
+@token_requerido
 def actualizar(id):
     return cntActualizar(id)
 
 @usuarios_bp.route('/<int:id>', methods=["GET"])
-#@token_requerido
+@token_requerido
 def obtener_usuario(id):
     return obtenerUsuario(id)
 
