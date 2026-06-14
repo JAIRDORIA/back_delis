@@ -56,7 +56,6 @@ def registro(producto_id):
     c.close()
     return inventarios(id, producto_id, 0, 0, 5, None).toDic()
 
-
 def existe_inventario(producto_id):
     c = current_app.mysql.connection.cursor()
     sql = "SELECT id FROM inventario WHERE producto_id = %s"
@@ -64,7 +63,6 @@ def existe_inventario(producto_id):
     dato = c.fetchone()
     c.close()
     return dato is not None
-
 
 def obtener_inventario(id):
     c = current_app.mysql.connection.cursor()
@@ -87,8 +85,7 @@ def obtener_inventario(id):
             "stock_minimo"    : inventario[5],
             "updated_at"      : str(inventario[6]) if inventario[6] else None
         }
-    return None  # ← esto faltaba antes
-
+    return None  
 
 def actualizar_stock_minimo(id, stock_minimo):
     c = current_app.mysql.connection.cursor()

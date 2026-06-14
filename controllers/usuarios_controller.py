@@ -25,14 +25,12 @@ def cntListado():
         return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
-    #validar en la peticion(body) atributos requeridos
     requeridos = ['nombre', 'username', 'password', 'rol']
 
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
     
-    #Validar que no existan campos vacios en los requeridos
     vacios = []
     for clave in request.json:
         if str(request.json[clave]).strip() == "":
@@ -50,7 +48,6 @@ def cntRegistro():
     if existe_username(username):
         return jsonify({"mensaje": "El username ya existe"}), 400
 
-    #validar campos 
     if len(nombre) < 3 or len(nombre) > 100:
         return jsonify({"mensaje": "El nombre debe tener entre 3 y 100 caracteres"}), 400
     
@@ -198,7 +195,7 @@ def obtenerUsuario(id):
 def login_post():
     data = request.get_json()
     username = data.get('username')
-    password = data.get('password')  # Contraseña en texto plano
+    password = data.get('password')
 
     if not username or not password:
         return jsonify({"error": "Faltan credenciales"}), 400
@@ -211,7 +208,7 @@ def login_post():
     return jsonify({
         "access_token": token,
         "token_type": "bearer",
-        "usuario": usuario      # opcional, para que el front sepa el rol/nombre
+        "usuario": usuario    
     }), 200
 
 
@@ -221,45 +218,37 @@ def cntPrimerAdmin():
     Solo funciona si no existe ningún admin en la BD.
     No requiere token JWT.
     """
-    # 1. Verificar que no exista ya un admin
     if existe_admin():
         return jsonify({
             "mensaje": "Ya existe un administrador registrado. Use el login normal."
         }), 403
-    
-    # 2. Validar campos requeridos
+
     requeridos = ['nombre', 'username', 'password', 'rol']
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
     
-    # 3. Validar campos vacíos
     vacios = []
     for clave in requeridos:
         if str(request.json.get(clave, '')).strip() == '':
             vacios.append(clave)
     if vacios:
         return jsonify({"mensaje": f"Los siguientes campos no pueden estar vacíos: {vacios}"}), 400
-    
-    # 4. Obtener datos
+
     nombre = request.json['nombre'].strip()
     username = request.json['username'].strip()
     password = request.json['password']
     rol = request.json['rol']
-    
-    # 5. Validar que el rol sea admin (no permitir crear cajero en setup)
+
     if rol != 'admin':
         return jsonify({"mensaje": "El primer usuario debe ser administrador"}), 400
-    
-    # 6. Validar formato de nombre
+
     if len(nombre) < 3 or len(nombre) > 100:
         return jsonify({"mensaje": "El nombre debe tener entre 3 y 100 caracteres"}), 400
     
     if not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', nombre):
         return jsonify({"mensaje": "El nombre solo puede contener letras"}), 400
     
-    # 7. Validar username
-
     if username.isdigit(): 
         return jsonify({"mensaje": "El username no puede contener solo números"}), 400
     
@@ -268,15 +257,16 @@ def cntPrimerAdmin():
     
     if existe_username(username):
         return jsonify({"mensaje": "El username ya existe"}), 400
-    
-    # 8. Validar contraseña
+
     if len(password) < 8 or len(password) > 50:
         return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
-    
-    # 9. Hashear contraseña
+
+    patron_password = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,50}$'
+    if not re.match(patron_password, password):
+       return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
+
     password_hash = hashear_password(password)
-    
-    # 10. Registrar usuario
+
     try:
         usuario = registro(
             nombre=nombre,
@@ -317,8 +307,11 @@ def cntCambiarPasswordMaestra():
 
     if not username or not nueva_password:
         return jsonify({"mensaje": "Faltan campos requeridos"}), 400
+    
+    if len(nueva_password) < 8 or len(nueva_password) > 50:
+        return jsonify({"mensaje": "La contraseña debe tener entre 8 y 50 caracteres"}), 400
 
-    patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,128}$'
+    patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,50}$'
     if not re.match(patron, nueva_password):
         return jsonify({"mensaje": "La contraseña debe tener mayúscula, minúscula, número y carácter especial"}), 400
 
