@@ -269,12 +269,17 @@ def registro(cliente_id, corte_id, usuario_id,
              fecha_entrega, total, detalle, abono_inicial=None):
     c = current_app.mysql.connection.cursor()
 
-    # 1. insertar la venta
+    # obtener nombre del cliente
+    c.execute("SELECT nombre FROM clientes WHERE id = %s", (cliente_id,))
+    cliente = c.fetchone()
+    nombre_cliente = cliente[0] if cliente else ''
+
+    # 1. insertar la venta (ahora con nombre_cliente)
     c.execute("""
         INSERT INTO ventas (cliente_id, corte_id, usuario_id,
-                            fecha_entrega, total)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (cliente_id, corte_id, usuario_id, fecha_entrega, total))
+                            fecha_entrega, total, nombre_cliente)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (cliente_id, corte_id, usuario_id, fecha_entrega, total, nombre_cliente))
 
     venta_id = c.lastrowid
 
