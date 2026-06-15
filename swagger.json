@@ -943,7 +943,7 @@
       }
     },
 
-    "/api/compras/": {
+    "/api/compras": {
       "get": {
         "tags": ["Compras"], "summary": "Listar todas las compras",
         "description": "Retorna todas las compras con eliminada = 0, ordenadas por fecha descendente.",
@@ -962,7 +962,7 @@
       }
     },
 
-    "/cortes/iniciar": {
+    "/api/compras/": {
       "post": {
         "tags": ["Compras"], "summary": "Registrar una nueva compra",
         "security": [{ "BearerAuth": [] }],
