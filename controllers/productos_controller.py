@@ -16,7 +16,7 @@ def cntListado():
         return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
-    requeridos = ['nombre', 'descripcion', 'precio_venta', 'unidades_por_bandeja']
+    requeridos = ['nombre',  'precio_venta', 'unidades_por_bandeja']
 
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
@@ -46,8 +46,7 @@ def cntRegistro():
             "mensaje": "Nombre inválido"
         }), 400
 
-    if len(descripcion) < 4 or len(descripcion) > 255:
-        return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400
+    
     
     try:
         precio_venta = float(precio_venta)
