@@ -16,7 +16,7 @@ def cntListado():
         return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
-    requeridos = ['nombre',  'precio_venta', 'unidades_por_bandeja']
+    requeridos = ['nombre', 'precio_venta', 'unidades_por_bandeja']
 
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
@@ -24,14 +24,15 @@ def cntRegistro():
     
     vacios = []
     for clave in request.json:
-        if str(request.json[clave]).strip() == "":
+        # Solo validamos que no estén vacíos los campos requeridos
+        if clave in requeridos and str(request.json[clave]).strip() == "":
             vacios.append(clave)
 
     if vacios:
         return jsonify({"mensaje": f"los siguientes campos no pueden estar vacios {vacios}"}), 400
     
     nombre        = request.json['nombre'] 
-    descripcion   = request.json['descripcion']
+    descripcion   = request.json.get('descripcion', '')  # ← opcional, si no viene se asigna ''
     precio_venta  = request.json['precio_venta']
     unidades_por_bandeja = request.json['unidades_por_bandeja']
 
@@ -46,7 +47,10 @@ def cntRegistro():
             "mensaje": "Nombre inválido"
         }), 400
 
-    
+    # Validación de descripción solo si se envió
+    if descripcion.strip():
+        if len(descripcion) < 4 or len(descripcion) > 255:
+            return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400
     
     try:
         precio_venta = float(precio_venta)
@@ -72,7 +76,7 @@ def cntRegistro():
             "mensaje": "Cantidad inválida"
         }), 400
 
-    p             = registro(nombre=nombre, descripcion=descripcion, precio_venta=precio_venta, unidades_por_bandeja=unidades_por_bandeja)
+    p = registro(nombre=nombre, descripcion=descripcion, precio_venta=precio_venta, unidades_por_bandeja=unidades_por_bandeja)
     return jsonify({"mensaje":"Producto registrado","datos":p}), 201
 
 def cntEliminar(id):
