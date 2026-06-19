@@ -10,6 +10,7 @@ from .documentacion import documentacion_bp
 from .compra import compra_bp
 from .proovedores import proveedores_bp
 from .producciones import producciones_bp
+from routes.auditoria import auditoria_bp
 
 def cargarRuta(app):
     app.register_blueprint(ventas_bp, url_prefix='/ventas')
@@ -24,6 +25,7 @@ def cargarRuta(app):
     app.register_blueprint(proveedores_bp, url_prefix='/proveedores')
     app.register_blueprint(documentacion_bp, url_prefix='/documentacion')
     app.register_blueprint(producciones_bp, url_prefix='/producciones')
+    app.register_blueprint(auditoria_bp, url_prefix='/auditoria')
     
 
 
