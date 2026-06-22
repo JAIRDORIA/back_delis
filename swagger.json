@@ -959,11 +959,7 @@
           }}}},
           "401": { "description": "Token inválido o no enviado" }, "500": { "description": "Error interno del servidor" }
         }
-      }
-    },
-
-    "/cortes/iniciar": {
-      "post": {
+      },"post": {
         "tags": ["Compras"], "summary": "Registrar una nueva compra",
         "security": [{ "BearerAuth": [] }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": {
@@ -985,7 +981,10 @@
           "500": { "description": "Error interno del servidor" }
         }
       }
+
     },
+
+    
 
     "/api/compras/{id}": {
       "get": {
