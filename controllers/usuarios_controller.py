@@ -191,7 +191,6 @@ def obtenerUsuario(id):
 
     return jsonify(usuario), 200
 
-
 def login_post():
     data = request.get_json()
     username = data.get('username')
@@ -210,7 +209,6 @@ def login_post():
         "token_type": "bearer",
         "usuario": usuario    
     }), 200
-
 
 def cntPrimerAdmin():
     """
