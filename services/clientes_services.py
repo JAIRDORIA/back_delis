@@ -9,12 +9,12 @@ def listado_clientes(page, per_page):
     c.execute("SELECT COUNT(*) FROM clientes WHERE activo = 1")
     total = c.fetchone()[0]
     
-    sql = """SELECT id, nombre, telefono, direccion, email, activo, created_at, updated_at 
+    sql = """SELECT id,identificacion, nombre, telefono, direccion, email, activo, created_at, updated_at 
              FROM clientes WHERE activo = 1 LIMIT %s OFFSET %s"""
     c.execute(sql, (per_page, offset))
     datos = c.fetchall()
     
-    lista = [cliente(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]).toDic() for p in datos]
+    lista = [cliente(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],p[8]).toDic() for p in datos]
     return {"items": lista, "total": total, "page": page, "per_page": per_page}
 
 def obtener_cliente(id):
@@ -23,12 +23,12 @@ def obtener_cliente(id):
     Esta es la función que el error indica como faltante.
     """
     c = current_app.mysql.connection.cursor()
-    sql = """SELECT id, nombre, telefono, direccion, email, activo, created_at, updated_at 
+    sql = """SELECT id, nombre,identificacion, telefono, direccion, email, activo, created_at, updated_at 
              FROM clientes WHERE id = %s AND activo = 1"""
     c.execute(sql, (id,))
     p = c.fetchone()
     if p:
-        return cliente(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]).toDic()
+        return cliente(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],p[8]).toDic()
     return None
 
 def existe_email(email, excluir_id=None):
@@ -40,14 +40,14 @@ def existe_email(email, excluir_id=None):
         c.execute("SELECT id FROM clientes WHERE email = %s", (email,))
     return c.fetchone() is not None
 
-def crear_clientes(nombre, telefono, direccion, email):
+def crear_clientes(nombre, telefono, direccion, email,identificacion):
     """Registrar un nuevo cliente (RF10)[cite: 1, 14]."""
     if existe_email(email):
         return {"error": "El correo electrónico ya está registrado"}, 400
     c = current_app.mysql.connection.cursor()
-    sql = """INSERT INTO clientes (nombre, telefono, direccion, email, activo, created_at, updated_at)
-             VALUES (%s, %s, %s, %s, 1, NOW(), NOW())"""
-    c.execute(sql, (nombre, telefono, direccion, email))
+    sql = """INSERT INTO clientes (nombre,identificacion, telefono, direccion, email, activo, created_at, updated_at)
+             VALUES (%s, %s, %s, %s,%s, 1, NOW(), NOW())"""
+    c.execute(sql, (nombre, telefono, direccion, email,identificacion))
     current_app.mysql.connection.commit()
     return {"nombre": nombre, "email": email}
 
@@ -59,6 +59,16 @@ def service_actualizar_cliente(id, nombre, telefono, direccion, email):
     c.execute(sql, (nombre, telefono, direccion, email, id))
     current_app.mysql.connection.commit()
     return {"id": id, "nombre": nombre}
+
+def existe_identificacion(identificacion, excluir_id=None):
+    c = current_app.mysql.connection.cursor()
+    if excluir_id:
+        c.execute("SELECT id FROM clientes WHERE identificacion = %s AND id != %s", (identificacion, excluir_id))
+    else:
+        c.execute("SELECT id FROM clientes WHERE identificacion = %s", (identificacion,))
+    resultado = c.fetchone()
+    c.close()
+    return resultado is not None
 
 def service_eliminar_cliente(id):
     c = current_app.mysql.connection.cursor()

@@ -1,6 +1,7 @@
 class cliente:
-    def __init__(self, id, nombre, telefono, direccion, email,activo,created_at,updated_at):
+    def __init__(self, id,identificacion, nombre, telefono, direccion, email,activo,created_at,updated_at):
         self.ID_Cliente   = id
+        self.identificacion_Cliente = identificacion 
         self.Cli_Nombre   = nombre
         self.Cli_Telefono = telefono
         self.Cli_Direccion = direccion
@@ -12,6 +13,7 @@ class cliente:
     def toDic(self):
           return {
             "ID_Cliente":self.ID_Cliente     ,
+            "Cli_identificacion":self.identificacion_Cliente,
             "Cli_Nombre":self.Cli_Nombre     ,
             "Cli_Telefono":self.Cli_Telefono ,
             "Cli_Direccion":self.Cli_Direccion ,
