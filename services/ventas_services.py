@@ -118,9 +118,9 @@ def actualizar_detalle_venta(id, nuevo_detalle):
     for item in nuevo_detalle:
         subtotal = item['cantidad'] * float(item['precio_unitario'])
         c.execute("""
-            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto, cantidad, precio_unitario, subtotal)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (id, item['producto_id'], item['nombre_producto'], item['cantidad'], float(item['precio_unitario']), subtotal))
+            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto, cantidad, precio_unitario)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (id, item['producto_id'], item['nombre_producto'], item['cantidad'], float(item['precio_unitario'])))
         nuevo_total += subtotal
 
     # Actualizar la venta: total y saldo pendiente
