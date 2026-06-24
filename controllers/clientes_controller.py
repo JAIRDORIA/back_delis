@@ -3,7 +3,7 @@ from flask import request, jsonify
 from flask_jwt_extended import jwt_required
 from services.clientes_services import (
     listado_clientes, crear_clientes, existe_email,clientes_top, 
-    obtener_cliente, service_actualizar_cliente, service_eliminar_cliente
+    obtener_cliente, service_actualizar_cliente, service_eliminar_cliente,existe_identificacion
 )
 from utils.decorators import token_requerido
 
@@ -54,7 +54,7 @@ def get_cliente_por_id(id):
 #@jwt_required()
 def cntRegistrar():
     # 1. Validar campos requeridos (email ya no es obligatorio)
-    requeridos = ["nombre", "telefono", "direccion"]
+    requeridos = ["nombre","identificacion", "telefono", "direccion"]
     if not request.json:
         return jsonify({"mensaje": "No se recibió información en formato JSON"}), 400
         
@@ -67,6 +67,15 @@ def cntRegistrar():
     telefono = str(request.json.get("telefono", "")).strip()
     direccion = str(request.json.get("direccion", "")).strip()
     email = request.json.get("email", None)
+    identificacion = str(request.json.get("identificacion", "")).strip()
+    
+    # Validar que no esté vacío
+    if not identificacion:
+        return jsonify({"mensaje": "La identificación es obligatoria"}), 400
+    
+    # Validar que no exista otro cliente con esa identificación
+    if existe_identificacion(identificacion):
+        return jsonify({"mensaje": "Ya existe un cliente con esa identificación"}), 400
     if email is not None:
         email = str(email).strip()
 

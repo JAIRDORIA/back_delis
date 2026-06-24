@@ -4,7 +4,7 @@ from services.clientes_services import obtener_cliente
 from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
-from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta,existe_identificacion
+from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta
 
 
 def cntListado():
@@ -75,7 +75,7 @@ def cntGenerarComprobante(id):
 def cntregistrar():
     try:
         # 1. validar campos requeridos
-        requeridos = ["cliente_id","identificacion", "corte_id", "usuario_id",
+        requeridos = ["cliente_id", "corte_id", "usuario_id",
                       "fecha_entrega", "total", "detalle"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
@@ -88,7 +88,6 @@ def cntregistrar():
             return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
         id_cliente    = request.json["cliente_id"]
-        identificacion = str(request.json.get("identificacion", "")).strip()
         corte         = request.json["corte_id"]
         usuario       = request.json["usuario_id"]
         fecha_entrega = request.json["fecha_entrega"]
@@ -96,11 +95,6 @@ def cntregistrar():
         detalle       = request.json["detalle"]
         abono_inicial = request.json.get("abono_inicial", None)
         
-        if not identificacion:
-            return jsonify({"mensaje": "La identificación es obligatoria"}), 400
-        
-        if existe_identificacion(identificacion):
-            return jsonify({"mensaje": "Ya existe un cliente con esa identificación"}), 400
         
         
         formatos = [
