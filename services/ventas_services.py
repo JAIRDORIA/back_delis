@@ -124,10 +124,9 @@ def actualizar_detalle_venta(id, nuevo_detalle):
         nuevo_total += subtotal
 
     # Actualizar la venta: total y saldo pendiente
-    saldo_pendiente = nuevo_total - total_abonado
     c.execute("""
-        UPDATE ventas SET total = %s, saldo_pendiente = %s WHERE id = %s
-    """, (nuevo_total, saldo_pendiente, id))
+    UPDATE ventas SET total = %s WHERE id = %s
+    """, (nuevo_total, id))
 
     current_app.mysql.connection.commit()
     c.close()
