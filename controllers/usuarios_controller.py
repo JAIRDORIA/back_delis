@@ -1,5 +1,5 @@
-from flask import jsonify , request
-from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro, existe_admin,  verificar_clave_maestra, cambiar_password_maestra
+from flask import jsonify , request, g
+from  services.usuarios_servicies import listado_usuarios, registro, existe_username, eliminar, actualizar, obtener_usuario, existe_username_otro, existe_admin,  verificar_clave_maestra, cambiar_password_maestra, obtener_usuario_por_username
 import re
 import bcrypt
 from services.usuarios_servicies import login
@@ -25,6 +25,12 @@ def cntListado():
         return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
+
+    if g.usuario["id"] != 1:
+        return jsonify({
+            "mensaje": "Solo el administrador principal puede crear usuarios."
+        }), 403
+     
     requeridos = ['nombre', 'username', 'password', 'rol']
 
     faltantes = [d for d in requeridos if d not in request.json]
@@ -77,6 +83,11 @@ def cntRegistro():
     return jsonify({"mensaje":"Usuario registrado","datos":p}), 201
 
 def cntEliminar(id):
+    if g.usuario["id"] != 1:
+        return jsonify({
+            "mensaje": "Solo el administrador principal puede crear usuarios."
+        }), 403
+    
     if not id:
         return jsonify({"mensaje": "El id es requerido"}), 400
     
@@ -91,7 +102,11 @@ def cntEliminar(id):
     return jsonify({"mensaje": "Usuario desactivado correctamente"}), 200
 
 def cntActualizar(id):
-
+    if g.usuario["id"] != 1:
+        return jsonify({
+            "mensaje": "Este método de recuperación solo está disponible para el administrador principal."
+        }), 403
+     
     if not request.json:
         return jsonify({"mensaje": "Debe enviar datos"}), 400
 
@@ -191,7 +206,6 @@ def obtenerUsuario(id):
 
     return jsonify(usuario), 200
 
-
 def login_post():
     data = request.get_json()
     username = data.get('username')
@@ -210,7 +224,6 @@ def login_post():
         "token_type": "bearer",
         "usuario": usuario    
     }), 200
-
 
 def cntPrimerAdmin():
     """
@@ -293,9 +306,17 @@ def cntVerificarClaveMaestra():
 
     if not existe_username(username):
         return jsonify({"mensaje": "El usuario no existe"}), 404
+    
+    usuario = obtener_usuario_por_username(username)
+    
+    if usuario["id"] != 1:
+        return jsonify({
+            "mensaje": "Solo el administrador principal puede recuperar contraseñas."
+        }), 403
 
     if not verificar_clave_maestra(clave):
         return jsonify({"mensaje": "Clave maestra incorrecta"}), 401
+    
 
     return jsonify({"valida": True}), 200
 

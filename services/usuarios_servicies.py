@@ -183,7 +183,7 @@ def eliminar(id):
     return filas_afectadas > 0
 
 
-CLAVE_MAESTRA = "SnackFlow2026*"  # cámbiala por la tuya
+CLAVE_MAESTRA = "SnackFlow2026*"  
 
 def verificar_clave_maestra(clave):
     return clave == CLAVE_MAESTRA
@@ -201,3 +201,27 @@ def cambiar_password_maestra(username, nueva_password):
     current_app.mysql.connection.commit()
     c.close()
     return True
+
+def obtener_usuario_por_username(username):
+    c = current_app.mysql.connection.cursor()
+
+    sql = """
+        SELECT id, nombre, username, rol, activo
+        FROM usuarios
+        WHERE username = %s AND activo = 1
+    """
+
+    c.execute(sql, (username,))
+    usuario = c.fetchone()
+    c.close()
+
+    if usuario:
+        return {
+            "id": usuario[0],
+            "nombre": usuario[1],
+            "username": usuario[2],
+            "rol": usuario[3],
+            "activo": usuario[4]
+        }
+
+    return None
