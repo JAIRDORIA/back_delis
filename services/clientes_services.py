@@ -40,25 +40,60 @@ def existe_email(email, excluir_id=None):
         c.execute("SELECT id FROM clientes WHERE email = %s", (email,))
     return c.fetchone() is not None
 
-def crear_clientes(nombre, telefono, direccion, email,identificacion):
-    """Registrar un nuevo cliente (RF10)[cite: 1, 14]."""
+def crear_clientes(nombre, identificacion, telefono, direccion, email):
+    # Validar unicidad de identificación
+    if existe_identificacion(identificacion):
+        return {"error": "Ya existe un cliente con esa identificación"}, 400
+    # Validar unicidad de teléfono
+    if existe_telefono(telefono):
+        return {"error": "Ya existe un cliente con ese número de teléfono"}, 400
+    # Validar unicidad de email
     if existe_email(email):
         return {"error": "El correo electrónico ya está registrado"}, 400
-    c = current_app.mysql.connection.cursor()
-    sql = """INSERT INTO clientes (nombre,identificacion, telefono, direccion, email, activo, created_at, updated_at)
-             VALUES (%s, %s, %s, %s,%s, 1, NOW(), NOW())"""
-    c.execute(sql, (nombre, telefono, direccion, email,identificacion))
-    current_app.mysql.connection.commit()
-    return {"nombre": nombre, "email": email}
 
-def service_actualizar_cliente(id, nombre, telefono, direccion, email):
-    """Editar la información de los clientes (RF11)[cite: 1, 15]."""
     c = current_app.mysql.connection.cursor()
-    sql = """UPDATE clientes SET nombre=%s, telefono=%s, direccion=%s, email=%s, updated_at=NOW() 
-             WHERE id=%s AND activo = 1"""
-    c.execute(sql, (nombre, telefono, direccion, email, id))
+    # Orden de columnas: nombre, identificacion, telefono, direccion, email
+    # Orden de valores: nombre, identificacion, telefono, direccion, email
+    sql = """INSERT INTO clientes (nombre, identificacion, telefono, direccion, email, activo, created_at, updated_at)
+             VALUES (%s, %s, %s, %s, %s, 1, NOW(), NOW())"""
+    c.execute(sql, (nombre, identificacion, telefono, direccion, email))
     current_app.mysql.connection.commit()
-    return {"id": id, "nombre": nombre}
+    id_cliente = c.lastrowid
+    return {
+        "id": id_cliente,
+        "nombre": nombre,
+        "identificacion": identificacion,
+        "telefono": telefono,
+        "direccion": direccion,
+        "email": email
+    }
+
+def service_actualizar_cliente(id, nombre, identificacion, telefono, direccion, email):
+    # Validar unicidad excluyendo al propio cliente
+    if existe_identificacion(identificacion, excluir_id=id):
+        return {"error": "Ya existe otro cliente con esa identificación"}, 400
+    if existe_telefono(telefono, excluir_id=id):
+        return {"error": "Ya existe otro cliente con ese número de teléfono"}, 400
+    if email and existe_email(email, excluir_id=id):
+        return {"error": "El correo ya pertenece a otro cliente"}, 400
+
+    c = current_app.mysql.connection.cursor()
+    sql = """UPDATE clientes 
+             SET nombre=%s, identificacion=%s, telefono=%s, direccion=%s, email=%s, updated_at=NOW() 
+             WHERE id=%s AND activo = 1"""
+    c.execute(sql, (nombre, identificacion, telefono, direccion, email, id))
+    current_app.mysql.connection.commit()
+    return {"id": id, "nombre": nombre, "identificacion": identificacion}
+
+def existe_telefono(telefono, excluir_id=None):
+    c = current_app.mysql.connection.cursor()
+    if excluir_id:
+        c.execute("SELECT id FROM clientes WHERE telefono = %s AND id != %s", (telefono, excluir_id))
+    else:
+        c.execute("SELECT id FROM clientes WHERE telefono = %s", (telefono,))
+    resultado = c.fetchone()
+    c.close()
+    return resultado is not None
 
 def existe_identificacion(identificacion, excluir_id=None):
     c = current_app.mysql.connection.cursor()

@@ -112,38 +112,38 @@ def cntClientesTop():
 
 #@jwt_required()
 def cntActualizar(id):
-    """
-    Editar información de un cliente (RF11)
-    ---
-    tags: [Clientes]
-    security: [{ Bearer: [] }]
-    """
-    # Verificar existencia
     if not obtener_cliente(id):
         return jsonify({"mensaje": "Cliente no encontrado para actualizar"}), 404
 
     if not request.json:
         return jsonify({"mensaje": "No hay datos para actualizar"}), 400
 
-    nombre = str(request.json.get("nombre", "")).strip()
-    telefono = str(request.json.get("telefono", "")).strip()
-    direccion = str(request.json.get("direccion", "")).strip()
-    
-    # Email opcional
-    email = request.json.get("email")
-    if email is not None:
-        email = str(email).strip()
-        if not email:          # si es cadena vacía
-            email = None
+    # Campos obligatorios
+    requeridos = ["nombre", "identificacion", "telefono", "direccion", "email"]
+    faltantes = [x for x in requeridos if x not in request.json]
+    if faltantes:
+        return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
-    if not nombre:
-        return jsonify({"mensaje": "El nombre es obligatorio"}), 400
+    nombre = str(request.json["nombre"]).strip()
+    identificacion = str(request.json["identificacion"]).strip()
+    telefono = str(request.json["telefono"]).strip()
+    direccion = str(request.json["direccion"]).strip()
+    email = str(request.json["email"]).strip()
 
-    # Validar duplicado solo si se proporcionó un email
-    if email and existe_email(email, excluir_id=id):
-        return jsonify({"mensaje": "El correo ya pertenece a otro cliente"}), 400
+    if not nombre or not identificacion or not telefono or not direccion or not email:
+        return jsonify({"mensaje": "Todos los campos son obligatorios"}), 400
 
-    resultado = service_actualizar_cliente(id, nombre, telefono, direccion, email)
+    # Validar formato de email
+    regex_email = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
+    if not re.match(regex_email, email.lower()):
+        return jsonify({"mensaje": "El formato del correo electrónico no es válido"}), 400
+
+    # Las validaciones de unicidad excluyendo al propio cliente se hacen en el servicio
+    resultado = service_actualizar_cliente(id, nombre, identificacion, telefono, direccion, email)
+
+    if isinstance(resultado, dict) and "error" in resultado:
+        return jsonify({"mensaje": resultado["error"]}), 400
+
     return jsonify({"mensaje": "Cliente actualizado con éxito", "datos": resultado}), 200
 
 #@jwt_required()
