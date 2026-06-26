@@ -54,7 +54,7 @@ def get_cliente_por_id(id):
 #@jwt_required()
 def cntRegistrar():
     # 1. Validar campos requeridos (email ya no es obligatorio)
-    requeridos = ["nombre","identificacion", "telefono", "direccion"]
+    requeridos = ["nombre","identificacion", "telefono", "direccion","email"]
     if not request.json:
         return jsonify({"mensaje": "No se recibió información en formato JSON"}), 400
         
