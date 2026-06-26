@@ -7,7 +7,6 @@ import os
 from flask_cors import CORS
 from routes.usuarios import auth_bp
 
-
 app = Flask(__name__)
 app.config.from_object(config)
 app.config['MYSQL_INIT_COMMAND'] = "SET time_zone = '-05:00'"
@@ -21,7 +20,6 @@ CORS(
     allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Authorization"]
 )
-
 
 jwt = JWTManager(app)
 
