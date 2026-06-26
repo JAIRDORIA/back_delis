@@ -148,18 +148,28 @@ def cntregistrar():
             }), 400
 
         # 6. validar abono_inicial si viene
-        if abono_inicial:
-            if "monto" not in abono_inicial:
-                return jsonify({"mensaje": "el abono debe tener monto"}), 400
-            if abono_inicial["monto"] <= 0:
-                return jsonify({"mensaje": "el monto del abono debe ser mayor a 0"}), 400
-            if abono_inicial["monto"] > total:
-                return jsonify({"mensaje": "el abono no puede superar el total"}), 400
-            if "medio_pago" not in abono_inicial:
-                return jsonify({"mensaje": "el abono debe tener medio_pago"}), 400
-            medios_validos = ["efectivo", "transferencia", "otro"]
-            if abono_inicial["medio_pago"] not in medios_validos:
-                return jsonify({"mensaje": f"medio_pago invalido, debe ser: {medios_validos}"}), 400
+        # 6. validar abonos iniciales (nuevo: acepta múltiples)
+        abonos_iniciales = []
+        if "abonos_iniciales" in request.json:
+    # Nuevo formato: array de abonos
+            abonos_iniciales = request.json["abonos_iniciales"]
+        if not isinstance(abonos_iniciales, list):
+            return jsonify({"mensaje": "abonos_iniciales debe ser un array"}), 400
+        for abono in abonos_iniciales:
+            if "monto" not in abono or abono["monto"] <= 0:
+                return jsonify({"mensaje": "cada abono debe tener monto mayor a 0"}), 400
+        if "medio_pago" not in abono:
+            return jsonify({"mensaje": "cada abono debe tener medio_pago"}), 400
+        elif "abono_inicial" in request.json and request.json["abono_inicial"]:
+    # Compatibilidad con el antiguo formato de un solo abono
+            abono = request.json["abono_inicial"]
+        if abono.get("monto", 0) > 0:
+            abonos_iniciales = [abono]
+
+# Validar que la suma de abonos no supere el total
+        suma_abonos = sum(a["monto"] for a in abonos_iniciales)
+        if suma_abonos > total:
+            return jsonify({"mensaje": "la suma de los abonos no puede superar el total"}), 400
 
         # 7. validar que el cliente existe
         cliente_db = obtener_cliente(id_cliente)
@@ -188,7 +198,7 @@ def cntregistrar():
         fecha_entrega = fecha_convertida.strftime("%Y-%m-%d %H:%M:%S")
 
         p = registro(id_cliente, corte, usuario, fecha_entrega,
-                     total, detalle, abono_inicial)
+                     total, detalle, abonos_iniciales)
         return jsonify({"mensaje": "venta registrada", "datos": p}), 201
 
     except Exception as e:

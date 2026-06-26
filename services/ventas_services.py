@@ -265,7 +265,7 @@ def descontar_inventario_combo(combo_id, cantidad_combos, c):
             
             
 def registro(cliente_id, corte_id, usuario_id,
-             fecha_entrega, total, detalle, abono_inicial=None):
+             fecha_entrega, total, detalle, abonos_iniciales=None):
     c = current_app.mysql.connection.cursor()
 
     # obtener nombre del cliente
@@ -314,19 +314,23 @@ def registro(cliente_id, corte_id, usuario_id,
 
 
     # 3. insertar abono inicial si el cliente pago algo
-    if abono_inicial and abono_inicial.get("monto", 0) > 0:
-        c.execute("""
-            INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                                monto, fecha, observacion, medio_pago)
-            VALUES (%s, %s, %s, %s, NOW(), %s, %s)
-        """, (
-            venta_id,
-            corte_id,
-            usuario_id,
-            abono_inicial["monto"],
-            abono_inicial.get("observacion", None),
-            abono_inicial.get("medio_pago", "efectivo")
-        ))
+    if abonos_iniciales:
+        for abono in abonos_iniciales:
+            if abono.get("monto", 0) <= 0:
+                continue
+            c.execute("""
+                INSERT INTO abonos (venta_id, corte_id, usuario_id,
+                                    monto, fecha, observacion, medio_pago)
+                VALUES (%s, %s, %s, %s, NOW(), %s, %s)
+            """, (
+                venta_id,
+                corte_id,
+                usuario_id,
+                abono["monto"],
+                abono.get("observacion", None),
+                abono.get("medio_pago", "efectivo")
+            ))
+
 
     current_app.mysql.connection.commit()
     c.close()
