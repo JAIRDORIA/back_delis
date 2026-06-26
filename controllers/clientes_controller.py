@@ -108,7 +108,7 @@ def cntClientesTop():
         datos = clientes_top(limite)
         return jsonify(datos), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"mensaje": str(e)}), 500
 
 #@jwt_required()
 def cntActualizar(id):
