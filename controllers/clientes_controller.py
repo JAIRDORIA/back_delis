@@ -92,7 +92,7 @@ def cntRegistrar():
             return jsonify({"mensaje": "Este correo ya se encuentra registrado"}), 400
 
     # 5. Llamar al servicio
-    resultado = crear_clientes(nombre, telefono, direccion, email,identificacion)
+    resultado = crear_clientes(nombre,identificacion, telefono, direccion, email)
     
     if isinstance(resultado, tuple):
         return jsonify(resultado[0]), resultado[1]
