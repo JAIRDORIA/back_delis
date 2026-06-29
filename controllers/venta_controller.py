@@ -151,22 +151,25 @@ def cntregistrar():
         # 6. validar abonos iniciales (nuevo: acepta múltiples)
         abonos_iniciales = []
         if "abonos_iniciales" in request.json:
-    # Nuevo formato: array de abonos
+            # Nuevo formato: array de abonos
             abonos_iniciales = request.json["abonos_iniciales"]
-        if not isinstance(abonos_iniciales, list):
-            return jsonify({"mensaje": "abonos_iniciales debe ser un array"}), 400
-        for abono in abonos_iniciales:
-            if "monto" not in abono or abono["monto"] <= 0:
-                return jsonify({"mensaje": "cada abono debe tener monto mayor a 0"}), 400
-        if "medio_pago" not in abono:
-            return jsonify({"mensaje": "cada abono debe tener medio_pago"}), 400
+            if not isinstance(abonos_iniciales, list):
+                return jsonify({"mensaje": "abonos_iniciales debe ser un array"}), 400
+            for abono in abonos_iniciales:
+                if "monto" not in abono or abono["monto"] <= 0:
+                  return jsonify({"mensaje": "cada abono debe tener monto mayor a 0"}), 400
+                if "medio_pago" not in abono:
+                    return jsonify({"mensaje": "cada abono debe tener medio_pago"}), 400
+                medios_validos = ["efectivo", "transferencia", "otro"]
+                if abono["medio_pago"] not in medios_validos:
+                    return jsonify({"mensaje": f"medio_pago invalido, debe ser: {medios_validos}"}), 400
         elif "abono_inicial" in request.json and request.json["abono_inicial"]:
-    # Compatibilidad con el antiguo formato de un solo abono
-            abono = request.json["abono_inicial"]
-        if abono.get("monto", 0) > 0:
-            abonos_iniciales = [abono]
+                # Compatibilidad con el antiguo formato de un solo abono
+            abono_antiguo = request.json["abono_inicial"]
+            if abono_antiguo.get("monto", 0) > 0:
+                abonos_iniciales = [abono_antiguo]
 
-# Validar que la suma de abonos no supere el total
+        #  Validar que la suma de abonos no supere el total
         suma_abonos = sum(a["monto"] for a in abonos_iniciales)
         if suma_abonos > total:
             return jsonify({"mensaje": "la suma de los abonos no puede superar el total"}), 400
