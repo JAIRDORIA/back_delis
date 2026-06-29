@@ -290,6 +290,22 @@ def balance_corte_actual():
             AND v.estado IN ('pendiente', 'entregada') 
     """, (corte_id,))
     total_efectivo = float(c.fetchone()[0])
+    
+     # compras en efectivo del corte actual
+    c.execute("""
+        SELECT COALESCE(SUM(total), 0)
+        FROM compras
+        WHERE corte_id = %s AND medio_pago = 'efectivo' AND eliminada = 0
+    """, (corte_id,))
+    compras_efectivo = float(c.fetchone()[0])
+
+    # compras en transferencia del corte actual
+    c.execute("""
+        SELECT COALESCE(SUM(total), 0)
+        FROM compras
+        WHERE corte_id = %s AND medio_pago = 'transferencia' AND eliminada = 0
+    """, (corte_id,))
+    compras_transferencia = float(c.fetchone()[0])
 
     # abonos en transferencia del corte actual
     c.execute("""
@@ -359,7 +375,7 @@ def balance_corte_actual():
         "saldo_pendiente_anteriores" : saldo_pendiente_anteriores,
         "dinero_caja"       : dinero_caja,
         "dinero_caja_real"  : dinero_caja_real, 
-        "total_efectivo"    : total_efectivo,
-        "total_transferencia": total_transferencia,
+        "total_efectivo"    : total_efectivo-compras_efectivo,
+        "total_transferencia": total_transferencia - compras_transferencia,
         "resultado"         : total_ventas - total_compras
     }

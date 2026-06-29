@@ -79,7 +79,7 @@ def obtener_compra(id):
         raise Exception(str(e))
 
 
-def registro_compra(proveedor_id, corte_id, usuario_id, fecha, total, descripcion):
+def registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion):
     try:
         con    = current_app.mysql.connection
         cursor = con.cursor()
@@ -103,18 +103,18 @@ def registro_compra(proveedor_id, corte_id, usuario_id, fecha, total, descripcio
             return None, "El total debe ser mayor a 0"
 
         cursor.execute("""
-            INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha, total, descripcion)
+            INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (proveedor_id, corte_id, usuario_id, fecha, total, descripcion))
+        """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion))
         con.commit()
         nuevo_id = cursor.lastrowid
         cursor.close()
-        return compra(nuevo_id, proveedor_id, corte_id, usuario_id, fecha, total, descripcion).toDic(), None
+        return compra(nuevo_id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
     except Exception as e:
         raise Exception(str(e))
 
 
-def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, total, descripcion):
+def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion):
     try:
         con    = current_app.mysql.connection
         cursor = con.cursor()
@@ -144,13 +144,13 @@ def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, total, desc
         cursor.execute("""
             UPDATE compras
             SET proveedor_id = %s, corte_id = %s, usuario_id = %s,
-                fecha = %s, total = %s, descripcion = %s,
+                fecha = %s,medio_pago=%s, total = %s, descripcion = %s,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
-        """, (proveedor_id, corte_id, usuario_id, fecha, total, descripcion, id))
+        """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion, id))
         con.commit()
         cursor.close()
-        return compra(id, proveedor_id, corte_id, usuario_id, fecha, total, descripcion).toDic(), None
+        return compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
     except Exception as e:
         raise Exception(str(e))
 
