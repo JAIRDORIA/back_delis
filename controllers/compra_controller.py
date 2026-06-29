@@ -55,6 +55,7 @@ def cntRegistroCompra():
     proveedor_id = request.json['proveedor_id']
     usuario_id   = request.json['usuario_id']
     fecha        = request.json['fecha']
+    medio_pago = request.json.get('medio_pago', 'efectivo')
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
 
@@ -70,7 +71,7 @@ def cntRegistroCompra():
         return jsonify({"error": "El total debe ser un número"}), 400
 
     try:
-        dato, error = registro_compra(proveedor_id, corte_id, usuario_id, fecha, total, descripcion)
+        dato, error = registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
         if error:
             return jsonify({"error": error}), 409
         return jsonify(dato), 201
