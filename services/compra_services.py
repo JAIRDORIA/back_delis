@@ -104,7 +104,7 @@ def registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total,
 
         cursor.execute("""
             INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s,%s)
         """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion))
         con.commit()
         nuevo_id = cursor.lastrowid
@@ -147,7 +147,7 @@ def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, 
                 fecha = %s,medio_pago=%s, total = %s, descripcion = %s,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
-        """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion, id))
+        """, (proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion, id))
         con.commit()
         cursor.close()
         return compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
