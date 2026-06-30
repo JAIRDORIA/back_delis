@@ -23,7 +23,7 @@ def listado_compra(pagina=1, limite=20, corte_id=None):
 
         cursor.execute("""
             SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
-                   c.fecha, c.total, c.descripcion
+                   c.fecha,c.medio_pago, c.total, c.descripcion
             FROM compras c
             JOIN proveedores p ON p.id = c.proveedor_id
             WHERE c.eliminada = 0 AND c.corte_id = %s
@@ -36,7 +36,7 @@ def listado_compra(pagina=1, limite=20, corte_id=None):
 
         lista = []
         for fila in datos:
-            com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[7])
+            com = compra(fila[0], fila[1], fila[3], fila[4], fila[5],fila[6], fila[7], fila[8])
             d = com.toDic()
             d['nombre_proveedor'] = fila[2]
             lista.append(d)
