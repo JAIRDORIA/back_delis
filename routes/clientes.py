@@ -21,16 +21,16 @@ def registrar_cliente():
     return cntRegistrar()
 
 @clientes_bp.route('/top', methods=['GET'])
-@token_requerido
+#@token_requerido
 def top():
     return cntClientesTop()
 
 @clientes_bp.route('/<int:id>', methods=['PUT'])
-@token_requerido
+#@token_requerido
 def actualizar_cliente(id):
     return cntActualizar(id)
 
 @clientes_bp.route('/<int:id>', methods=['DELETE'])
-@token_requerido
+#@token_requerido
 def eliminar_cliente(id):
     return cntEliminar(id)
