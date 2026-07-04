@@ -45,10 +45,10 @@ def crear_clientes(nombre, identificacion, telefono, direccion, email):
     if existe_identificacion(identificacion):
         return {"mensaje": "Ya existe un cliente con esa identificación"}, 400
     # Validar unicidad de teléfono
-    if existe_telefono(telefono):
+    #if existe_telefono(telefono):
         return {"mensaje": "Ya existe un cliente con ese número de teléfono"}, 400
     # Validar unicidad de email
-    if existe_email(email):
+    #if existe_email(email):
         return {"mensaje": "El correo electrónico ya está registrado"}, 400
 
     c = current_app.mysql.connection.cursor()
@@ -72,9 +72,9 @@ def service_actualizar_cliente(id, nombre, identificacion, telefono, direccion, 
     # Validar unicidad excluyendo al propio cliente
     if existe_identificacion(identificacion, excluir_id=id):
         return {"mensaje": "Ya existe otro cliente con esa identificación"}, 400
-    if existe_telefono(telefono, excluir_id=id):
+    #if existe_telefono(telefono, excluir_id=id):
         return {"mensaje": "Ya existe otro cliente con ese número de teléfono"}, 400
-    if email and existe_email(email, excluir_id=id):
+    #if email and existe_email(email, excluir_id=id):
         return {"mensaje": "El correo ya pertenece a otro cliente"}, 400
 
     c = current_app.mysql.connection.cursor()

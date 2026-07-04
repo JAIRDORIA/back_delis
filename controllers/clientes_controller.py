@@ -119,7 +119,7 @@ def cntActualizar(id):
         return jsonify({"mensaje": "No hay datos para actualizar"}), 400
 
     # Campos obligatorios
-    requeridos = ["nombre", "identificacion", "telefono", "direccion", "email"]
+    requeridos = ["nombre", "identificacion"]
     faltantes = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
@@ -130,8 +130,8 @@ def cntActualizar(id):
     direccion = str(request.json["direccion"]).strip()
     email = str(request.json["email"]).strip()
 
-    if not nombre or not identificacion or not telefono or not direccion or not email:
-        return jsonify({"mensaje": "Todos los campos son obligatorios"}), 400
+    if not nombre or not identificacion :
+        return jsonify({"mensaje": "nombre e identificacion son obligatorios"}), 400
 
     # Validar formato de email
     regex_email = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
