@@ -108,31 +108,39 @@ def actualizar_detalle_venta(id, nuevo_detalle):
         c.close()
         return None
 
-    total_abonado = float(venta[1])
-
     # Borrar el detalle actual
     c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
 
-    # Insertar los nuevos productos y calcular el nuevo total
+    # Insertar los nuevos productos/combos y calcular el nuevo total
     nuevo_total = 0
     for item in nuevo_detalle:
-        subtotal = item['cantidad'] * float(item['precio_unitario'])
-        c.execute("""
-            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto, cantidad, precio_unitario)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (id, item['producto_id'], item['nombre_producto'], item['cantidad'], float(item['precio_unitario'])))
-        nuevo_total += subtotal
+        es_combo = 1 if item.get("tipo") == "combo" else 0
+        combo_id = item.get("combo_id", None)
 
-    # Actualizar la venta: total y saldo pendiente
+        c.execute("""
+            INSERT INTO venta_detalle (venta_id, producto_id, combo_id, nombre_producto,
+                                       cantidad, precio_unitario, es_combo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            id,
+            item.get("producto_id"),       # None para combos
+            combo_id,                       # None para productos
+            item["nombre_producto"],
+            item["cantidad"],
+            float(item["precio_unitario"]),
+            es_combo
+        ))
+        nuevo_total += item["cantidad"] * float(item["precio_unitario"])
+
+    # Actualizar el total de la venta
     c.execute("""
-    UPDATE ventas SET total = %s WHERE id = %s
+        UPDATE ventas SET total = %s WHERE id = %s
     """, (nuevo_total, id))
 
     current_app.mysql.connection.commit()
     c.close()
 
-    # Devolver el detalle actualizado (igual que el endpoint de consulta)
-    return obtener_venta_detalle(id)    
+    return obtener_venta_detalle(id)   
 
 def obtener_venta_detalle(id):
     c = current_app.mysql.connection.cursor()
