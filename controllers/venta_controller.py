@@ -34,7 +34,7 @@ def cntActualizarDetalle(id):
 
         # Validar cada producto
         for item in detalle:
-            if not all(k in item for k in ('producto_id', 'nombre_producto', 'cantidad', 'precio_unitario')):
+            if not all(k in item for k in ( 'nombre_producto', 'cantidad', 'precio_unitario')):
                 return jsonify({"mensaje": "Cada producto debe tener producto_id, nombre_producto, cantidad y precio_unitario"}), 400
             if item.get('tipo', 'producto') == 'producto' and 'producto_id' not in item:
                 return jsonify({"mensaje": "Los productos deben tener producto_id"}), 400
