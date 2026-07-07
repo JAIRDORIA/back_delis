@@ -33,7 +33,6 @@ def cntRegistro():
     
     nombre        = request.json['nombre'] 
     descripcion   = request.json.get('descripcion', '')  # ← opcional, si no viene se asigna ''
-    precio_venta  = request.json['precio_venta']
     unidades_por_bandeja = request.json['unidades_por_bandeja']
     precio_detal = request.json.get('precio_detal', 0)
     precio_almayor = request.json.get('precio_almayor', 0)
@@ -55,14 +54,14 @@ def cntRegistro():
             return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400
     
     try:
-        precio_venta = float(precio_venta)
+        precio_detal = float(precio_detal)
     except:
         return jsonify({"mensaje": "El precio debe ser numérico"}), 400
 
-    if precio_venta <= 0:
+    if precio_detal <= 0:
         return jsonify({"mensaje": "El precio debe ser mayor a 0"}), 400
     
-    if precio_venta > 999999:
+    if precio_detal > 999999:
         return jsonify({"mensaje": "Precio demasiado alto"}), 400
 
     try:
@@ -78,7 +77,7 @@ def cntRegistro():
             "mensaje": "Cantidad inválida"
         }), 400
 
-    p = registro(nombre=nombre, descripcion=descripcion, precio_venta=precio_venta, unidades_por_bandeja=unidades_por_bandeja)
+    p = registro(nombre=nombre, descripcion=descripcion, precio_detal = precio_detal, precio_almayor =precio_almayor, unidades_por_bandeja=unidades_por_bandeja)
     return jsonify({"mensaje":"Producto registrado","datos":p}), 201
 
 def cntEliminar(id):
@@ -101,10 +100,11 @@ def cntActualizar(id):
 
     nombre = request.json.get('nombre')
     descripcion = request.json.get('descripcion')
-    precio_venta = request.json.get('precio_venta')
+    precio_detal = request.json.get('precio_detal', 0)
+    precio_almayor = request.json.get('precio_almayor', 0)
     unidades_por_bandeja = request.json.get('unidades_por_bandeja')
 
-    if not any([nombre, descripcion, precio_venta, unidades_por_bandeja]):
+    if not any([nombre, descripcion, precio_detal, unidades_por_bandeja]):
         return jsonify({"mensaje": "Debe enviar al menos un campo"}), 400
 
     if nombre:
@@ -122,14 +122,14 @@ def cntActualizar(id):
     if descripcion:
         if len(descripcion) < 4 or len(descripcion) > 255:
             return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400
-    if precio_venta is not None:
+    if precio_detal is not None:
      try:
-        precio_venta = float(precio_venta)
+        precio_detal = float(precio_detal)
      except:
         return jsonify({"mensaje": "El precio debe ser numérico"}), 400
-    if precio_venta <= 0:
+    if precio_detal <= 0:
         return jsonify({"mensaje": "El precio debe ser mayor a 0"}), 400
-    if precio_venta > 999999:
+    if precio_detal > 999999:
         return jsonify({
             "mensaje": "Precio demasiado alto"
         }), 400
@@ -159,8 +159,8 @@ def cntActualizar(id):
     if descripcion is not None and descripcion != producto_actual["descripcion"]:
         cambios.append("descripcion")
 
-    if precio_venta is not None and precio_venta != producto_actual["precio_venta"]:
-        cambios.append("precio_venta")
+    if precio_detal is not None and precio_detal != producto_actual["precio_detal"]:
+        cambios.append("precio_detal")
 
     if unidades_por_bandeja is not None and unidades_por_bandeja != producto_actual["unidades_por_bandeja"]:
         cambios.append("unidades_por_bandeja")
@@ -168,7 +168,7 @@ def cntActualizar(id):
     if not cambios:
         return jsonify({"mensaje": "No hay cambios para actualizar"}), 400
     
-    actualizado = actualizar(id, nombre, descripcion, precio_venta, unidades_por_bandeja)
+    actualizado = actualizar(id, nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja)
 
     if not actualizado:
         return jsonify({"mensaje": "Producto no encontrado"}), 404

@@ -104,7 +104,7 @@ def actualizar(id, nombre, descripcion, precio_detal, precio_almayor, unidades_p
 def obtener_producto(id):
     c = current_app.mysql.connection.cursor()
     c.execute("""
-        SELECT id, nombre, descripcion, precio_venta, unidades_por_bandeja, activo
+        SELECT id, nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja, activo
         FROM productos 
         WHERE id = %s AND activo = 1
     """, (id,))
@@ -115,9 +115,10 @@ def obtener_producto(id):
             "id"                    : producto[0],
             "nombre"                : producto[1],
             "descripcion"           : producto[2],
-            "precio_venta"          : producto[3],
-            "unidades_por_bandeja"  : producto[4],
-            "activo"                : producto[5]
+            "precio_detal"          : producto[3],
+            "precio_almayor"        :producto [4], 
+            "unidades_por_bandeja"  : producto[5],
+            "activo"                : producto[6]
         }
     return None
 
@@ -136,7 +137,7 @@ def productos_mas_vendidos(limite=5):
         SELECT
             p.id,
             p.nombre,
-            p.precio_venta,
+            p.precio_detal,
             COALESCE(SUM(vd.cantidad), 0) AS unidades_vendidas,
             COALESCE(SUM(vd.subtotal), 0) AS total_ingresos
         FROM productos p
@@ -144,7 +145,7 @@ def productos_mas_vendidos(limite=5):
         LEFT JOIN ventas v ON v.id = vd.venta_id
             AND v.estado != 'anulada'
         WHERE p.activo = 1
-        GROUP BY p.id, p.nombre, p.precio_venta
+        GROUP BY p.id, p.nombre, p.detal
         ORDER BY total_ingresos DESC
         LIMIT %s
     """, (limite,))
@@ -156,7 +157,7 @@ def productos_mas_vendidos(limite=5):
         lista.append({
             "id"              : p[0],
             "nombre"          : p[1],
-            "precio_venta"    : float(p[2]),
+            "precio_detal"    : float(p[2]),
             "unidades_vendidas": int(p[3]),
             "total_ingresos"  : float(p[4])
         })
