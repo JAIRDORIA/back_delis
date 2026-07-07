@@ -145,7 +145,7 @@ def productos_mas_vendidos(limite=5):
         LEFT JOIN ventas v ON v.id = vd.venta_id
             AND v.estado != 'anulada'
         WHERE p.activo = 1
-        GROUP BY p.id, p.nombre, p.detal
+        GROUP BY p.id, p.nombre, p.precio_detal
         ORDER BY total_ingresos DESC
         LIMIT %s
     """, (limite,))
