@@ -36,6 +36,13 @@ def cntActualizarDetalle(id):
         for item in detalle:
             if not all(k in item for k in ('producto_id', 'nombre_producto', 'cantidad', 'precio_unitario')):
                 return jsonify({"mensaje": "Cada producto debe tener producto_id, nombre_producto, cantidad y precio_unitario"}), 400
+            if item.get('tipo', 'producto') == 'producto' and 'producto_id' not in item:
+                return jsonify({"mensaje": "Los productos deben tener producto_id"}), 400
+            
+            # Para combos, exigir combo_id
+            if item.get('tipo') == 'combo' and 'combo_id' not in item:
+                return jsonify({"mensaje": "Los combos deben tener combo_id"}), 400
+            
             if item['cantidad'] <= 0 or item['precio_unitario'] <= 0:
                 return jsonify({"mensaje": "La cantidad y el precio deben ser mayores a 0"}), 400
 
