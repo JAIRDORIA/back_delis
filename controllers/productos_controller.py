@@ -16,7 +16,7 @@ def cntListado():
         return jsonify({"error": str(e)}), 500
 
 def cntRegistro():
-    requeridos = ['nombre', 'precio_venta', 'unidades_por_bandeja']
+    requeridos = ['nombre',  'precio_detal', 'unidades_por_bandeja']
 
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
@@ -35,6 +35,8 @@ def cntRegistro():
     descripcion   = request.json.get('descripcion', '')  # ← opcional, si no viene se asigna ''
     precio_venta  = request.json['precio_venta']
     unidades_por_bandeja = request.json['unidades_por_bandeja']
+    precio_detal = request.json.get('precio_detal', 0)
+    precio_almayor = request.json.get('precio_almayor', 0)
 
     if existe_nombre(nombre):
         return jsonify({"mensaje": "El nombre ya existe"}), 400

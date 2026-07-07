@@ -9,7 +9,7 @@ def listado_productos(pagina=1, limite=20):
     total = c.fetchone()[0]
 
     sql = """
-        SELECT id, nombre, descripcion, precio_venta, unidades_por_bandeja, activo, created_at, updated_at 
+        SELECT id, nombre, descripcion, precio_detal, precio_almayor,unidades_por_bandeja, activo, created_at, updated_at 
         FROM productos 
         WHERE activo = 1
         LIMIT %s OFFSET %s
@@ -24,11 +24,12 @@ def listado_productos(pagina=1, limite=20):
             id                   = p[0],
             nombre               = p[1],
             descripcion          = p[2],
-            precio_venta         = p[3],
-            unidades_por_bandeja = p[4],
-            activo               = p[5],
-            created_at           = p[6],
-            updated_at           = p[7]
+            precio_detal         = p[3],
+            precio_almayor=p[4],
+            unidades_por_bandeja = p[5],
+            activo               = p[6],
+            created_at           = p[7],
+            updated_at           = p[8]
         ).toDic()
         lista.append(producto)
 
@@ -40,18 +41,18 @@ def listado_productos(pagina=1, limite=20):
         "total_paginas": -(-total // limite)
     } 
 
-def registro(nombre, descripcion, precio_venta, unidades_por_bandeja):
+def registro(nombre, descripcion,  precio_detal, precio_almayor, unidades_por_bandeja):
     c = current_app.mysql.connection.cursor()
     sql = """
-             INSERT INTO productos (nombre, descripcion, precio_venta, unidades_por_bandeja)
+             INSERT INTO productos (nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja)
              VALUES 
-             (%s, %s, %s, %s)
+             (%s, %s, %s, %s,%s)
              """
-    c.execute(sql, (nombre, descripcion, precio_venta, unidades_por_bandeja))
+    c.execute(sql, (nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja))
     current_app.mysql.connection.commit()
     id = c.lastrowid
     c.close()
-    return productos(id, nombre, descripcion, precio_venta, unidades_por_bandeja, 1, None, None).toDic() 
+    return productos(id, nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja, 1, None, None).toDic() 
 
 def existe_nombre(nombre):
     c = current_app.mysql.connection.cursor()
@@ -84,15 +85,15 @@ def eliminar(id):
 
     return filas_afectadas > 0    
 
-def actualizar(id, nombre, descripcion, precio_venta, unidades_por_bandeja):
+def actualizar(id, nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja):
     c = current_app.mysql.connection.cursor()
     
     sql = """
           UPDATE productos 
-          SET nombre = %s, descripcion = %s, precio_venta = %s, unidades_por_bandeja = %s, updated_at = NOW() 
+          SET nombre = %s, descripcion = %s, precio_detal =%s, precio_almayor=%s, unidades_por_bandeja = %s, updated_at = NOW() 
           WHERE id = %s
           """
-    c.execute(sql, (nombre, descripcion, precio_venta, unidades_por_bandeja, id))
+    c.execute(sql, (nombre, descripcion, precio_detal, precio_almayor, unidades_por_bandeja, id))
     
     current_app.mysql.connection.commit()
     filas_afectadas = c.rowcount
