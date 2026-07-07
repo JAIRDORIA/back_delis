@@ -163,7 +163,7 @@ def obtener_venta_detalle(id):
     # detalle de productos
     c.execute("""
         SELECT producto_id, nombre_producto,
-               cantidad, precio_unitario, subtotal
+               cantidad, precio_unitario, subtotal,es_combo, combo_id
         FROM venta_detalle
         WHERE venta_id = %s
     """, (id,))
@@ -198,7 +198,9 @@ def obtener_venta_detalle(id):
                 "nombre_producto": d[1],
                 "cantidad"       : d[2],
                 "precio_unitario": float(d[3]),
-                "subtotal"       : float(d[4])
+                "subtotal"       : float(d[4]),
+                "es_combo"       : d[5],   # ← Nuevo campo
+                "combo_id"       : d[6]    # ← Nuevo campo
             } for d in detalle
         ],
         "abonos": [
