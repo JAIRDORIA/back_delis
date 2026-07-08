@@ -102,7 +102,7 @@ def cntRegistrarCombo():
     return jsonify({"mensaje": "combo registrado exitosamente", "datos": resultado}), 201
 
 #@jwt_required()
-def cntActualizarCombos(id):
+def cntActualizarCombo(id):
     # Verificar que el combo existe
     if not obtener_combo_id(id):
         return jsonify({"mensaje": "Combo no encontrado"}), 404
