@@ -274,6 +274,59 @@ def descontar_inventario_combo(combo_id, cantidad_combos, c):
             """, (producto_id, nuevas_bandejas, nuevas_sueltas))  
             
             
+            
+            
+            
+def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_combos, c):
+    
+    for producto in productos_personalizados:
+        producto_id          = producto["producto_id"]
+        unidades_necesarias  = producto["cantidad_unidades"] * cantidad_combos
+
+        # Obtener unidades_por_bandeja del producto real
+        c.execute("SELECT unidades_por_bandeja FROM productos WHERE id = %s", (producto_id,))
+        prod = c.fetchone()
+        if not prod:
+            continue
+        unidades_por_bandeja = prod[0]
+
+        # Obtener inventario actual
+        c.execute("""
+            SELECT stock_actual, unidades_sueltas
+            FROM inventario WHERE producto_id = %s
+        """, (producto_id,))
+        inv = c.fetchone()
+
+        if inv:
+            stock_actual     = inv[0]
+            unidades_sueltas = inv[1]
+        else:
+            stock_actual     = 0
+            unidades_sueltas = 0
+
+        total_disponible = (stock_actual * unidades_por_bandeja) + unidades_sueltas
+        total_restante = total_disponible - unidades_necesarias
+
+        if total_restante >= 0:
+            nuevas_bandejas = total_restante // unidades_por_bandeja
+            nuevas_sueltas  = total_restante % unidades_por_bandeja
+        else:
+            nuevas_bandejas = -(abs(total_restante) // unidades_por_bandeja + 1)
+            nuevas_sueltas  = 0
+
+        if inv:
+            c.execute("""
+                UPDATE inventario
+                SET stock_actual     = %s,
+                    unidades_sueltas = %s
+                WHERE producto_id = %s
+            """, (nuevas_bandejas, nuevas_sueltas, producto_id))
+        else:
+            c.execute("""
+                INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
+                VALUES (%s, %s, %s)
+            """, (producto_id, nuevas_bandejas, nuevas_sueltas))
+            
 def registro(cliente_id, corte_id, usuario_id,
              fecha_entrega, total, detalle, abonos_iniciales=None):
     c = current_app.mysql.connection.cursor()
@@ -313,11 +366,22 @@ def registro(cliente_id, corte_id, usuario_id,
 
         # si es combo descontar inventario con lógica de unidades y sueltas
         if es_combo:
-            descontar_inventario_combo(
-                item["combo_id"],
-                item["cantidad"],
-                c
-            )
+            
+            
+    # Si vienen productos personalizados, úsalos directamente
+            productos_personalizados = item.get("productos", None)
+            if productos_personalizados and isinstance(productos_personalizados, list):
+                descontar_inventario_combo_personalizado(
+                    productos_personalizados,
+                    item["cantidad"],
+                    c
+        )
+    else:
+        descontar_inventario_combo(
+            item["combo_id"],
+            item["cantidad"],
+            c
+        )
     
     
           
