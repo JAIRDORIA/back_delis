@@ -13,7 +13,7 @@ def listado_combos(page, per_page):
     total = c.fetchone()[0]
     
     # Consulta paginada filtrando solo los activos 
-    sql = """SELECT id, nombre, descripcion, precio, activo, created_at, updated_at 
+    sql = """SELECT id, nombre, descripcion, precio_frito,precio_congelado, activo, created_at, updated_at 
              FROM combos WHERE activo = 1 LIMIT %s OFFSET %s"""
     c.execute(sql, (per_page, offset))
     datos = c.fetchall()
@@ -21,8 +21,8 @@ def listado_combos(page, per_page):
     lista = []
     for p in datos:
         combo = combos(
-            id=p[0], nombre=p[1], descripcion=p[2], precio=p[3],
-            activo=p[4], created_at=p[5], updated_at=p[6]
+            id=p[0], nombre=p[1], descripcion=p[2], precio_frito=p[3],precio_congelado=p[4],
+            activo=p[5], created_at=p[6], updated_at=p[7]
         ).toDic()
 
         # Traer productos del combo desde combo_detalle
@@ -70,11 +70,11 @@ def obtener_combo_id(id):
     Obtiene el detalle de un combo específico si está activo.
     """
     c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, nombre, descripcion, precio, activo, created_at, updated_at FROM combos WHERE id = %s AND activo = 1"
+    sql = "SELECT id, nombre, descripcion, precio_frito,precio_congelado, activo, created_at, updated_at FROM combos WHERE id = %s AND activo = 1"
     c.execute(sql, (id,))
     p = c.fetchone()
     if p:
-        combo = combos(p[0], p[1], p[2], p[3], p[4], p[5], p[6]).toDic()
+        combo = combos(p[0], p[1], p[2], p[3], p[4], p[5], p[6],p[7]).toDic()
 
         # Traer productos del combo
         c.execute("""
@@ -91,7 +91,7 @@ def obtener_combo_id(id):
         return combo
     return None
 
-def crear_combo(nombre, precio, productos):
+def crear_combo(nombre,precio_frito,precio_congelado, productos):
     # Solo verifica combos activos
     if existe_combo(nombre, solo_activos=True):
         return {"error": f"Ya existe un combo activo con el nombre '{nombre}'"}, 400
@@ -100,9 +100,9 @@ def crear_combo(nombre, precio, productos):
 
     # 1. insertar el combo
     c.execute("""
-        INSERT INTO combos (nombre, precio, activo, created_at, updated_at)
-        VALUES (%s, %s, 1, NOW(), NOW())
-    """, (nombre, precio))
+        INSERT INTO combos (nombre, precio_frito,precio_congelado, activo, created_at, updated_at)
+        VALUES (%s, %s,%s, 1, NOW(), NOW())
+    """, (nombre, precio_frito,precio_congelado,))
 
     combo_id = c.lastrowid
 
@@ -121,7 +121,7 @@ def crear_combo(nombre, precio, productos):
 
     # 3. traer el combo recién creado con su detalle
     c.execute("""
-        SELECT id, nombre, descripcion, precio, activo
+        SELECT id, nombre, descripcion,precio_frito,precio_congelado, activo
         FROM combos WHERE id = %s
     """, (combo_id,))
     combo = c.fetchone()
@@ -140,8 +140,9 @@ def crear_combo(nombre, precio, productos):
         "id"         : combo[0],
         "nombre"     : combo[1],
         "descripcion": combo[2],
-        "precio"     : float(combo[3]),
-        "activo"     : combo[4],
+        "precio_frito"     : float(combo[3]),
+        "precio_congelado" : float (combo[4]),
+        "activo"     : combo[5],
         "productos"  : [
             {
                 "producto_id"      : d[0],
@@ -151,16 +152,16 @@ def crear_combo(nombre, precio, productos):
         ]
     }
 
-def actualizar_combos(id, nombre, descripcion, precio):
+def actualizar_combos(id, nombre, descripcion, precio_frito,precio_congelado,):
     # Verifica que no exista otro combo activo con el mismo nombre
     if existe_combo(nombre, solo_activos=True, excluir_id=id):
         return {"error": f"Ya existe otro combo activo con el nombre '{nombre}'"}, 400
 
     c = current_app.mysql.connection.cursor()
     sql = """UPDATE combos 
-             SET nombre=%s, descripcion=%s, precio=%s, updated_at=NOW() 
+             SET nombre=%s, descripcion=%s, precio_frito=%s,precio_congelado=%s, updated_at=NOW() 
              WHERE id=%s AND activo = 1"""
-    c.execute(sql, (nombre, descripcion, precio, id))
+    c.execute(sql, (nombre, descripcion, precio_frito,precio_congelado, id))
     current_app.mysql.connection.commit()
     return {"id": id, "nombre": nombre}
 

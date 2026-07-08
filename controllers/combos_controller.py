@@ -55,15 +55,16 @@ def cntRegistrarCombo():
         return jsonify({"mensaje": "No se recibio informacion en formato JSON"}), 400
 
     # 2. validar campos requeridos
-    requeridos = ["nombre", "precio", "productos"]
+    requeridos = ["nombre", "precio_frito","precio_congelado", "productos"]
     faltantes = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
 
     # 3. validar campos vacios
     nombre      = str(request.json["nombre"]).strip()
-   
-    precio      = request.json["precio"]
+    
+    precio_frito      = request.json["precio_frito"]
+    precio_congelado = request.json["precio_congelado"]
     productos   = request.json["productos"]
 
     if not nombre:
@@ -72,8 +73,9 @@ def cntRegistrarCombo():
 
     # 4. validar precio
     try:
-        precio_num = float(precio)
-        if precio_num <= 0:
+        precio_num = float(precio_frito)
+        precio_con = float(precio_congelado)
+        if precio_num <= 0 or precio_con <= 0:
             return jsonify({"mensaje": "el precio debe ser mayor a 0"}), 400
     except (ValueError, TypeError):
         return jsonify({"mensaje": "el precio debe ser un numero valido"}), 400
@@ -92,7 +94,7 @@ def cntRegistrarCombo():
             return jsonify({"mensaje": "la cantidad debe ser mayor a 0"}), 400
 
     # 7. registrar el combo
-    resultado = crear_combo(nombre, precio_num, productos)
+    resultado = crear_combo(nombre, precio_frito,precio_congelado, productos)
 
     if isinstance(resultado, tuple):
         return jsonify(resultado[0]), resultado[1]
@@ -115,13 +117,15 @@ def cntActualizarCombo(id):
 
     nombre = str(request.json.get("nombre", "")).strip()
     descripcion = str(request.json.get("descripcion", "")).strip()
-    precio = request.json.get("precio")
-
-    if not nombre or   precio is None:
+    precio_frito = request.json.get('precio_frito', 0)
+    precio_congelado = request.json.get('precio_congelado', 0)
+    
+    
+    if not nombre or   precio_frito or precio_congelado is None:
         return jsonify({"mensaje": "Nombres, descripción y precio son obligatorios"}), 400
 
     try:
-        precio_num = float(precio)
+        precio_num = float(precio_frito)
         if precio_num <= 0:
             return jsonify({"mensaje": "Precio inválido"}), 400
     except:
@@ -131,7 +135,7 @@ def cntActualizarCombo(id):
     if existe_combo(nombre, excluir_id=id):
         return jsonify({"mensaje": "Ese nombre de combo ya está en uso"}), 400
 
-    resultado = actualizar_combos(id, nombre, descripcion, precio_num)
+    resultado = actualizar_combos(id, nombre, descripcion, precio_frito,precio_congelado,)
     return jsonify({"mensaje": "Combo actualizado con éxito", "datos": resultado}), 200
 
 #@jwt_required()
