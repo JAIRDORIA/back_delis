@@ -85,8 +85,7 @@ def cntRegistro():
     except:
         return jsonify({"mensaje": "El formato de fecha debe ser DD/MM/YYYY"}), 400
     
-    if fecha_obj < date.today():
-       return jsonify({"mensaje": "No se permiten fechas anteriores a hoy"}), 400
+    
     
     #observacion es opcional, si viene validar que no sea vacía
     if observacion is not None and str(observacion).strip() == "":
