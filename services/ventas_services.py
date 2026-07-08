@@ -277,8 +277,9 @@ def descontar_inventario_combo(combo_id, cantidad_combos, c):
             
             
             
+            
+
 def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_combos, c):
-    
     for producto in productos_personalizados:
         producto_id          = producto["producto_id"]
         unidades_necesarias  = producto["cantidad_unidades"] * cantidad_combos
@@ -327,6 +328,9 @@ def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_
                 VALUES (%s, %s, %s)
             """, (producto_id, nuevas_bandejas, nuevas_sueltas))
             
+
+
+            
 def registro(cliente_id, corte_id, usuario_id,
              fecha_entrega, total, detalle, abonos_iniciales=None):
     c = current_app.mysql.connection.cursor()
@@ -366,22 +370,20 @@ def registro(cliente_id, corte_id, usuario_id,
 
         # si es combo descontar inventario con lógica de unidades y sueltas
         if es_combo:
-            
-            
-    # Si vienen productos personalizados, úsalos directamente
             productos_personalizados = item.get("productos", None)
             if productos_personalizados and isinstance(productos_personalizados, list):
                 descontar_inventario_combo_personalizado(
                     productos_personalizados,
                     item["cantidad"],
                     c
-        )
-    else:
-        descontar_inventario_combo(
+                    )
+            else:
+                descontar_inventario_combo(
             item["combo_id"],
             item["cantidad"],
             c
-        )
+        )    
+        
     
     
           
