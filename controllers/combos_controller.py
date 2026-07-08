@@ -121,8 +121,7 @@ def cntActualizarCombo(id):
     precio_congelado = request.json.get('precio_congelado', 0)
     
     
-    if not nombre or   precio_frito or precio_congelado is None:
-        return jsonify({"mensaje": "Nombres, descripción y precio son obligatorios"}), 400
+   
 
     try:
         precio_num = float(precio_frito)
