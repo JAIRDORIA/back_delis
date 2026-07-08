@@ -215,24 +215,20 @@ def obtener_venta_detalle(id):
     }
     
 def descontar_inventario_combo(combo_id, cantidad_combos, c):
-        
     # traer productos del combo
-        c = current_app.mysql.connection.cursor()
-    
-        c.execute("""
+    c.execute("""
         SELECT cd.producto_id, cd.cantidad_unidades,
                p.unidades_por_bandeja
         FROM combo_detalle cd
         JOIN productos p ON p.id = cd.producto_id
         WHERE cd.combo_id = %s
-        """, (combo_id,))
-        productos = c.fetchall()
+    """, (combo_id,))
+    productos = c.fetchall()
 
-        for producto in productos:
-            
-            producto_id          = producto[0]
-            unidades_necesarias  = producto[1] * cantidad_combos
-            unidades_por_bandeja = producto[2]
+    for producto in productos:
+        producto_id          = producto[0]
+        unidades_necesarias  = producto[1] * cantidad_combos
+        unidades_por_bandeja = producto[2]
 
         # traer inventario actual
         c.execute("""
@@ -255,7 +251,6 @@ def descontar_inventario_combo(combo_id, cantidad_combos, c):
         total_restante = total_disponible - unidades_necesarias
 
         # calcular nuevas bandejas y sueltas
-        
         nuevas_bandejas = math.floor(total_restante / unidades_por_bandeja)
         nuevas_sueltas  = total_restante % unidades_por_bandeja
 
@@ -271,7 +266,7 @@ def descontar_inventario_combo(combo_id, cantidad_combos, c):
             c.execute("""
                 INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
                 VALUES (%s, %s, %s)
-            """, (producto_id, nuevas_bandejas, nuevas_sueltas))  
+            """, (producto_id, nuevas_bandejas, nuevas_sueltas))
             
             
             
