@@ -152,17 +152,36 @@ def crear_combo(nombre,precio_frito,precio_congelado, productos):
         ]
     }
 
-def actualizar_combos(id, nombre, descripcion, precio_frito,precio_congelado,):
-    # Verifica que no exista otro combo activo con el mismo nombre
+def actualizar_combos(id, nombre, descripcion, precio_frito, precio_congelado, productos=None):
+    """
+    Actualiza los datos del combo y, opcionalmente, su detalle de productos.
+    Si 'productos' es una lista, borra el detalle actual y lo reemplaza.
+    """
     if existe_combo(nombre, solo_activos=True, excluir_id=id):
         return {"error": f"Ya existe otro combo activo con el nombre '{nombre}'"}, 400
 
     c = current_app.mysql.connection.cursor()
+
+    # 1. Actualizar el combo
     sql = """UPDATE combos 
-             SET nombre=%s, descripcion=%s, precio_frito=%s,precio_congelado=%s, updated_at=NOW() 
+             SET nombre=%s, descripcion=%s, precio_frito=%s, precio_congelado=%s, updated_at=NOW() 
              WHERE id=%s AND activo = 1"""
-    c.execute(sql, (nombre, descripcion, precio_frito,precio_congelado, id))
+    c.execute(sql, (nombre, descripcion, precio_frito, precio_congelado, id))
+
+    # 2. Si se enviaron productos, reemplazar el detalle
+    if productos is not None and isinstance(productos, list):
+        # Borrar los productos actuales del combo
+        c.execute("DELETE FROM combo_detalle WHERE combo_id = %s", (id,))
+        # Insertar los nuevos
+        for item in productos:
+            c.execute("""
+                INSERT INTO combo_detalle (combo_id, producto_id, cantidad_unidades)
+                VALUES (%s, %s, %s)
+            """, (id, item["producto_id"], item["cantidad_unidades"]))
+
     current_app.mysql.connection.commit()
+    c.close()
+
     return {"id": id, "nombre": nombre}
 
 def eliminar_combos(id):

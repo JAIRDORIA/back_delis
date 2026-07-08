@@ -2,7 +2,7 @@ from flask import request, jsonify
 from flask_jwt_extended import jwt_required
 from services.combos_services import (
     listado_combos, crear_combo, existe_combo, 
-    obtener_combo_id, actualizar_combos, eliminar_combos
+    obtener_combo_id, actualizar_combos, eliminar_combos,obtener_combo_id
 )
 from utils.decorators import token_requerido
 def get_combos():
@@ -102,40 +102,30 @@ def cntRegistrarCombo():
     return jsonify({"mensaje": "combo registrado exitosamente", "datos": resultado}), 201
 
 #@jwt_required()
-def cntActualizarCombo(id):
-    """
-    Editar un producto/combo (RF22)
-    ---
-    tags: [Combos]
-    security: [{ Bearer: [] }]
-    """
+def cntActualizarCombos(id):
+    # Verificar que el combo existe
     if not obtener_combo_id(id):
         return jsonify({"mensaje": "Combo no encontrado"}), 404
 
-    if not request.json:
+    data = request.get_json()
+    if not data:
         return jsonify({"mensaje": "No hay datos para actualizar"}), 400
 
-    nombre = str(request.json.get("nombre", "")).strip()
-    descripcion = str(request.json.get("descripcion", "")).strip()
-    precio_frito = request.json.get('precio_frito', 0)
-    precio_congelado = request.json.get('precio_congelado', 0)
+    nombre = data.get("nombre", "").strip()
+    descripcion = data.get("descripcion", "").strip()
+    precio_frito = data.get("precio_frito", 0)
+    precio_congelado = data.get("precio_congelado", 0)
+    productos = data.get("productos", None)  # lista de {producto_id, cantidad_unidades}
+
+    if not nombre:
+        return jsonify({"mensaje": "El nombre es obligatorio"}), 400
+
+    resultado = actualizar_combos(id, nombre, descripcion, precio_frito, precio_congelado, productos)
     
-    
-   
+    if isinstance(resultado, dict) and "error" in resultado:
+        return jsonify({"mensaje": resultado["error"]}), 400
 
-    try:
-        precio_num = float(precio_frito)
-        if precio_num <= 0:
-            return jsonify({"mensaje": "Precio inválido"}), 400
-    except:
-        return jsonify({"mensaje": "Formato de precio incorrecto"}), 400
-
-    # Validar que el nombre no esté en uso por otro combo
-    if existe_combo(nombre, excluir_id=id):
-        return jsonify({"mensaje": "Ese nombre de combo ya está en uso"}), 400
-
-    resultado = actualizar_combos(id, nombre, descripcion, precio_frito,precio_congelado,)
-    return jsonify({"mensaje": "Combo actualizado con éxito", "datos": resultado}), 200
+    return jsonify({"mensaje": "Combo actualizado exitosamente", "datos": resultado}), 200
 
 #@jwt_required()
 def cntEliminarCombo(id):
