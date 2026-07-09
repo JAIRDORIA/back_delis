@@ -1,4 +1,4 @@
-from flask import current_app
+from flask import current_app, json
 from models.venta_model import Ventas
 from datetime import datetime
 import math
