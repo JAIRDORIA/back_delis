@@ -528,8 +528,102 @@ def actualizar_venta(id, fecha_entrega, total, estado):
     c.close()
     return obtener_venta(id)
 
+def revertir_inventario_detalle(venta_id):
+    c = current_app.mysql.connection.cursor()
+    
+    # Obtener solo el detalle de los combos de la venta
+    c.execute("""
+        SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
+        FROM venta_detalle
+        WHERE venta_id = %s AND es_combo = 1
+    """, (venta_id,))
+    detalles_combos = c.fetchall()
+
+    for d in detalles_combos:
+        producto_id = d[0]
+        cantidad = d[1]          # Cantidad de combos
+        es_combo = d[2]
+        combo_id = d[3]
+        combo_productos_json = d[4]
+
+        # Siempre será un combo, así que podemos omitir la verificación de es_combo
+        if combo_productos_json:
+            # Combo personalizado: revertir usando la lista guardada
+            productos_personalizados = json.loads(combo_productos_json)
+            for prod in productos_personalizados:
+                pid = prod["producto_id"]
+                unidades_a_sumar = prod["cantidad_unidades"] * cantidad
+                
+                # Sumar al inventario (inverso de descontar)
+                _sumar_inventario(pid, unidades_a_sumar, c)
+        else:
+            # Combo normal: obtener componentes del combo real
+            c.execute("SELECT producto_id, cantidad_unidades FROM combo_detalle WHERE combo_id = %s", (combo_id,))
+            componentes = c.fetchall()
+            for comp in componentes:
+                pid = comp[0]
+                unidades_a_sumar = comp[1] * cantidad
+                _sumar_inventario(pid, unidades_a_sumar, c)
+
+    current_app.mysql.connection.commit()
+    c.close()
+
+
+
+def _sumar_inventario(producto_id, unidades_a_sumar, cursor):
+    """
+    Suma unidades a un producto respetando la lógica de bandejas/unidades sueltas.
+    """
+    # Obtener unidades por bandeja del producto
+    cursor.execute("SELECT unidades_por_bandeja FROM productos WHERE id = %s", (producto_id,))
+    prod = cursor.fetchone()
+    if not prod:
+        return
+    unidades_por_bandeja = prod[0]
+
+    # Obtener inventario actual
+    cursor.execute("""
+        SELECT stock_actual, unidades_sueltas
+        FROM inventario WHERE producto_id = %s
+    """, (producto_id,))
+    inv = cursor.fetchone()
+
+    if inv:
+        stock_actual = inv[0]
+        unidades_sueltas = inv[1]
+    else:
+        stock_actual = 0
+        unidades_sueltas = 0
+
+    # Calcular total disponible en unidades
+    total_disponible = (stock_actual * unidades_por_bandeja) + unidades_sueltas
+    total_nuevo = total_disponible + unidades_a_sumar
+
+    # Calcular nuevas bandejas y sueltas
+    nuevas_bandejas = total_nuevo // unidades_por_bandeja
+    nuevas_sueltas = total_nuevo % unidades_por_bandeja
+
+    # Actualizar inventario
+    if inv:
+        cursor.execute("""
+            UPDATE inventario
+            SET stock_actual = %s, unidades_sueltas = %s
+            WHERE producto_id = %s
+        """, (nuevas_bandejas, nuevas_sueltas, producto_id))
+    else:
+        cursor.execute("""
+            INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
+            VALUES (%s, %s, %s)
+        """, (producto_id, nuevas_bandejas, nuevas_sueltas))
 def anular_venta(id):
     c = current_app.mysql.connection.cursor()
+     # Obtener venta
+    venta = obtener_venta(id)
+    if not venta or venta['estado'] != 'pendiente':
+        return None
+
+    # Revertir inventario de combos (personalizados y normales)
+    revertir_inventario_detalle(id)
     
     # 1. Cambiar estado a anulada (dispara el trigger)
     c.execute("""
