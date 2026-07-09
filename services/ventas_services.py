@@ -1,7 +1,6 @@
-from flask import current_app, json
+from flask import current_app
 from models.venta_model import Ventas
 from datetime import datetime
-
 import math
 
 def listado_ventas(pagina=1, limite=20, corte_id=None):
@@ -108,11 +107,6 @@ def actualizar_detalle_venta(id, nuevo_detalle):
     if not venta or venta[2] != 'pendiente':
         c.close()
         return None
-    
-    
-    # Revertir inventario del detalle antiguo
-    revertir_inventario_detalle(id)
-
 
     # Borrar el detalle actual
     c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
@@ -349,50 +343,41 @@ def registro(cliente_id, corte_id, usuario_id,
     """, (cliente_id, corte_id, usuario_id, fecha_entrega, total, nombre_cliente))
 
     venta_id = c.lastrowid
-    
 
     # 2. insertar cada producto del detalle
     for item in detalle:
-        
         es_combo = 1 if item.get("tipo") == "combo" else 0
         combo_id = item.get("combo_id", None)
-    
-        # Calcular JSON de productos personalizados (solo para combos)
-        productos_personalizados = item.get("productos", None)
-        combo_productos_json = None
-        if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
-            combo_productos_json = json.dumps(productos_personalizados)
 
         c.execute("""
-        INSERT INTO venta_detalle (venta_id, producto_id, combo_id, nombre_producto,
-                                   cantidad, precio_unitario, es_combo, combo_productos)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
+                                       cantidad, precio_unitario, es_combo, combo_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-        venta_id,
-        item.get("producto_id"),
-        combo_id,
-        item["nombre_producto"],
-        item["cantidad"],
-        item["precio_unitario"],
-        es_combo,
-        combo_productos_json
+            venta_id,
+            item.get("producto_id"),
+            item["nombre_producto"],
+            item["cantidad"],
+            item["precio_unitario"],
+            es_combo,
+            combo_id
         ))
 
-    # si es combo descontar inventario con lógica de unidades y sueltas
+        # si es combo descontar inventario con lógica de unidades y sueltas
         if es_combo:
-            
+            productos_personalizados = item.get("productos", None)
             if productos_personalizados and isinstance(productos_personalizados, list):
                 descontar_inventario_combo_personalizado(
-                productos_personalizados,
-                item["cantidad"],
-                c
-            )
+                    productos_personalizados,
+                    item["cantidad"],
+                    c
+                    )
             else:
                 descontar_inventario_combo(
-                item["combo_id"],
-                item["cantidad"],
-                c
-            )
+            item["combo_id"],
+            item["cantidad"],
+            c
+        )    
         
     
     
@@ -423,92 +408,6 @@ def registro(cliente_id, corte_id, usuario_id,
     return obtener_venta(venta_id)
     
     
-
-def revertir_inventario_detalle(venta_id):
-    c = current_app.mysql.connection.cursor()
-    
-    # Obtener solo el detalle de los combos de la venta
-    c.execute("""
-        SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
-        FROM venta_detalle
-        WHERE venta_id = %s AND es_combo = 1
-    """, (venta_id,))
-    detalles_combos = c.fetchall()
-
-    for d in detalles_combos:
-        producto_id = d[0]
-        cantidad = d[1]          # Cantidad de combos
-        es_combo = d[2]
-        combo_id = d[3]
-        combo_productos_json = d[4]
-
-        # Siempre será un combo, así que podemos omitir la verificación de es_combo
-        if combo_productos_json:
-            # Combo personalizado: revertir usando la lista guardada
-            productos_personalizados = json.loads(combo_productos_json)
-            for prod in productos_personalizados:
-                pid = prod["producto_id"]
-                unidades_a_sumar = prod["cantidad_unidades"] * cantidad
-                
-                # Sumar al inventario (inverso de descontar)
-                _sumar_inventario(pid, unidades_a_sumar, c)
-        else:
-            # Combo normal: obtener componentes del combo real
-            c.execute("SELECT producto_id, cantidad_unidades FROM combo_detalle WHERE combo_id = %s", (combo_id,))
-            componentes = c.fetchall()
-            for comp in componentes:
-                pid = comp[0]
-                unidades_a_sumar = comp[1] * cantidad
-                _sumar_inventario(pid, unidades_a_sumar, c)
-
-    current_app.mysql.connection.commit()
-    c.close()
-
-def _sumar_inventario(producto_id, unidades_a_sumar, cursor):
-    """
-    Suma unidades a un producto respetando la lógica de bandejas/unidades sueltas.
-    """
-    # Obtener unidades por bandeja del producto
-    cursor.execute("SELECT unidades_por_bandeja FROM productos WHERE id = %s", (producto_id,))
-    prod = cursor.fetchone()
-    if not prod:
-        return
-    unidades_por_bandeja = prod[0]
-
-    # Obtener inventario actual
-    cursor.execute("""
-        SELECT stock_actual, unidades_sueltas
-        FROM inventario WHERE producto_id = %s
-    """, (producto_id,))
-    inv = cursor.fetchone()
-
-    if inv:
-        stock_actual = inv[0]
-        unidades_sueltas = inv[1]
-    else:
-        stock_actual = 0
-        unidades_sueltas = 0
-
-    # Calcular total disponible en unidades
-    total_disponible = (stock_actual * unidades_por_bandeja) + unidades_sueltas
-    total_nuevo = total_disponible + unidades_a_sumar
-
-    # Calcular nuevas bandejas y sueltas
-    nuevas_bandejas = total_nuevo // unidades_por_bandeja
-    nuevas_sueltas = total_nuevo % unidades_por_bandeja
-
-    # Actualizar inventario
-    if inv:
-        cursor.execute("""
-            UPDATE inventario
-            SET stock_actual = %s, unidades_sueltas = %s
-            WHERE producto_id = %s
-        """, (nuevas_bandejas, nuevas_sueltas, producto_id))
-    else:
-        cursor.execute("""
-            INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
-            VALUES (%s, %s, %s)
-        """, (producto_id, nuevas_bandejas, nuevas_sueltas))  
 
 def generar_comprobante(venta_id):
     c = current_app.mysql.connection.cursor()
