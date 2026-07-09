@@ -39,14 +39,7 @@ def _proveedor_existe(cursor, id):
     return cursor.fetchone() is not None
 
 
-def _email_duplicado(cursor, email, excluir_id=None):
-    if excluir_id:
-        cursor.execute(
-            "SELECT id FROM proveedores WHERE email = %s AND id != %s", (email, excluir_id)
-        )
-    else:
-        cursor.execute("SELECT id FROM proveedores WHERE email = %s", (email,))
-    return cursor.fetchone() is not None
+
 
 
 def _nombre_duplicado(cursor, nombre, excluir_id=None):
@@ -208,9 +201,7 @@ def registro_proveedor(nombre, telefono, direccion, email):
             return None, f"Ya existe un proveedor con el nombre '{nombre.strip()}'. Los nombres de proveedores deben ser únicos."
 
         # ✅ VALIDACIÓN: Email duplicado (original)
-        if _email_duplicado(cursor, email):
-            cursor.close()
-            return None, f"Ya existe un proveedor con el email '{email}'"
+        
 
         # MISMO SQL DEL ORIGINAL (sin cambios)
         sql = """
