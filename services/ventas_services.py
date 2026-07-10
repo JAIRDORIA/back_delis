@@ -246,13 +246,11 @@ def descontar_inventario_combo(combo_id, cantidad_combos, c):
 
         # calcular total disponible en unidades
         total_disponible = (stock_actual * unidades_por_bandeja) + unidades_sueltas
+        total_restante   = total_disponible - unidades_necesarias
 
-        # restar unidades necesarias (puede quedar negativo RF18)
-        total_restante = total_disponible - unidades_necesarias
-
-        # calcular nuevas bandejas y sueltas
-        nuevas_bandejas = math.floor(total_restante / unidades_por_bandeja)
-        nuevas_sueltas  = total_restante % unidades_por_bandeja
+        # Fórmula corregida: permite sueltas negativas
+        nuevas_bandejas = int(total_restante / unidades_por_bandeja)
+        nuevas_sueltas  = total_restante - (nuevas_bandejas * unidades_por_bandeja)
 
         # actualizar inventario
         if inv:
@@ -303,12 +301,8 @@ def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_
         total_disponible = (stock_actual * unidades_por_bandeja) + unidades_sueltas
         total_restante = total_disponible - unidades_necesarias
 
-        if total_restante >= 0:
-            nuevas_bandejas = total_restante // unidades_por_bandeja
-            nuevas_sueltas  = total_restante % unidades_por_bandeja
-        else:
-            nuevas_bandejas = -(abs(total_restante) // unidades_por_bandeja + 1)
-            nuevas_sueltas  = 0
+        nuevas_bandejas = int(total_restante / unidades_por_bandeja)
+        nuevas_sueltas  = total_restante - (nuevas_bandejas * unidades_por_bandeja)
 
         if inv:
             c.execute("""
@@ -600,9 +594,8 @@ def _sumar_inventario(producto_id, unidades_a_sumar, cursor):
     total_nuevo = total_disponible + unidades_a_sumar
 
     # Calcular nuevas bandejas y sueltas
-    nuevas_bandejas = total_nuevo // unidades_por_bandeja
-    nuevas_sueltas = total_nuevo % unidades_por_bandeja
-
+    nuevas_bandejas = int(total_nuevo / unidades_por_bandeja)
+    nuevas_sueltas  = total_nuevo - (nuevas_bandejas * unidades_por_bandeja)
     # Actualizar inventario
     if inv:
         cursor.execute("""
@@ -615,6 +608,9 @@ def _sumar_inventario(producto_id, unidades_a_sumar, cursor):
             INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
             VALUES (%s, %s, %s)
         """, (producto_id, nuevas_bandejas, nuevas_sueltas))
+        
+       
+        
 def anular_venta(id):
     c = current_app.mysql.connection.cursor()
      # Obtener venta

@@ -134,9 +134,7 @@ def cntActualizar(id):
         return jsonify({"mensaje": "nombre e identificacion son obligatorios"}), 400
 
     # Validar formato de email
-    regex_email = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
-    if not re.match(regex_email, email.lower()):
-        return jsonify({"mensaje": "El formato del correo electrónico no es válido"}), 400
+   
 
     # Las validaciones de unicidad excluyendo al propio cliente se hacen en el servicio
     resultado = service_actualizar_cliente(id, nombre, identificacion, telefono, direccion, email)

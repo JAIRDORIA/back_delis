@@ -277,6 +277,9 @@ def cntAnular(id):
         # 2. validar que no este ya anulada
         if venta["estado"] == "anulada":
             return jsonify({"mensaje": "la venta ya esta anulada"}), 400
+        
+        if venta["estado"] == "entregada":
+            return jsonify({"mensaje": "la venta ya esta entregada, no se puede anular"}), 400
 
         
 
