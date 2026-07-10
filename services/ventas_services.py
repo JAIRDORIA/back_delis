@@ -342,11 +342,15 @@ def registro(cliente_id, corte_id, usuario_id,
     for item in detalle:
         es_combo = 1 if item.get("tipo") == "combo" else 0
         combo_id = item.get("combo_id", None)
+        productos_personalizados = item.get("productos", None)
+        combo_productos_json = None
+        if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
+            combo_productos_json = json.dumps(productos_personalizados)
 
         c.execute("""
             INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
-                                       cantidad, precio_unitario, es_combo, combo_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                       cantidad, precio_unitario, es_combo, combo_id,combo_productos)
+            VALUES (%s, %s, %s, %s, %s, %s, %s,%s)
         """, (
             venta_id,
             item.get("producto_id"),
@@ -354,12 +358,12 @@ def registro(cliente_id, corte_id, usuario_id,
             item["cantidad"],
             item["precio_unitario"],
             es_combo,
-            combo_id
+            combo_id,
+            combo_productos_json
         ))
 
         # si es combo descontar inventario con lógica de unidades y sueltas
         if es_combo:
-            productos_personalizados = item.get("productos", None)
             if productos_personalizados and isinstance(productos_personalizados, list):
                 descontar_inventario_combo_personalizado(
                     productos_personalizados,
