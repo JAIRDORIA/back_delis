@@ -79,8 +79,7 @@ def cntregistrar():
         except ValueError:
             return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
 
-        if fecha.date() < datetime.now().date():
-            return jsonify({"mensaje": "la fecha del abono no puede ser en el pasado"}), 400
+        
 
         fecha = fecha.strftime("%Y-%m-%d")
 
@@ -147,8 +146,7 @@ def cntActualizar(id):
         except ValueError:
             return jsonify({"mensaje": "formato de fecha incorrecto, use DD/MM/YYYY"}), 400
 
-        if fecha_dt.date() < datetime.now().date():
-            return jsonify({"mensaje": "la fecha del abono no puede ser en el pasado"}), 400
+        
 
         fecha = fecha_dt.strftime("%Y-%m-%d")
 

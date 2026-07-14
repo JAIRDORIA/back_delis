@@ -31,6 +31,6 @@ def cerrar():
     return cntCerrarCorte()
 
 @cortes_bp.route('/balance', methods=['GET'])
-@token_requerido
+#@token_requerido
 def balance():
     return cntBalance()

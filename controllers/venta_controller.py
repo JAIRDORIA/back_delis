@@ -5,6 +5,7 @@ from services.cortes_services import obtener_corte ,obtener_corte_abierto, obten
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
 from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta
+from zoneinfo import ZoneInfo
 
 
 def cntListado():
@@ -205,7 +206,9 @@ def cntregistrar():
         
         
 
-        fecha_entrega = fecha_convertida.strftime("%Y-%m-%d %H:%M:%S")
+        fecha_convertida = fecha_convertida.replace(tzinfo=ZoneInfo("America/Bogota"))
+        fecha_utc = fecha_convertida.astimezone(ZoneInfo("UTC"))
+        fecha_entrega = fecha_utc.strftime("%Y-%m-%d %H:%M:%S")
 
         p = registro(id_cliente, corte, usuario, fecha_entrega,
                      total, detalle, abonos_iniciales)

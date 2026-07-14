@@ -9,7 +9,7 @@ from routes.usuarios import auth_bp
 
 app = Flask(__name__)
 app.config.from_object(config)
-app.config['MYSQL_INIT_COMMAND'] = "SET time_zone = '-05:00'"
+
 app.register_blueprint(auth_bp)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 

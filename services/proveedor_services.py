@@ -242,9 +242,7 @@ def actualizar_proveedor(id, nombre, telefono, direccion, email, activo):
             return None, f"Ya existe otro proveedor con el nombre '{nombre.strip()}'. Los nombres deben ser únicos."
 
         # ✅ VALIDACIÓN: Email duplicado (original)
-        if _email_duplicado(cursor, email, excluir_id=id):
-            cursor.close()
-            return None, f"Ya existe otro proveedor con el email '{email}'"
+        
 
         # MISMO SQL DEL ORIGINAL (sin cambios)
         sql = """
