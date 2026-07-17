@@ -361,6 +361,28 @@ def balance_corte_actual():
       AND v.saldo_pendiente > 0
     """)
     saldo_pendiente_anteriores = float(c.fetchone()[0])
+    
+    # neto de prestamos en efectivo: sale (prestamo) - entra (pago_prestamo)
+    c.execute("""
+    SELECT
+        COALESCE(SUM(CASE WHEN concepto = 'prestamo'      THEN monto ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN concepto = 'pago_prestamo' THEN monto ELSE 0 END), 0)
+    FROM movimientos_caja
+    WHERE corte_id = %s AND medio_pago = 'efectivo'
+      AND concepto IN ('prestamo', 'pago_prestamo')
+    """, (corte_id,))
+    neto_prestamos_efectivo = float(c.fetchone()[0])
+
+# neto de prestamos en transferencia
+    c.execute("""
+    SELECT
+        COALESCE(SUM(CASE WHEN concepto = 'prestamo'      THEN monto ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN concepto = 'pago_prestamo' THEN monto ELSE 0 END), 0)
+    FROM movimientos_caja
+    WHERE corte_id = %s AND medio_pago = 'transferencia'
+      AND concepto IN ('prestamo', 'pago_prestamo')
+    """, (corte_id,))
+    neto_prestamos_transferencia = float(c.fetchone()[0])
 
     c.close()
 
@@ -375,7 +397,7 @@ def balance_corte_actual():
         "saldo_pendiente_anteriores" : saldo_pendiente_anteriores,
         "dinero_caja"       : dinero_caja,
         "dinero_caja_real"  : dinero_caja_real, 
-        "total_efectivo"    : total_efectivo-compras_efectivo,
-        "total_transferencia": total_transferencia - compras_transferencia,
+        "total_efectivo"    : total_efectivo - compras_efectivo - neto_prestamos_efectivo,
+        "total_transferencia": total_transferencia - compras_transferencia - neto_prestamos_transferencia,
         "resultado"         : total_ventas - total_compras
     }
