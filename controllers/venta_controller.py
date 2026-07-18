@@ -13,13 +13,14 @@ def cntListado():
         pagina   = request.args.get("pagina",   1,    type=int)
         limite   = request.args.get("limite",   20,   type=int)
         corte_id = request.args.get("corte_id", None, type=int)
+        q        = request.args.get("q",        None, type=str) 
 
         if pagina < 1:
             return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
         if limite < 1 or limite > 200:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
 
-        datos = listado_ventas(pagina, limite, corte_id)
+        datos = listado_ventas(pagina, limite, corte_id,q)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"errores": str(e)}), 500

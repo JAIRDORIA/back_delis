@@ -3,7 +3,7 @@ from models.venta_model import Ventas
 from datetime import datetime
 import math
 
-def listado_ventas(pagina=1, limite=20, corte_id=None):
+def listado_ventas(pagina=1, limite=20, corte_id=None, q=None):
     offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
 
@@ -15,55 +15,46 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
     else:
         corte_actual = corte_id
 
-    # Construir cláusulas WHERE según si tenemos un corte de referencia
+    # Construir cláusulas WHERE dinámicamente
+    where_clause = "WHERE v.estado != 'anulada'"
+    params_count = {}
+    params_data = {'limite': limite, 'offset': offset}
+
     if corte_actual is not None:
-        where_clause = """
-            WHERE v.estado != 'anulada'
-              AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND v.corte_id != %(corte)s))
-        """
-        params_count = {'corte': corte_actual}
-        params_data  = {'corte': corte_actual, 'limite': limite, 'offset': offset}
-    else:
-        # Si no hay corte abierto y no se pidió uno específico, mostrar todas las activas
-        where_clause = "WHERE v.estado != 'anulada'"
-        params_count = {}
-        params_data  = {'limite': limite, 'offset': offset}
+        where_clause += " AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado'))"
+        params_count['corte'] = corte_actual
+        params_data['corte'] = corte_actual
+
+    # Agregar búsqueda por texto (q)
+    if q:
+        q_param = f"%{q}%"
+        where_clause += " AND (v.id LIKE %(q)s OR cl.nombre LIKE %(q)s OR v.estado LIKE %(q)s)"
+        params_count['q'] = q_param
+        params_data['q'] = q_param
 
     # Consulta de total
     sql_count = f"""
         SELECT COUNT(*)
         FROM ventas v
         JOIN clientes cl ON cl.id = v.cliente_id
-    JOIN cortes co ON co.id = v.corte_id
-    WHERE v.estado != 'anulada'
-      AND (
-            v.corte_id = %(corte)s
-            OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado')
-          )
-        """
+        JOIN cortes co ON co.id = v.corte_id
+        {where_clause}
+    """
     c.execute(sql_count, params_count)
     total = c.fetchone()[0]
 
     # Consulta de datos paginada
-    # En listado_ventas, después de obtener el corte_actual
-
-    # En listado_ventas, después de obtener el corte_actual
-
     sql_data = f"""
-    SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
-           v.usuario_id, v.fecha_venta, v.fecha_entrega,
-           v.total, v.total_abonado, v.saldo_pendiente, v.estado
-    FROM ventas v
-    JOIN clientes cl ON cl.id = v.cliente_id
-    JOIN cortes co ON co.id = v.corte_id
-    WHERE v.estado != 'anulada'
-      AND (
-            v.corte_id = %(corte)s
-            OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado')
-          )
-    ORDER BY v.id DESC
-    LIMIT %(limite)s OFFSET %(offset)s
-        """
+        SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
+               v.usuario_id, v.fecha_venta, v.fecha_entrega,
+               v.total, v.total_abonado, v.saldo_pendiente, v.estado
+        FROM ventas v
+        JOIN clientes cl ON cl.id = v.cliente_id
+        JOIN cortes co ON co.id = v.corte_id
+        {where_clause}
+        ORDER BY v.id DESC
+        LIMIT %(limite)s OFFSET %(offset)s
+    """
     c.execute(sql_data, params_data)
     datos = c.fetchall()
     c.close()
@@ -75,7 +66,7 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
             cliente_id      = p[1],
             nombre_cliente  = p[2],
             corte_id        = p[3],
-            corte_numero    =p[4],
+            corte_numero    = p[4],
             usuario_id      = p[5],
             fecha_venta     = p[6],
             fecha_entrega   = p[7],
@@ -93,7 +84,6 @@ def listado_ventas(pagina=1, limite=20, corte_id=None):
         "total_paginas": -(-total // limite) if limite else 0,
         "datos"        : lista
     }
-    
     
     
     
