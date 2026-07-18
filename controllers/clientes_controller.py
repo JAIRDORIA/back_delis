@@ -23,14 +23,20 @@ def get_clientes():
         in: query
         type: integer
         default: 10
+      - name: q
+        in: query
+        type: string
+        required: false
+        description: texto de búsqueda (nombre, identificación o teléfono)
     responses:
       200:
         description: Lista de clientes obtenida correctamente.
     """
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    # Se pasa la paginación al servicio
-    w = listado_clientes(page, per_page)
+    busqueda = request.args.get('q', None, type=str)
+
+    w = listado_clientes(page, per_page, busqueda)
     return jsonify(w)
 
 #@jwt_required()

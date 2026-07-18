@@ -1,20 +1,31 @@
 from flask import current_app
 from models.cliente_model import cliente
 
-def listado_clientes(page, per_page):
-    """Lista clientes con paginación (RF13)[cite: 1, 17]."""
+def listado_clientes(page, per_page, busqueda=None):
+    """Lista clientes con paginación y búsqueda opcional (RF13)."""
     offset = (page - 1) * per_page
     c = current_app.mysql.connection.cursor()
-    
-    c.execute("SELECT COUNT(*) FROM clientes WHERE activo = 1")
+
+    where = "WHERE activo = 1"
+    params = []
+
+    if busqueda:
+        where += " AND (nombre LIKE %s OR identificacion LIKE %s OR telefono LIKE %s)"
+        like = f"%{busqueda}%"
+        params += [like, like, like]
+
+    c.execute(f"SELECT COUNT(*) FROM clientes {where}", tuple(params))
     total = c.fetchone()[0]
-    
-    sql = """SELECT id,identificacion, nombre, telefono, direccion, email, activo, created_at, updated_at 
-             FROM clientes WHERE activo = 1 LIMIT %s OFFSET %s"""
-    c.execute(sql, (per_page, offset))
+
+    sql = f"""SELECT id, identificacion, nombre, telefono, direccion, email, activo, created_at, updated_at
+              FROM clientes {where}
+              ORDER BY nombre ASC
+              LIMIT %s OFFSET %s"""
+    c.execute(sql, tuple(params + [per_page, offset]))
     datos = c.fetchall()
-    
-    lista = [cliente(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],p[8]).toDic() for p in datos]
+    c.close()   # <- esto faltaba, lo agrego para no seguir acumulando conexiones
+
+    lista = [cliente(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]).toDic() for p in datos]
     return {"items": lista, "total": total, "page": page, "per_page": per_page}
 
 def obtener_cliente(id):
