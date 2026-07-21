@@ -23,6 +23,7 @@ CORS(
 
 jwt = JWTManager(app)
 
+
 mysql = MySQL(app)
 app.mysql = mysql
 cargarRuta(app)

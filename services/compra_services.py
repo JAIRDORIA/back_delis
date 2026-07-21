@@ -11,32 +11,38 @@ def _compra_existe(cursor, id):
     cursor.execute("SELECT id FROM compras WHERE id = %s AND eliminada = 0", (id,))
     return cursor.fetchone() is not None
 
-
-def listado_compra(pagina=1, limite=20, corte_id=None):
+def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
     try:
         offset = (pagina - 1) * limite
         con    = current_app.mysql.connection
         cursor = con.cursor()
 
-        cursor.execute("SELECT COUNT(*) FROM compras WHERE eliminada = 0 AND corte_id = %s", (corte_id,))
+        where = "WHERE c.eliminada = 0 AND c.corte_id = %s"
+        params = [corte_id]
+
+        if busqueda:
+            where += " AND c.descripcion LIKE %s"
+            params.append(f"%{busqueda}%")
+
+        cursor.execute(f"SELECT COUNT(*) FROM compras c {where}", tuple(params))
         total = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
-                   c.fecha,c.medio_pago, c.total, c.descripcion
+                   c.fecha, c.medio_pago, c.total, c.descripcion
             FROM compras c
             JOIN proveedores p ON p.id = c.proveedor_id
-            WHERE c.eliminada = 0 AND c.corte_id = %s
+            {where}
             ORDER BY c.fecha DESC
             LIMIT %s OFFSET %s
-        """, (corte_id, limite, offset))
+        """, tuple(params + [limite, offset]))
 
         datos = cursor.fetchall()
         cursor.close()
 
         lista = []
         for fila in datos:
-            com = compra(fila[0], fila[1], fila[3], fila[4], fila[5],fila[6], fila[7], fila[8])
+            com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[7], fila[8])
             d = com.toDic()
             d['nombre_proveedor'] = fila[2]
             lista.append(d)

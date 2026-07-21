@@ -5,12 +5,12 @@ from services.compra_services import (
 )
 from services.cortes_services import obtener_corte_abierto, obtener_corte
 
-
 def cntListadoCompra():
     try:
-        pagina   = request.args.get("pagina", 1, type=int)
-        limite   = request.args.get("limite", 20, type=int)
-        corte_id = request.args.get("corte_id", None, type=int)
+        pagina    = request.args.get("pagina", 1, type=int)
+        limite    = request.args.get("limite", 20, type=int)
+        corte_id  = request.args.get("corte_id", None, type=int)
+        busqueda  = request.args.get("q", None, type=str)
 
         if pagina < 1:
             return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
@@ -27,7 +27,7 @@ def cntListadoCompra():
             if not corte_db:
                 return jsonify({"mensaje": f"el corte con id {corte_id} no existe"}), 404
 
-        datos = listado_compra(pagina, limite, corte_id)
+        datos = listado_compra(pagina, limite, corte_id, busqueda)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -83,7 +83,7 @@ def cntActualizarCompra(id):
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'usuario_id', 'fecha', 'total']
+    requeridos = ['proveedor_id', 'usuario_id', 'fecha','medio_pago', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
@@ -91,6 +91,7 @@ def cntActualizarCompra(id):
     proveedor_id = request.json['proveedor_id']
     usuario_id   = request.json['usuario_id']
     fecha        = request.json['fecha']
+    medio_pago   =request.json['medio_pago']
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
 
@@ -105,7 +106,7 @@ def cntActualizarCompra(id):
         return jsonify({"error": "El total debe ser un número"}), 400
 
     try:
-        dato, error = actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, total, descripcion)
+        dato, error = actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago,total, descripcion)
         if error:
             status = 404 if "no encontrada" in error else 409
             return jsonify({"error": error}), status
