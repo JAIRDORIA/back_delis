@@ -3,7 +3,7 @@ from models.venta_model import Ventas
 from datetime import datetime
 import math
 
-def listado_ventas(pagina=1, limite=20, corte_id=None, q=None):
+def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None):
     offset = (pagina - 1) * limite
     c = current_app.mysql.connection.cursor()
 
@@ -20,7 +20,11 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None):
     params_count = {}
     params_data = {'limite': limite, 'offset': offset}
 
-    if corte_actual is not None:
+    if cliente_id is not None:
+        where_clause += " AND v.cliente_id = %(cliente_id)s"
+        params_count['cliente_id'] = cliente_id
+        params_data['cliente_id'] = cliente_id
+    elif corte_actual is not None:
         where_clause += " AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado'))"
         params_count['corte'] = corte_actual
         params_data['corte'] = corte_actual
