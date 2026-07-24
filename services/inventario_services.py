@@ -1,5 +1,6 @@
 from flask import current_app
 from models.inventario_model import inventarios
+import json
 
 def listado_inventarios(pagina=1, limite=20):
     offset = (pagina - 1) * limite
@@ -117,3 +118,87 @@ def productos_bajo_stock():
             "stock_minimo": p[3]
         })
     return lista
+
+
+
+def obtener_unidades_por_bandeja(producto_id):
+    c = current_app.mysql.connection.cursor()
+    c.execute("SELECT unidades_por_bandeja FROM productos WHERE id = %s", (producto_id,))
+    row = c.fetchone()
+    c.close()
+    return row[0] if row else None
+ 
+ 
+def normalizar_bandejas_sueltas(stock_actual, unidades_sueltas, unidades_por_bandeja):
+    """
+    Convierte un par (bandejas, sueltas) potencialmente "roto" (ej: sueltas
+    que igualan o superan unidades_por_bandeja) a su forma normalizada,
+    usando la misma formula que ya usa el sistema al descontar por ventas:
+ 
+        total = (stock_actual * unidades_por_bandeja) + unidades_sueltas
+        nuevas_bandejas = int(total / unidades_por_bandeja)
+        nuevas_sueltas  = total - (nuevas_bandejas * unidades_por_bandeja)
+    """
+    total = (stock_actual * unidades_por_bandeja) + unidades_sueltas
+    nuevas_bandejas = int(total / unidades_por_bandeja)
+    nuevas_sueltas = total - (nuevas_bandejas * unidades_por_bandeja)
+    return nuevas_bandejas, nuevas_sueltas
+ 
+ 
+def actualizar_cantidades(id, stock_actual, unidades_sueltas, usuario_id):
+    """
+    Edita manualmente stock_actual/unidades_sueltas de un registro de
+    inventario, normalizando el resultado y dejando registro en auditoria
+    con el valor anterior y el nuevo.
+    """
+    inventario_actual = obtener_inventario(id)
+    if not inventario_actual:
+        return None
+ 
+    producto_id = inventario_actual["producto_id"]
+    unidades_por_bandeja = obtener_unidades_por_bandeja(producto_id)
+    if not unidades_por_bandeja:
+        raise Exception("El producto no tiene unidades_por_bandeja configurado")
+ 
+    nuevas_bandejas, nuevas_sueltas = normalizar_bandejas_sueltas(
+        stock_actual, unidades_sueltas, unidades_por_bandeja
+    )
+ 
+    c = current_app.mysql.connection.cursor()
+ 
+    c.execute("""
+        UPDATE inventario
+        SET stock_actual = %s, unidades_sueltas = %s
+        WHERE id = %s
+    """, (nuevas_bandejas, nuevas_sueltas, id))
+ 
+    c.execute("""
+        INSERT INTO auditoria (usuario_id, accion, tabla_afectada, registro_id,
+                                descripcion, datos_anteriores, datos_nuevos)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (
+        usuario_id,
+        'editar',
+        'inventario',
+        id,
+        f"Edicion manual de cantidades de inventario (producto_id {producto_id})",
+        json.dumps({
+            "stock_actual": inventario_actual["stock_actual"],
+            "unidades_sueltas": inventario_actual["unidades_sueltas"],
+        }),
+        json.dumps({
+            "stock_actual": nuevas_bandejas,
+            "unidades_sueltas": nuevas_sueltas,
+        }),
+    ))
+ 
+    current_app.mysql.connection.commit()
+    c.close()
+ 
+    return {
+        "id": id,
+        "producto_id": producto_id,
+        "stock_actual": nuevas_bandejas,
+        "unidades_sueltas": nuevas_sueltas,
+        "unidades_por_bandeja": unidades_por_bandeja,
+    }

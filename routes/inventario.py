@@ -1,6 +1,6 @@
 from flask import Blueprint
 from utils.decorators import token_requerido, rol_requerido
-from controllers.inventario_controller import cntListado, cntRegistro, cntActualizar, cntObtenerInventario, cntProductosBajoStock
+from controllers.inventario_controller import cntListado, cntRegistro, cntActualizar, cntObtenerInventario, cntProductosBajoStock,cntActualizarCantidades
 
 inventario_bp = Blueprint ('inventarios', __name__)
 
@@ -28,3 +28,8 @@ def obtener_inventario(id):
 @token_requerido
 def bajo_stock():
     return cntProductosBajoStock()
+
+@inventario_bp.route('/<int:id>/cantidades/', methods=["PUT"])
+@token_requerido
+def actualizar_cantidades(id):
+    return cntActualizarCantidades(id)
