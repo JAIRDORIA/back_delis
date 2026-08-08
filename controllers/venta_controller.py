@@ -226,8 +226,7 @@ def cntActualizar(id):
             return jsonify({"mensaje": f"la venta con id {id} no existe"}), 404
 
         
-        if venta["estado"] != "pendiente":
-            return jsonify({"mensaje": "solo puedes editar ventas en estado pendiente"}), 400
+        
 
         
         fecha_entrega = request.json.get("fecha_entrega", venta["fecha_entrega"])
@@ -263,6 +262,13 @@ def cntActualizar(id):
 
         if fecha_convertida:
             fecha_entrega = fecha_convertida.strftime("%Y-%m-%d %H:%M:%S")
+            
+        
+                # Validar que el estado solo pueda cambiarse de pendiente a entregada
+        if estado == 'entregada' and venta['estado'] != 'pendiente':
+            return jsonify({"mensaje": "Solo se pueden entregar ventas pendientes"}), 400
+        if estado == 'pendiente' and venta['estado'] != 'pendiente':
+            return jsonify({"mensaje": "No se puede volver a estado pendiente"}), 400
        
         resultado = actualizar_venta(id, fecha_entrega, total, estado)
         return jsonify({"mensaje": "venta actualizada", "datos": resultado}), 200
@@ -282,8 +288,7 @@ def cntAnular(id):
         if venta["estado"] == "anulada":
             return jsonify({"mensaje": "la venta ya esta anulada"}), 400
         
-        if venta["estado"] == "entregada":
-            return jsonify({"mensaje": "la venta ya esta entregada, no se puede anular"}), 400
+        
 
         
 

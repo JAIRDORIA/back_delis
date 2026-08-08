@@ -357,25 +357,8 @@ def registro(cliente_id, corte_id, usuario_id,
         ))
 
         # si es combo descontar inventario con lógica de unidades y sueltas
-        if es_combo:
-            if productos_personalizados and isinstance(productos_personalizados, list):
-                descontar_inventario_combo_personalizado(
-                    productos_personalizados,
-                    item["cantidad"],
-                    c
-                    )
-            else:
-                descontar_inventario_combo(
-            item["combo_id"],
-            item["cantidad"],
-            c
-        )    
-        
-    
-    
-          
-
-
+                # Ya no se descuenta inventario al crear la venta
+        # El descuento se hará cuando la venta se marque como "entregada"
     # 3. insertar abono inicial si el cliente pago algo
     if abonos_iniciales:
         for abono in abonos_iniciales:
@@ -503,12 +486,17 @@ def obtener_venta(id):
         }
     return None
 
-
 def actualizar_venta(id, fecha_entrega, total, estado):
-    # total_abonado ya no se toca aqui
-   
-
     c = current_app.mysql.connection.cursor()
+
+    # Obtener el estado anterior para saber si estamos entregando
+    c.execute("SELECT estado FROM ventas WHERE id = %s", (id,))
+    venta_anterior = c.fetchone()
+    if not venta_anterior:
+        c.close()
+        return None
+    estado_anterior = venta_anterior[0]
+
     c.execute("""
         UPDATE ventas
         SET fecha_entrega = %s,
@@ -516,6 +504,11 @@ def actualizar_venta(id, fecha_entrega, total, estado):
             estado        = %s
         WHERE id = %s
     """, (fecha_entrega, total, estado, id))
+
+    # Si la venta pasa a "entregada" por primera vez, descontar inventario
+    if estado == 'entregada' and estado_anterior != 'entregada':
+        descontar_inventario_venta(id)
+
     current_app.mysql.connection.commit()
     c.close()
     return obtener_venta(id)
@@ -608,31 +601,81 @@ def _sumar_inventario(producto_id, unidades_a_sumar, cursor):
         """, (producto_id, nuevas_bandejas, nuevas_sueltas))
         
        
-        
+       
+
+
+def descontar_inventario_venta(venta_id):
+    c = current_app.mysql.connection.cursor()
+
+    # Obtener todo el detalle de la venta (productos normales y combos)
+    c.execute("""
+        SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
+        FROM venta_detalle
+        WHERE venta_id = %s
+    """, (venta_id,))
+    detalle = c.fetchall()
+
+    for d in detalle:
+        producto_id = d[0]       # None si es combo
+        cantidad = d[1]          # Cantidad de productos o de combos
+        es_combo = d[2]
+        combo_id = d[3]
+        combo_productos_json = d[4]
+
+        if es_combo:
+            if combo_productos_json:
+                # Combo personalizado: usar la lista guardada
+                productos_personalizados = json.loads(combo_productos_json)
+                descontar_inventario_combo_personalizado(
+                    productos_personalizados,
+                    cantidad,
+                    c
+                )
+            else:
+                # Combo normal
+                descontar_inventario_combo(
+                    combo_id,
+                    cantidad,
+                    c
+                )
+        else:
+            # Producto normal: descontar directamente las bandejas
+            # Manejar inserción si no existe el producto en inventario
+            c.execute("""
+                UPDATE inventario
+                SET stock_actual = stock_actual - %s
+                WHERE producto_id = %s
+            """, (cantidad, producto_id))
+            if c.rowcount == 0:
+                c.execute("""
+                    INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
+                    VALUES (%s, -%s, 0)
+                """, (producto_id, cantidad))
+
+    current_app.mysql.connection.commit()
+    c.close()
 def anular_venta(id):
     c = current_app.mysql.connection.cursor()
-     # Obtener venta
     venta = obtener_venta(id)
-    if not venta or venta['estado'] != 'pendiente':
+    if not venta or venta['estado'] not in ('pendiente', 'entregada'):
         return None
 
-    # Revertir inventario de combos (personalizados y normales)
-    revertir_inventario_detalle(id)
-    
-    # 1. Cambiar estado a anulada (dispara el trigger)
+    # Solo revertir inventario de combos si la venta estaba entregada
+    if venta['estado'] == 'entregada':
+        revertir_inventario_detalle(id)
+
+    # Cambiar estado a anulada (dispara el trigger)
     c.execute("""
         UPDATE ventas SET estado = 'anulada'
         WHERE id = %s
     """, (id,))
-    
-    # 2. Resetear total_abonado a 0
-    # lo hacemos aqui y no en el trigger para evitar
-    # el error de MySQL de tabla en uso
+
+    # Resetear total_abonado
     c.execute("""
         UPDATE ventas SET total_abonado = 0
         WHERE id = %s
     """, (id,))
-    
+
     current_app.mysql.connection.commit()
     c.close()
     return obtener_venta(id)
