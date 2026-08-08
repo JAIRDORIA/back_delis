@@ -24,7 +24,7 @@ def cntRegistro():
     
     vacios = []
     for clave in request.json:
-        # Solo validamos que no estén vacíos los campos requeridos
+        
         if clave in requeridos and str(request.json[clave]).strip() == "":
             vacios.append(clave)
 
@@ -32,7 +32,7 @@ def cntRegistro():
         return jsonify({"mensaje": f"los siguientes campos no pueden estar vacios {vacios}"}), 400
     
     nombre        = request.json['nombre'] 
-    descripcion   = request.json.get('descripcion', '')  # ← opcional, si no viene se asigna ''
+    descripcion   = request.json.get('descripcion', '')  
     unidades_por_bandeja = request.json['unidades_por_bandeja']
     precio_detal = request.json.get('precio_detal', 0)
     precio_almayor = request.json.get('precio_almayor', 0)
@@ -48,7 +48,7 @@ def cntRegistro():
             "mensaje": "Nombre inválido"
         }), 400
 
-    # Validación de descripción solo si se envió
+    
     if descripcion.strip():
         if len(descripcion) < 4 or len(descripcion) > 255:
             return jsonify({"mensaje": "La descripción debe tener entre 4 y 255 caracteres"}), 400

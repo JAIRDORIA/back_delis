@@ -20,11 +20,10 @@ def cntListado():
 
 def cntPrimerCorte():
     try:
-        # Intentar crear el primer corte
+       
         resultado = registrar_primer_corte()
         
-        # Si retorna None significa que ya existen cortes
-        # el primer corte solo se puede crear una vez
+         
         if resultado is None:
             return jsonify({
                 "mensaje": "ya existen cortes registrados, no puedes iniciar de nuevo"
@@ -41,15 +40,14 @@ def cntPrimerCorte():
 
 def cntCerrarCorte():
     try:
-        # Verificar que existe un corte abierto
+       
         c_abierto = obtener_corte_abierto()
         if not c_abierto:
             return jsonify({
                 "mensaje": "no existe ningun corte abierto en este momento"
             }), 400
         
-        # Verificar que existe un corte futuro
-        # sin corte futuro no se puede cerrar el actual
+        
         c_futuro = obtener_corte_futuro()
         if not c_futuro:
             return jsonify({
@@ -67,7 +65,7 @@ def cntCerrarCorte():
     
    
 
-def cntActualizar(id):  # ← agrégale el id aquí
+def cntActualizar(id): 
     try:
         requeridos = ["estado"]
         faltantes = [x for x in requeridos if x not in request.json]
@@ -76,16 +74,16 @@ def cntActualizar(id):  # ← agrégale el id aquí
 
         estado = request.json["estado"]
 
-        # validar que el corte existe
-        corte = obtener_corte(id)  # ← usa el id de e la URL
+       
+        corte = obtener_corte(id)  
         if not corte:
             return jsonify({"mensaje": f"el corte con id {id} no existe"}), 404
 
-        # no permitir modificar un corte cerrado
+        
         if corte["estado"] == "cerrado":
             return jsonify({"mensaje": "no puedes modificar un corte cerrado"}), 400
 
-        # validar estado enviado
+        
         estados_validos = ["abierto", "futuro"]
         if estado not in estados_validos:
             return jsonify({"mensaje": f"estado invalido, debe ser: {estados_validos}"}), 400

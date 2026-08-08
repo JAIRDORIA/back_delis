@@ -59,7 +59,7 @@ def cntRegistroCompra():
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
 
-    # corte_id automático desde el corte abierto
+    
     corte_abierto = obtener_corte_abierto()
     if not corte_abierto:
         return jsonify({"error": "no hay corte abierto para registrar la compra"}), 400

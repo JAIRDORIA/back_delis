@@ -11,9 +11,7 @@ from services.proveedor_services import (
 )
 
 
-# ═══════════════════════════════════════════════
-#  LISTADO
-# ═══════════════════════════════════════════════
+
 
 def cntListadoProveedores():
     """
@@ -35,10 +33,7 @@ def cntListadoProveedores():
 
 
 def cntListadoProveedoresActivos():
-    """
-    ✅ NUEVO: Obtiene solo los proveedores activos
-    GET /proveedores/activos
-    """
+   
     try:
         datos = listado_proveedores_activos()
         return jsonify({
@@ -53,17 +48,11 @@ def cntListadoProveedoresActivos():
         }), 500
 
 
-# ═══════════════════════════════════════════════
-#  OBTENER UNO
-# ═══════════════════════════════════════════════
 
 def cntObtenerProveedor(id):
-    """
-    Obtiene un proveedor específico
-    GET /proveedores/<id>
-    """
+    
     try:
-        # Validar que ID es número
+        
         try:
             id_num = int(id)
             if id_num <= 0:
@@ -96,15 +85,10 @@ def cntObtenerProveedor(id):
         }), 500
 
 
-# ═══════════════════════════════════════════════
-#  BÚSQUEDA
-# ═══════════════════════════════════════════════
+
 
 def cntBuscarPorNombre():
-    """
-    ✅ NUEVO: Busca proveedores por nombre
-    GET /proveedores/buscar/nombre?q=criterio
-    """
+    
     criterio = request.args.get('q', '').strip()
     
     if not criterio:
@@ -136,10 +120,7 @@ def cntBuscarPorNombre():
 
 
 def cntBuscarPorEmail():
-    """
-    ✅ NUEVO: Busca proveedores por email
-    GET /proveedores/buscar/email?q=criterio
-    """
+   
     criterio = request.args.get('q', '').strip()
     
     if not criterio:
@@ -170,30 +151,15 @@ def cntBuscarPorEmail():
         }), 500
 
 
-# ═══════════════════════════════════════════════
-#  REGISTRO
-# ═══════════════════════════════════════════════
-
 def cntRegistroProveedor():
-    """
-    Registra un nuevo proveedor
-    POST /proveedores/
     
-    ✅ Validaciones en servicios:
-    - Nombre sin números
-    - Nombre único (no duplicado)
-    - Email válido y único
-    - Teléfono válido
-    - Dirección válida
-    """
-    # Validar que sea JSON
     if not request.is_json:
         return jsonify({
             "exito": False,
             "error": "El cuerpo debe ser JSON"
         }), 400
 
-    # Validar campos requeridos
+    
     requeridos = ['nombre', 'telefono', 'direccion', 'email']
     faltantes = [x for x in requeridos if x not in request.json]
     if faltantes:
@@ -202,7 +168,7 @@ def cntRegistroProveedor():
             "error": f"Faltan los siguientes campos: {', '.join(faltantes)}"
         }), 400
 
-    # Obtener datos
+    
     try:
         nombre = request.json['nombre'].strip() if isinstance(request.json.get('nombre'), str) else ''
         telefono = request.json['telefono'].strip() if isinstance(request.json.get('telefono'), str) else ''
@@ -215,11 +181,11 @@ def cntRegistroProveedor():
         }), 400
 
     try:
-        # Las validaciones se hacen en services/proveedor_services.py
+        
         dato, error = registro_proveedor(nombre, telefono, direccion, email)
         
         if error:
-            # Retornar 409 si es un conflicto (duplicado)
+            
             status = 409 if "ya existe" in error.lower() or "duplicado" in error.lower() else 400
             return jsonify({
                 "exito": False,
@@ -239,25 +205,10 @@ def cntRegistroProveedor():
         }), 500
 
 
-# ═══════════════════════════════════════════════
-#  ACTUALIZACIÓN
-# ═══════════════════════════════════════════════
+
 
 def cntActualizarProveedor(id):
-    """
-    Actualiza un proveedor existente
-    PUT /proveedores/<id>
     
-    ✅ Validaciones en servicios:
-    - ID válido
-    - Nombre sin números
-    - Nombre único (si cambió)
-    - Email válido y único (si cambió)
-    - Teléfono válido
-    - Dirección válida
-    - Estado activo válido
-    """
-    # Validar ID
     try:
         id_num = int(id)
         if id_num <= 0:
@@ -271,14 +222,14 @@ def cntActualizarProveedor(id):
             "error": "El ID debe ser un número entero válido"
         }), 400
 
-    # Validar que sea JSON
+    
     if not request.is_json:
         return jsonify({
             "exito": False,
             "error": "El cuerpo debe ser JSON"
         }), 400
 
-    # Validar campos requeridos
+    
     requeridos = ['nombre', 'telefono', 'direccion', 'email', 'activo']
     faltantes = [x for x in requeridos if x not in request.json]
     if faltantes:
@@ -287,7 +238,7 @@ def cntActualizarProveedor(id):
             "error": f"Faltan los siguientes campos: {', '.join(faltantes)}"
         }), 400
 
-    # Obtener datos
+    
     try:
         nombre = request.json['nombre'].strip() if isinstance(request.json.get('nombre'), str) else ''
         telefono = request.json['telefono'].strip() if isinstance(request.json.get('telefono'), str) else ''
@@ -301,7 +252,7 @@ def cntActualizarProveedor(id):
         }), 400
 
     try:
-        # Las validaciones se hacen en services/proveedor_services.py
+        
         dato, error = actualizar_proveedor(id, nombre, telefono, direccion, email, activo)
         
         if error:
@@ -311,7 +262,7 @@ def cntActualizarProveedor(id):
                     "error": error
                 }), 404
             else:
-                # Retornar 409 si es un conflicto (duplicado)
+                
                 status = 409 if "ya existe" in error.lower() or "duplicado" in error.lower() else 400
                 return jsonify({
                     "exito": False,
@@ -331,18 +282,10 @@ def cntActualizarProveedor(id):
         }), 500
 
 
-# ═══════════════════════════════════════════════
-#  ELIMINACIÓN (Soft Delete)
-# ═══════════════════════════════════════════════
 
 def cntEliminarProveedor(id):
-    """
-    Elimina un proveedor (soft delete)
-    DELETE /proveedores/<id>
     
-    Nota: Marca el proveedor como inactivo (activo = 0)
-    """
-    # Validar ID
+    
     try:
         id_num = int(id)
         if id_num <= 0:

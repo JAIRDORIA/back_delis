@@ -21,13 +21,13 @@ def cntListado():
 
 
 def cntRegistro():
-    # 1. Validar campos requeridos — observacion es opcional
+    
     requeridos = ['producto_id', 'cantidad', 'unidades_sueltas', 'usuario_id', 'fecha']
     faltantes = [d for d in requeridos if d not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
-    # 2. Validar que no estén vacíos
+    
     vacios = [c for c in requeridos if str(request.json[c]).strip() == ""]
     if vacios:
         return jsonify({"mensaje": f"Los siguientes campos no pueden estar vacíos: {vacios}"}), 400
@@ -37,9 +37,9 @@ def cntRegistro():
     unidades_sueltas = request.json['unidades_sueltas']
     usuario_id       = request.json['usuario_id']
     fecha            = request.json['fecha']
-    observacion      = request.json.get('observacion', None)  # opcional
+    observacion      = request.json.get('observacion', None)  
    
-    # 3. Validar que producto_id sea entero positivo
+    
     try:
         producto_id = int(producto_id)
     except:
@@ -48,11 +48,11 @@ def cntRegistro():
     if producto_id <= 0:
         return jsonify({"mensaje": "El producto_id debe ser mayor a 0"}), 400
 
-    # 4. Validar que el producto exista
+    
     if not existe_producto(producto_id):
         return jsonify({"mensaje": "El producto no existe o está inactivo"}), 404
 
-    # 5. Validar cantidad
+     
     try:
         cantidad = int(cantidad)
     except:
@@ -61,7 +61,7 @@ def cntRegistro():
     if cantidad <= 0:
         return jsonify({"mensaje": "La cantidad debe ser mayor a 0"}), 400
 
-    # 5. Validar unidades_sueltas
+   
     try:
         unidades_sueltas = int(unidades_sueltas)
     except:
@@ -70,7 +70,7 @@ def cntRegistro():
     if unidades_sueltas < 0:
         return jsonify({"mensaje": "Las unidades sueltas deben ser un número entero no negativo"}), 400
 
-    # 6. Validar 
+      
     try:
         usuario_id = int(usuario_id)
     except:
@@ -79,7 +79,7 @@ def cntRegistro():
     if not obtener_usuario(usuario_id):
         return jsonify({"mensaje": "El usuario no existe o está inactivo"}), 404
 
-    # 7. Validar fecha formato DD/MM/YYYY
+   
     try:
         fecha_obj = datetime.strptime(fecha, "%d/%m/%Y").date()
     except:
@@ -87,11 +87,11 @@ def cntRegistro():
     
     
     
-    #observacion es opcional, si viene validar que no sea vacía
+    
     if observacion is not None and str(observacion).strip() == "":
         return jsonify({"mensaje": "Si se proporciona, la observación no puede estar vacía"}), 400
     
-    # 8. Registrar
+    
     p = registro(
         producto_id=producto_id,
         cantidad=cantidad,

@@ -12,10 +12,7 @@ def setup_admin():
 
 @usuarios_bp.route('/check-setup', methods=['GET'])
 def check_setup():
-    """
-    Retorna True si YA existe un admin (mostrar login).
-    Retorna False si NO existe admin (mostrar formulario de setup).
-    """
+    
     from services.usuarios_servicies import existe_admin
     admin_existe = existe_admin()
     return jsonify({
