@@ -1,24 +1,15 @@
 """
-Service: Prestamos a clientes.
+Service: Prestamos a clientes, con abonos parciales (v2).
 
-Sigue el mismo patron usado en abonos_service.py:
-cursor -> execute -> commit -> close -> devolver el registro recien creado/actualizado.
-
-Regla de negocio clave:
-El dinero disponible en caja por medio de pago se calcula directamente desde
-`movimientos_caja` (ingresos - egresos), que es la fuente de verdad de TODO
-movimiento de dinero del sistema: ventas/abonos, compras, ajustes, y ahora
-tambien prestamos y pagos de prestamos. Esto evita tener que tocar el
-balance_service existente y mantiene todo consistente automaticamente.
+Sigue el mismo patron usado en abonos_service.py (el de ventas):
+un prestamo tiene monto/total_abonado/saldo_pendiente, y cada abono queda
+registrado como una fila independiente en `pagos_prestamos`, ademas de
+reflejarse en `movimientos_caja`.
 """
 from flask import current_app
 
 
 def obtener_disponible_caja(corte_id, medio_pago):
-    """
-    Dinero disponible en caja para un medio de pago especifico,
-    dentro del corte dado.
-    """
     c = current_app.mysql.connection.cursor()
     c.execute("""
         SELECT
@@ -30,31 +21,25 @@ def obtener_disponible_caja(corte_id, medio_pago):
     disponible = float(c.fetchone()[0])
     c.close()
     return disponible
- 
- 
+
+
 def obtener_corte_abierto():
-    """
-    Devuelve el corte con estado='abierto', o None si no existe.
-    Se usa para asociar automaticamente el prestamo (y su pago) al corte actual,
-    sin depender de que el frontend envie el corte_id.
-    """
     c = current_app.mysql.connection.cursor()
-    c.execute("""
-        SELECT id, numero FROM cortes WHERE estado = 'abierto' LIMIT 1
-    """)
+    c.execute("SELECT id, numero FROM cortes WHERE estado = 'abierto' LIMIT 1")
     corte = c.fetchone()
     c.close()
     if not corte:
         return None
     return {"id": corte[0], "numero": corte[1]}
- 
- 
+
+
 def obtener_prestamo(prestamo_id):
     c = current_app.mysql.connection.cursor()
     c.execute("""
         SELECT p.id, p.cliente_id, cl.nombre AS cliente_nombre, p.corte_id,
-               p.usuario_id, p.monto, p.medio_pago, p.estado, p.observacion,
-               p.fecha, p.fecha_pago, p.usuario_pago_id, p.medio_pago_pago
+               p.usuario_id, p.monto, p.total_abonado, p.saldo_pendiente,
+               p.medio_pago, p.estado, p.observacion, p.fecha, p.fecha_pago,
+               p.usuario_pago_id, p.medio_pago_pago
         FROM prestamos p
         JOIN clientes cl ON cl.id = p.cliente_id
         WHERE p.id = %s
@@ -64,14 +49,15 @@ def obtener_prestamo(prestamo_id):
     if not row:
         return None
     return _row_a_dict(row)
- 
- 
+
+
 def listar_prestamos(estado=None):
     c = current_app.mysql.connection.cursor()
     query = """
         SELECT p.id, p.cliente_id, cl.nombre AS cliente_nombre, p.corte_id,
-               p.usuario_id, p.monto, p.medio_pago, p.estado, p.observacion,
-               p.fecha, p.fecha_pago, p.usuario_pago_id, p.medio_pago_pago
+               p.usuario_id, p.monto, p.total_abonado, p.saldo_pendiente,
+               p.medio_pago, p.estado, p.observacion, p.fecha, p.fecha_pago,
+               p.usuario_pago_id, p.medio_pago_pago
         FROM prestamos p
         JOIN clientes cl ON cl.id = p.cliente_id
     """
@@ -80,24 +66,42 @@ def listar_prestamos(estado=None):
         query += " WHERE p.estado = %s"
         params = (estado,)
     query += " ORDER BY p.fecha DESC"
- 
+
     c.execute(query, params)
     rows = c.fetchall()
     c.close()
     return [_row_a_dict(r) for r in rows]
- 
- 
+
+
+def listar_pagos_prestamo(prestamo_id):
+    """Historial de abonos hechos a un prestamo especifico."""
+    c = current_app.mysql.connection.cursor()
+    c.execute("""
+        SELECT id, prestamo_id, corte_id, usuario_id, monto, medio_pago,
+               observacion, fecha
+        FROM pagos_prestamos
+        WHERE prestamo_id = %s
+        ORDER BY fecha DESC
+    """, (prestamo_id,))
+    rows = c.fetchall()
+    c.close()
+    return [{
+        "id": r[0], "prestamo_id": r[1], "corte_id": r[2], "usuario_id": r[3],
+        "monto": float(r[4]), "medio_pago": r[5], "observacion": r[6],
+        "fecha": str(r[7]) if r[7] else None,
+    } for r in rows]
+
+
 def registrar(cliente_id, corte_id, usuario_id, monto, medio_pago, observacion):
     c = current_app.mysql.connection.cursor()
- 
+
     c.execute("""
         INSERT INTO prestamos (cliente_id, corte_id, usuario_id, monto,
-                                medio_pago, observacion)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (cliente_id, corte_id, usuario_id, monto, medio_pago, observacion))
+                                total_abonado, saldo_pendiente, medio_pago, observacion)
+        VALUES (%s, %s, %s, %s, 0, %s, %s, %s)
+    """, (cliente_id, corte_id, usuario_id, monto, monto, medio_pago, observacion))
     prestamo_id = c.lastrowid
- 
-    # egreso de caja: el dinero prestado sale de caja
+
     c.execute("""
         INSERT INTO movimientos_caja (corte_id, usuario_id, tipo, concepto,
                                        referencia_id, monto, descripcion, medio_pago)
@@ -106,56 +110,65 @@ def registrar(cliente_id, corte_id, usuario_id, monto, medio_pago, observacion):
         corte_id, usuario_id, prestamo_id, monto,
         f"Prestamo a cliente ID: {cliente_id}", medio_pago
     ))
- 
+
     current_app.mysql.connection.commit()
     c.close()
     return obtener_prestamo(prestamo_id)
- 
- 
-def pagar(prestamo_id, usuario_id, medio_pago):
+
+
+def abonar_prestamo(prestamo_id, usuario_id, monto, medio_pago, observacion):
     """
-    Marca el prestamo como pagado y devuelve el dinero a caja.
- 
-    `medio_pago` es el medio por el que EL CLIENTE PAGA (puede ser distinto
-    al medio_pago con el que se le presto originalmente -- ej: se presto en
-    efectivo pero paga por transferencia). Se guarda por separado en
-    `medio_pago_pago` para no perder el dato original del prestamo, y es el
-    que se usa en el movimiento de caja, ya que es el que determina en cual
-    KPI (efectivo/transferencia) debe reflejarse el ingreso.
- 
-    El pago se asocia al corte que este abierto EN ESE MOMENTO (no al corte
-    original del prestamo), igual que ocurre con los abonos de ventas: el
-    dinero vuelve "hoy", no en el corte en que se origino la deuda.
+    Registra un abono (parcial o que completa el pago) a un prestamo.
+    El abono se asocia al corte que este abierto EN ESE MOMENTO (no al
+    corte original del prestamo), igual que con los abonos de ventas.
     """
     prestamo = obtener_prestamo(prestamo_id)
- 
     corte_abierto = obtener_corte_abierto()
     corte_id = corte_abierto["id"]
- 
+
     c = current_app.mysql.connection.cursor()
- 
+
+    # 1. historial del abono
     c.execute("""
-        UPDATE prestamos
-        SET estado = 'pagado', fecha_pago = NOW(),
-            usuario_pago_id = %s, medio_pago_pago = %s
-        WHERE id = %s
-    """, (usuario_id, medio_pago, prestamo_id))
- 
-    # ingreso de caja: el dinero vuelve a caja, con el medio de pago real del pago
+        INSERT INTO pagos_prestamos (prestamo_id, corte_id, usuario_id, monto,
+                                      medio_pago, observacion)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (prestamo_id, corte_id, usuario_id, monto, medio_pago, observacion))
+
+    # 2. ingreso de caja (alimenta las KPI de efectivo/transferencia)
     c.execute("""
         INSERT INTO movimientos_caja (corte_id, usuario_id, tipo, concepto,
                                        referencia_id, monto, descripcion, medio_pago)
         VALUES (%s, %s, 'ingreso', 'pago_prestamo', %s, %s, %s, %s)
     """, (
-        corte_id, usuario_id, prestamo_id, prestamo["monto"],
-        f"Pago de prestamo cliente ID: {prestamo['cliente_id']}", medio_pago
+        corte_id, usuario_id, prestamo_id, monto,
+        f"Abono a prestamo cliente ID: {prestamo['cliente_id']}", medio_pago
     ))
- 
+
+    # 3. actualizar saldo del prestamo
+    nuevo_abonado = prestamo["total_abonado"] + monto
+    nuevo_saldo = prestamo["saldo_pendiente"] - monto
+    queda_pagado = nuevo_saldo <= 0
+
+    if queda_pagado:
+        c.execute("""
+            UPDATE prestamos
+            SET total_abonado = %s, saldo_pendiente = 0, estado = 'pagado',
+                fecha_pago = NOW(), usuario_pago_id = %s, medio_pago_pago = %s
+            WHERE id = %s
+        """, (nuevo_abonado, usuario_id, medio_pago, prestamo_id))
+    else:
+        c.execute("""
+            UPDATE prestamos
+            SET total_abonado = %s, saldo_pendiente = %s
+            WHERE id = %s
+        """, (nuevo_abonado, nuevo_saldo, prestamo_id))
+
     current_app.mysql.connection.commit()
     c.close()
     return obtener_prestamo(prestamo_id)
- 
- 
+
+
 def _row_a_dict(row):
     return {
         "id"              : row[0],
@@ -164,11 +177,13 @@ def _row_a_dict(row):
         "corte_id"        : row[3],
         "usuario_id"      : row[4],
         "monto"           : float(row[5]),
-        "medio_pago"      : row[6],
-        "estado"          : row[7],
-        "observacion"     : row[8],
-        "fecha"           : str(row[9]) if row[9] else None,
-        "fecha_pago"      : str(row[10]) if row[10] else None,
-        "usuario_pago_id" : row[11],
-        "medio_pago_pago" : row[12],
+        "total_abonado"   : float(row[6]),
+        "saldo_pendiente" : float(row[7]),
+        "medio_pago"      : row[8],
+        "estado"          : row[9],
+        "observacion"     : row[10],
+        "fecha"           : str(row[11]) if row[11] else None,
+        "fecha_pago"      : str(row[12]) if row[12] else None,
+        "usuario_pago_id" : row[13],
+        "medio_pago_pago" : row[14],
     }

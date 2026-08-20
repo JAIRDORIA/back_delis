@@ -7,31 +7,9 @@ from services.clientes_services import (
 )
 from utils.decorators import token_requerido
 
-#@token_requerido
+
 def get_clientes():
-    """
-    Listar clientes paginados (RF13)
-    ---
-    tags: [Clientes]
-    security: [{ Bearer: [] }]
-    parameters:
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: per_page
-        in: query
-        type: integer
-        default: 10
-      - name: q
-        in: query
-        type: string
-        required: false
-        description: texto de búsqueda (nombre, identificación o teléfono)
-    responses:
-      200:
-        description: Lista de clientes obtenida correctamente.
-    """
+   
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     busqueda = request.args.get('q', None, type=str)
@@ -39,7 +17,7 @@ def get_clientes():
     w = listado_clientes(page, per_page, busqueda)
     return jsonify(w)
 
-#@jwt_required()
+
 def get_cliente_por_id(id):
     """
     Visualizar detalle de un cliente (RF14)
@@ -57,9 +35,9 @@ def get_cliente_por_id(id):
         return jsonify({"mensaje": "Cliente no encontrado"}), 404
     return jsonify(c)
 
-#@jwt_required()
+
 def cntRegistrar():
-    # 1. Validar campos requeridos (email ya no es obligatorio)
+   
     requeridos = ["nombre","identificacion", "telefono"]
     if not request.json:
         return jsonify({"mensaje": "No se recibió información en formato JSON"}), 400
@@ -68,28 +46,28 @@ def cntRegistrar():
     if faltantes:
         return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
 
-    # 2. Extraer y limpiar datos
+    
     nombre = str(request.json.get("nombre", "")).strip()
     telefono = str(request.json.get("telefono", "")).strip()
     direccion = str(request.json.get("direccion", "")).strip()
     email = request.json.get("email", None)
     identificacion = str(request.json.get("identificacion", "")).strip()
     
-    # Validar que no esté vacío
+    
     if not identificacion:
         return jsonify({"mensaje": "La identificación es obligatoria"}), 400
     
-    # Validar que no exista otro cliente con esa identificación
+   
     if existe_identificacion(identificacion):
         return jsonify({"mensaje": "Ya existe un cliente con esa identificación"}), 400
     if email is not None:
         email = str(email).strip()
 
-    # 3. Validar que los obligatorios no estén vacíos
+    
     if not nombre :
         return jsonify({"mensaje": "Nombre son obligatorios"}), 400
 
-    # 4. Validar email solo si se envió y no está vacío
+    
     if email:
         regex_email = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
         if not re.match(regex_email, email.lower()):
@@ -97,7 +75,7 @@ def cntRegistrar():
         if existe_email(email):
             return jsonify({"mensaje": "Este correo ya se encuentra registrado"}), 400
 
-    # 5. Llamar al servicio
+    
     resultado = crear_clientes(nombre,identificacion, telefono, direccion, email)
     
     if isinstance(resultado, tuple):
@@ -116,7 +94,7 @@ def cntClientesTop():
     except Exception as e:
         return jsonify({"mensaje": str(e)}), 500
 
-#@jwt_required()
+
 def cntActualizar(id):
     if not obtener_cliente(id):
         return jsonify({"mensaje": "Cliente no encontrado para actualizar"}), 404
@@ -124,7 +102,7 @@ def cntActualizar(id):
     if not request.json:
         return jsonify({"mensaje": "No hay datos para actualizar"}), 400
 
-    # Campos obligatorios
+    
     requeridos = ["nombre", "identificacion"]
     faltantes = [x for x in requeridos if x not in request.json]
     if faltantes:
@@ -139,10 +117,9 @@ def cntActualizar(id):
     if not nombre or not identificacion :
         return jsonify({"mensaje": "nombre e identificacion son obligatorios"}), 400
 
-    # Validar formato de email
-   
+    
 
-    # Las validaciones de unicidad excluyendo al propio cliente se hacen en el servicio
+    
     resultado = service_actualizar_cliente(id, nombre, identificacion, telefono, direccion, email)
 
     if isinstance(resultado, dict) and "error" in resultado:
@@ -150,14 +127,9 @@ def cntActualizar(id):
 
     return jsonify({"mensaje": "Cliente actualizado con éxito", "datos": resultado}), 200
 
-#@jwt_required()
+
 def cntEliminar(id):
-    """
-    Eliminar cliente - Borrado lógico (RF12)
-    ---
-    tags: [Clientes]
-    security: [{ Bearer: [] }]
-    """
+    
     if not obtener_cliente(id):
         return jsonify({"mensaje": "Cliente no encontrado"}), 404
     
