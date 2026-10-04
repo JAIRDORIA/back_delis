@@ -76,10 +76,11 @@ def cntRegistro():
     
     password = hashear_password(password)
     
-    if rol not in ['admin']:
-        return jsonify({"mensaje": "El rol debe ser admin"}), 400
+    roles_validos = ['admin', 'cajero', 'cocina']
+    if rol not in roles_validos:
+        return jsonify({"mensaje": f"El rol debe ser uno de: {roles_validos}"}), 400
     
-    p             = registro(nombre=nombre, username=username, password_hash=password, rol=rol)
+    p= registro(nombre=nombre, username=username, password_hash=password, rol=rol)
     return jsonify({"mensaje":"Usuario registrado","datos":p}), 201
 
 def cntEliminar(id):

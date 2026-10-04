@@ -12,8 +12,11 @@ from .proovedores import proveedores_bp
 from .producciones import producciones_bp
 from .prestamos import prestamos_bp
 from routes.auditoria import auditoria_bp
+from routes.pedidos_cocina_routes import pedidos_cocina_bp # ajusta la ruta del import a tu proyecto
 
+   
 def cargarRuta(app):
+    app.register_blueprint(pedidos_cocina_bp)
     app.register_blueprint(ventas_bp, url_prefix='/ventas')
     app.register_blueprint(cortes_bp, url_prefix='/cortes')
     app.register_blueprint(usuarios_bp, url_prefix='/usuarios')

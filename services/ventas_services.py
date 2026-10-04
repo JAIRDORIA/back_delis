@@ -51,7 +51,7 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None):
     sql_data = f"""
         SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
                v.usuario_id, v.fecha_venta, v.fecha_entrega,
-               v.total, v.total_abonado, v.saldo_pendiente, v.estado
+               v.total, v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
         FROM ventas v
         JOIN clientes cl ON cl.id = v.cliente_id
         JOIN cortes co ON co.id = v.corte_id
@@ -77,7 +77,8 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None):
             total           = p[8],
             total_abonado   = p[9],
             saldo_pendiente = p[10],
-            estado          = p[11]
+            estado          = p[11],
+            observacion     = p[12],
         ).to_dict()
         lista.append(venta)
 
@@ -94,51 +95,62 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None):
     
 def actualizar_detalle_venta(id, nuevo_detalle):
     c = current_app.mysql.connection.cursor()
-
+ 
     # Verificar que la venta existe y está pendiente
     c.execute("SELECT id, total_abonado, estado FROM ventas WHERE id = %s", (id,))
     venta = c.fetchone()
     if not venta or venta[2] != 'pendiente':
         c.close()
         return None
-
+ 
     # Borrar el detalle actual
     c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
-
+ 
     # Insertar los nuevos productos/combos y calcular el nuevo total
     nuevo_total = 0
     for item in nuevo_detalle:
         es_combo = 1 if item.get("tipo") == "combo" else 0
         combo_id = item.get("combo_id", None)
-
+ 
+        # FIX: si el combo trae composicion personalizada (item["productos"]),
+        # se guarda en combo_productos -- antes se perdia aqui, dejando el
+        # combo sin composicion (bug que afectaba tanto al panel de cocina
+        # como al descuento real de inventario al entregar la venta).
+        productos_personalizados = item.get("productos", None)
+        combo_productos_json = None
+        if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
+            combo_productos_json = json.dumps(productos_personalizados)
+ 
         c.execute("""
             INSERT INTO venta_detalle (venta_id, producto_id, combo_id, nombre_producto,
-                                       cantidad, precio_unitario, es_combo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                       cantidad, precio_unitario, es_combo, combo_productos)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             id,
             item.get("producto_id"),       # None para combos
-            combo_id,                       # None para productos
+            combo_id,                       # None para productos y para combos personalizados
             item["nombre_producto"],
             item["cantidad"],
             float(item["precio_unitario"]),
-            es_combo
+            es_combo,
+            combo_productos_json
         ))
         nuevo_total += item["cantidad"] * float(item["precio_unitario"])
-
+ 
     # Actualizar el total de la venta
     c.execute("""
         UPDATE ventas SET total = %s WHERE id = %s
     """, (nuevo_total, id))
-
+ 
     current_app.mysql.connection.commit()
     c.close()
+ 
+    return obtener_venta_detalle(id)
 
-    return obtener_venta_detalle(id)   
 
 def obtener_venta_detalle(id):
     c = current_app.mysql.connection.cursor()
-
+ 
     # datos de la venta
     c.execute("""
         SELECT v.id, v.cliente_id, cl.nombre, v.corte_id,
@@ -149,20 +161,22 @@ def obtener_venta_detalle(id):
         WHERE v.id = %s
     """, (id,))
     venta = c.fetchone()
-
+ 
     if not venta:
         c.close()
         return None
-
-    # detalle de productos
+ 
+    # detalle de productos (se agrega combo_productos: sin esto, un combo
+    # personalizado no se puede reconstruir al editar la venta)
     c.execute("""
         SELECT producto_id, nombre_producto,
-               cantidad, precio_unitario, subtotal,es_combo, combo_id
+               cantidad, precio_unitario, subtotal, es_combo, combo_id,
+               combo_productos
         FROM venta_detalle
         WHERE venta_id = %s
     """, (id,))
     detalle = c.fetchall()
-
+ 
     # abonos de la venta
     c.execute("""
         SELECT id, monto, fecha, medio_pago, observacion
@@ -171,9 +185,24 @@ def obtener_venta_detalle(id):
         ORDER BY fecha ASC
     """, (id,))
     abonos = c.fetchall()
-
+ 
     c.close()
-
+ 
+    def _combo_productos(valor):
+        """La columna es JSON; MySQLdb puede devolverla como texto o bytes.
+        Se parsea aqui para que el frontend reciba un array real, no un
+        string con JSON adentro."""
+        if valor is None:
+            return None
+        if isinstance(valor, (list, dict)):
+            return valor
+        if isinstance(valor, (bytes, bytearray)):
+            valor = valor.decode()
+        try:
+            return json.loads(valor)
+        except (ValueError, TypeError):
+            return None
+ 
     return {
         "id"              : venta[0],
         "cliente_id"      : venta[1],
@@ -193,8 +222,9 @@ def obtener_venta_detalle(id):
                 "cantidad"       : d[2],
                 "precio_unitario": float(d[3]),
                 "subtotal"       : float(d[4]),
-                "es_combo"       : d[5],   # ← Nuevo campo
-                "combo_id"       : d[6]    # ← Nuevo campo
+                "es_combo"       : d[5],
+                "combo_id"       : d[6],
+                "combo_productos": _combo_productos(d[7]),
             } for d in detalle
         ],
         "abonos": [
@@ -207,7 +237,6 @@ def obtener_venta_detalle(id):
             } for a in abonos
         ]
     }
-    
 def descontar_inventario_combo(combo_id, cantidad_combos, c):
     # traer productos del combo
     c.execute("""
@@ -315,20 +344,19 @@ def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_
 
             
 def registro(cliente_id, corte_id, usuario_id,
-             fecha_entrega, total, detalle, abonos_iniciales=None):
+             fecha_entrega, total, detalle, abonos_iniciales=None, observacion=None):
     c = current_app.mysql.connection.cursor()
 
-    # obtener nombre del cliente
     c.execute("SELECT nombre FROM clientes WHERE id = %s", (cliente_id,))
     cliente = c.fetchone()
     nombre_cliente = cliente[0] if cliente else ''
 
-    # 1. insertar la venta (ahora con nombre_cliente)
     c.execute("""
         INSERT INTO ventas (cliente_id, corte_id, usuario_id,
-                            fecha_entrega, total, nombre_cliente)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (cliente_id, corte_id, usuario_id, fecha_entrega, total, nombre_cliente))
+                            fecha_entrega, total, nombre_cliente, observacion)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (cliente_id, corte_id, usuario_id, fecha_entrega, total, nombre_cliente, observacion))
+
 
     venta_id = c.lastrowid
 
@@ -463,7 +491,7 @@ def obtener_venta(id):
     c.execute("""
         SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
                v.fecha_venta, v.fecha_entrega, v.total,
-               v.total_abonado, v.saldo_pendiente, v.estado
+               v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
         FROM ventas v
         JOIN clientes c ON c.id = v.cliente_id
         WHERE v.id = %s
@@ -482,7 +510,8 @@ def obtener_venta(id):
             "total"           : float(venta[7]),
             "total_abonado"   : float(venta[8]),
             "saldo_pendiente" : float(venta[9]),
-            "estado"          : venta[10]
+            "estado"          : venta[10],
+            "observacion"     : venta[11],
         }
     return None
 

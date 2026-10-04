@@ -2,7 +2,7 @@ from flask import Blueprint
 # Importamos ambas funciones del controlador
 
 from controllers.clientes_controller import get_clientes, cntRegistrar,cntClientesTop, cntActualizar,cntEliminar
-from utils.decorators import token_requerido
+from utils.decorators import token_requerido,rol_requerido
 
 
 

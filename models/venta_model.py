@@ -2,7 +2,7 @@
 class Ventas:
     def __init__(self, id, cliente_id, nombre_cliente, corte_id, corte_numero,
                  usuario_id, fecha_venta, fecha_entrega, total, 
-                 total_abonado, saldo_pendiente, estado):
+                 total_abonado, saldo_pendiente, estado,observacion):
         self.id = id
         self.cliente_id = cliente_id
         self.nombre_cliente = nombre_cliente  # ← viene del JOIN
@@ -15,6 +15,7 @@ class Ventas:
         self.total_abonado = total_abonado
         self.saldo_pendiente = saldo_pendiente
         self.estado = estado
+        self.observacion= observacion
 
     def to_dict(self):
         return {
@@ -29,5 +30,6 @@ class Ventas:
             "total"           : float(self.total),
             "total_abonado"   : float(self.total_abonado),
             "saldo_pendiente" : float(self.saldo_pendiente),
-            "estado"          : self.estado
+            "estado"          : self.estado,
+            "observacion" : self.observacion
         }
