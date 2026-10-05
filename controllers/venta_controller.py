@@ -113,7 +113,19 @@ def cntregistrar():
         detalle       = request.json["detalle"]
         abono_inicial = request.json.get("abono_inicial", None)
         observacion   = request.json.get("observacion", None)
-        
+
+        # direccion_entrega: opcional y SOLO para este pedido.
+        # No modifica la direccion del cliente. Vacia o ausente => NULL.
+        direccion_entrega = request.json.get("direccion_entrega", None)
+        if direccion_entrega is not None and not isinstance(direccion_entrega, str):
+            return jsonify({"mensaje": "direccion_entrega debe ser texto"}), 400
+        if isinstance(direccion_entrega, str):
+            direccion_entrega = direccion_entrega.strip()
+            if len(direccion_entrega) > 255:
+                return jsonify({"mensaje": "direccion_entrega no puede superar los 255 caracteres"}), 400
+            if direccion_entrega == "":
+                direccion_entrega = None
+
         
         
         formatos = [
@@ -221,7 +233,8 @@ def cntregistrar():
         fecha_entrega = fecha_utc.strftime("%Y-%m-%d %H:%M:%S")
 
         p = registro(id_cliente, corte, usuario, fecha_entrega,
-                     total, detalle, abonos_iniciales,observacion)
+                     total, detalle, abonos_iniciales, observacion,
+                     direccion_entrega)
         return jsonify({"mensaje": "venta registrada", "datos": p}), 201
 
     except Exception as e:

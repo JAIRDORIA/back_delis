@@ -147,12 +147,14 @@ def pedidos_del_dia(fecha_str=None):
     try:
         # LEFT JOIN: ventas de clientes ocasionales (sin cliente_id) no deben desaparecer del panel.
         # Las columnas nuevas van al final para no mover los indices f[4] / f[5] de abajo.
+        # direccion: la del pedido (ventas.direccion_entrega) manda; si es NULL o vacia,
+        # cae a la direccion registrada del cliente (clientes.direccion). No se modifica al cliente.
         c.execute("""
             SELECT v.id, v.nombre_cliente, v.fecha_entrega, v.observacion, v.estado,
                    v.entregada_cocina_at,
                    v.saldo_pendiente,
                    c.identificacion,
-                   c.direccion
+                   COALESCE(NULLIF(TRIM(v.direccion_entrega), ''), c.direccion) AS direccion
             FROM ventas v
             LEFT JOIN clientes c ON c.id = v.cliente_id
             WHERE v.estado IN ('pendiente', 'entregada')

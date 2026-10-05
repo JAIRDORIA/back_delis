@@ -150,44 +150,46 @@ def actualizar_detalle_venta(id, nuevo_detalle):
 
 def obtener_venta_detalle(id):
     c = current_app.mysql.connection.cursor()
- 
-    # datos de la venta
-    c.execute("""
-        SELECT v.id, v.cliente_id, cl.nombre, v.corte_id,
-               v.usuario_id, v.fecha_venta, v.fecha_entrega,
-               v.total, v.total_abonado, v.saldo_pendiente, v.estado
-        FROM ventas v
-        JOIN clientes cl ON cl.id = v.cliente_id
-        WHERE v.id = %s
-    """, (id,))
-    venta = c.fetchone()
- 
-    if not venta:
+    try:
+        # datos de la venta
+        # direccion_entrega: la del pedido (propia de la venta, NULL si no tiene).
+        # NO se mezcla con la direccion del cliente: eso solo lo hace el panel de cocina.
+        c.execute("""
+            SELECT v.id, v.cliente_id, cl.nombre, v.corte_id,
+                   v.usuario_id, v.fecha_venta, v.fecha_entrega,
+                   v.total, v.total_abonado, v.saldo_pendiente, v.estado,
+                   v.direccion_entrega
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            WHERE v.id = %s
+        """, (id,))
+        venta = c.fetchone()
+
+        if not venta:
+            return None
+
+        # detalle de productos (se agrega combo_productos: sin esto, un combo
+        # personalizado no se puede reconstruir al editar la venta)
+        c.execute("""
+            SELECT producto_id, nombre_producto,
+                   cantidad, precio_unitario, subtotal, es_combo, combo_id,
+                   combo_productos
+            FROM venta_detalle
+            WHERE venta_id = %s
+        """, (id,))
+        detalle = c.fetchall()
+
+        # abonos de la venta
+        c.execute("""
+            SELECT id, monto, fecha, medio_pago, observacion
+            FROM abonos
+            WHERE venta_id = %s
+            ORDER BY fecha ASC
+        """, (id,))
+        abonos = c.fetchall()
+    finally:
         c.close()
-        return None
- 
-    # detalle de productos (se agrega combo_productos: sin esto, un combo
-    # personalizado no se puede reconstruir al editar la venta)
-    c.execute("""
-        SELECT producto_id, nombre_producto,
-               cantidad, precio_unitario, subtotal, es_combo, combo_id,
-               combo_productos
-        FROM venta_detalle
-        WHERE venta_id = %s
-    """, (id,))
-    detalle = c.fetchall()
- 
-    # abonos de la venta
-    c.execute("""
-        SELECT id, monto, fecha, medio_pago, observacion
-        FROM abonos
-        WHERE venta_id = %s
-        ORDER BY fecha ASC
-    """, (id,))
-    abonos = c.fetchall()
- 
-    c.close()
- 
+
     def _combo_productos(valor):
         """La columna es JSON; MySQLdb puede devolverla como texto o bytes.
         Se parsea aqui para que el frontend reciba un array real, no un
@@ -202,7 +204,7 @@ def obtener_venta_detalle(id):
             return json.loads(valor)
         except (ValueError, TypeError):
             return None
- 
+
     return {
         "id"              : venta[0],
         "cliente_id"      : venta[1],
@@ -215,6 +217,7 @@ def obtener_venta_detalle(id):
         "total_abonado"   : float(venta[8]),
         "saldo_pendiente" : float(venta[9]),
         "estado"          : venta[10],
+        "direccion_entrega": venta[11],
         "detalle"         : [
             {
                 "producto_id"    : d[0],
@@ -344,70 +347,73 @@ def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_
 
             
 def registro(cliente_id, corte_id, usuario_id,
-             fecha_entrega, total, detalle, abonos_iniciales=None, observacion=None):
+             fecha_entrega, total, detalle, abonos_iniciales=None, observacion=None,
+             direccion_entrega=None):
     c = current_app.mysql.connection.cursor()
-
-    c.execute("SELECT nombre FROM clientes WHERE id = %s", (cliente_id,))
-    cliente = c.fetchone()
-    nombre_cliente = cliente[0] if cliente else ''
-
-    c.execute("""
-        INSERT INTO ventas (cliente_id, corte_id, usuario_id,
-                            fecha_entrega, total, nombre_cliente, observacion)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (cliente_id, corte_id, usuario_id, fecha_entrega, total, nombre_cliente, observacion))
-
-
-    venta_id = c.lastrowid
-
-    # 2. insertar cada producto del detalle
-    for item in detalle:
-        es_combo = 1 if item.get("tipo") == "combo" else 0
-        combo_id = item.get("combo_id", None)
-        productos_personalizados = item.get("productos", None)
-        combo_productos_json = None
-        if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
-            combo_productos_json = json.dumps(productos_personalizados)
+    try:
+        c.execute("SELECT nombre FROM clientes WHERE id = %s", (cliente_id,))
+        cliente = c.fetchone()
+        nombre_cliente = cliente[0] if cliente else ''
 
         c.execute("""
-            INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
-                                       cantidad, precio_unitario, es_combo, combo_id,combo_productos)
-            VALUES (%s, %s, %s, %s, %s, %s, %s,%s)
-        """, (
-            venta_id,
-            item.get("producto_id"),
-            item["nombre_producto"],
-            item["cantidad"],
-            item["precio_unitario"],
-            es_combo,
-            combo_id,
-            combo_productos_json
-        ))
+            INSERT INTO ventas (cliente_id, corte_id, usuario_id,
+                                fecha_entrega, direccion_entrega, total, nombre_cliente, observacion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (cliente_id, corte_id, usuario_id, fecha_entrega, direccion_entrega,
+              total, nombre_cliente, observacion))
 
-        # si es combo descontar inventario con lógica de unidades y sueltas
-                # Ya no se descuenta inventario al crear la venta
-        # El descuento se hará cuando la venta se marque como "entregada"
-    # 3. insertar abono inicial si el cliente pago algo
-    if abonos_iniciales:
-        for abono in abonos_iniciales:
-            if abono.get("monto", 0) <= 0:
-                continue
+
+        venta_id = c.lastrowid
+
+        # 2. insertar cada producto del detalle
+        for item in detalle:
+            es_combo = 1 if item.get("tipo") == "combo" else 0
+            combo_id = item.get("combo_id", None)
+            productos_personalizados = item.get("productos", None)
+            combo_productos_json = None
+            if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
+                combo_productos_json = json.dumps(productos_personalizados)
+
             c.execute("""
-                INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                                    monto, fecha, observacion, medio_pago)
-                VALUES (%s, %s, %s, %s, NOW(), %s, %s)
+                INSERT INTO venta_detalle (venta_id, producto_id, nombre_producto,
+                                           cantidad, precio_unitario, es_combo, combo_id,combo_productos)
+                VALUES (%s, %s, %s, %s, %s, %s, %s,%s)
             """, (
                 venta_id,
-                corte_id,
-                usuario_id,
-                abono["monto"],
-                abono.get("observacion", None),
-                abono.get("medio_pago", "efectivo")
+                item.get("producto_id"),
+                item["nombre_producto"],
+                item["cantidad"],
+                item["precio_unitario"],
+                es_combo,
+                combo_id,
+                combo_productos_json
             ))
 
+            # si es combo descontar inventario con lógica de unidades y sueltas
+                    # Ya no se descuenta inventario al crear la venta
+            # El descuento se hará cuando la venta se marque como "entregada"
+        # 3. insertar abono inicial si el cliente pago algo
+        if abonos_iniciales:
+            for abono in abonos_iniciales:
+                if abono.get("monto", 0) <= 0:
+                    continue
+                c.execute("""
+                    INSERT INTO abonos (venta_id, corte_id, usuario_id,
+                                        monto, fecha, observacion, medio_pago)
+                    VALUES (%s, %s, %s, %s, NOW(), %s, %s)
+                """, (
+                    venta_id,
+                    corte_id,
+                    usuario_id,
+                    abono["monto"],
+                    abono.get("observacion", None),
+                    abono.get("medio_pago", "efectivo")
+                ))
 
-    current_app.mysql.connection.commit()
-    c.close()
+
+        current_app.mysql.connection.commit()
+    finally:
+        c.close()
     return obtener_venta(venta_id)
     
     
