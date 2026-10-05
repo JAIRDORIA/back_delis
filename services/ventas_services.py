@@ -411,6 +411,24 @@ def registro(cliente_id, corte_id, usuario_id,
                 ))
 
 
+        # 4. Regla de direccion: si el cliente NO tiene direccion registrada,
+        #    esta primera direccion del pedido pasa a ser la suya.
+        #    Si ya tiene, no se toca (la del modal es solo para este pedido).
+        #    UPDATE condicional: no pisa una direccion registrada entre tanto.
+        #    Va en el MISMO cursor/conexion, antes del commit, para que forme
+        #    parte de la misma transaccion que el INSERT de la venta.
+        if direccion_entrega:
+            c.execute("SELECT direccion FROM clientes WHERE id = %s", (cliente_id,))
+            fila = c.fetchone()
+            direccion_actual = fila[0] if fila else None
+            if direccion_actual is None or str(direccion_actual).strip() == "":
+                c.execute("""
+                    UPDATE clientes
+                    SET direccion = %s, updated_at = NOW()
+                    WHERE id = %s
+                      AND (direccion IS NULL OR TRIM(direccion) = '')
+                """, (direccion_entrega, cliente_id))
+
         current_app.mysql.connection.commit()
     finally:
         c.close()
