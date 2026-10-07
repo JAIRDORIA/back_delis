@@ -1,45 +1,69 @@
 from flask import current_app
 from models.combos_model import combos
+from utils.db import cursor_ctx
+
+
+def _productos_por_combo(c, combo_ids):
+    """
+    Devuelve {combo_id: [productos]} para TODOS los combos pedidos usando UNA
+    sola consulta. Antes se hacia un SELECT a combo_detalle por cada combo
+    dentro del bucle (N+1: 1 + N consultas por pagina).
+
+    El ORDER BY cd.id ASC conserva el mismo orden de productos que devolvia el
+    SELECT individual, para no cambiar la respuesta JSON.
+    """
+    if not combo_ids:
+        return {}
+    placeholders = ",".join(["%s"] * len(combo_ids))
+    c.execute(f"""
+        SELECT cd.combo_id, cd.producto_id, pr.nombre, cd.cantidad_unidades
+        FROM combo_detalle cd
+        JOIN productos pr ON pr.id = cd.producto_id
+        WHERE cd.combo_id IN ({placeholders})
+        ORDER BY cd.id ASC
+    """, tuple(combo_ids))
+
+    por_combo = {}
+    for combo_id, producto_id, nombre, cantidad_unidades in c.fetchall():
+        por_combo.setdefault(combo_id, []).append({
+            'producto_id': producto_id,
+            'nombre': nombre,
+            'cantidad_unidades': cantidad_unidades,
+        })
+    return por_combo
+
 
 def listado_combos(page, per_page):
     """
     Lista los productos/combos disponibles con paginación (RF24).
     """
     offset = (page - 1) * per_page
-    c = current_app.mysql.connection.cursor()
-    
-    # Obtener el total de combos activos para la metadata de paginación 
-    c.execute("SELECT COUNT(*) FROM combos WHERE activo = 1")
-    total = c.fetchone()[0]
-    
-    # Consulta paginada filtrando solo los activos 
-    sql = """SELECT id, nombre, descripcion, precio_frito,precio_congelado, activo, created_at, updated_at 
-             FROM combos WHERE activo = 1 LIMIT %s OFFSET %s"""
-    c.execute(sql, (per_page, offset))
-    datos = c.fetchall()
-    
-    lista = []
-    for p in datos:
-        combo = combos(
-            id=p[0], nombre=p[1], descripcion=p[2], precio_frito=p[3],precio_congelado=p[4],
-            activo=p[5], created_at=p[6], updated_at=p[7]
-        ).toDic()
 
-        # Traer productos del combo desde combo_detalle
-        c.execute("""
-            SELECT cd.producto_id, pr.nombre, cd.cantidad_unidades
-            FROM combo_detalle cd
-            JOIN productos pr ON pr.id = cd.producto_id
-            WHERE cd.combo_id = %s
-        """, (combo['id'],))
-        prods = c.fetchall()
-        combo['productos'] = [
-            {'producto_id': r[0], 'nombre': r[1], 'cantidad_unidades': r[2]}
-            for r in prods
-        ]
+    with cursor_ctx() as c:
+        # Obtener el total de combos activos para la metadata de paginación 
+        c.execute("SELECT COUNT(*) FROM combos WHERE activo = 1")
+        total = c.fetchone()[0]
 
-        lista.append(combo)
-        
+        # Consulta paginada filtrando solo los activos 
+        sql = """SELECT id, nombre, descripcion, precio_frito,precio_congelado, activo, created_at, updated_at 
+                 FROM combos WHERE activo = 1 LIMIT %s OFFSET %s"""
+        c.execute(sql, (per_page, offset))
+        datos = c.fetchall()
+
+        # Detalle de TODA la pagina en UNA sola consulta (antes: 1 SELECT por combo)
+        productos_por_combo = _productos_por_combo(c, [p[0] for p in datos])
+
+        lista = []
+        for p in datos:
+            combo = combos(
+                id=p[0], nombre=p[1], descripcion=p[2], precio_frito=p[3],precio_congelado=p[4],
+                activo=p[5], created_at=p[6], updated_at=p[7]
+            ).toDic()
+
+            combo['productos'] = productos_por_combo.get(combo['id'], [])
+
+            lista.append(combo)
+
     return {
         "items": lista,
         "total": total,
@@ -48,47 +72,35 @@ def listado_combos(page, per_page):
     }
 
 def existe_combo(nombre, solo_activos=True, excluir_id=None):
-    c = current_app.mysql.connection.cursor()
-    
     sql = "SELECT id FROM combos WHERE nombre = %s"
     params = [nombre]
-    
+
     if solo_activos:
         sql += " AND activo = 1"
-    
+
     if excluir_id is not None:
         sql += " AND id != %s"
         params.append(excluir_id)
-    
-    c.execute(sql, params)
-    resultado = c.fetchone()
-    c.close()
+
+    with cursor_ctx() as c:
+        c.execute(sql, params)
+        resultado = c.fetchone()
     return resultado is not None
 
 def obtener_combo_id(id):
     """
     Obtiene el detalle de un combo específico si está activo.
     """
-    c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, nombre, descripcion, precio_frito,precio_congelado, activo, created_at, updated_at FROM combos WHERE id = %s AND activo = 1"
-    c.execute(sql, (id,))
-    p = c.fetchone()
-    if p:
-        combo = combos(p[0], p[1], p[2], p[3], p[4], p[5], p[6],p[7]).toDic()
+    with cursor_ctx() as c:
+        sql = "SELECT id, nombre, descripcion, precio_frito,precio_congelado, activo, created_at, updated_at FROM combos WHERE id = %s AND activo = 1"
+        c.execute(sql, (id,))
+        p = c.fetchone()
+        if p:
+            combo = combos(p[0], p[1], p[2], p[3], p[4], p[5], p[6],p[7]).toDic()
 
-        # Traer productos del combo
-        c.execute("""
-            SELECT cd.producto_id, pr.nombre, cd.cantidad_unidades
-            FROM combo_detalle cd
-            JOIN productos pr ON pr.id = cd.producto_id
-            WHERE cd.combo_id = %s
-        """, (combo['id'],))
-        prods = c.fetchall()
-        combo['productos'] = [
-            {'producto_id': r[0], 'nombre': r[1], 'cantidad_unidades': r[2]}
-            for r in prods
-        ]
-        return combo
+            # Traer productos del combo
+            combo['productos'] = _productos_por_combo(c, [combo['id']]).get(combo['id'], [])
+            return combo
     return None
 
 def crear_combo(nombre,precio_frito,precio_congelado, productos):
@@ -96,45 +108,42 @@ def crear_combo(nombre,precio_frito,precio_congelado, productos):
     if existe_combo(nombre, solo_activos=True):
         return {"error": f"Ya existe un combo activo con el nombre '{nombre}'"}, 400
 
-    c = current_app.mysql.connection.cursor()
-
-    # 1. insertar el combo
-    c.execute("""
-        INSERT INTO combos (nombre, precio_frito,precio_congelado, activo, created_at, updated_at)
-        VALUES (%s, %s,%s, 1, NOW(), NOW())
-    """, (nombre, precio_frito,precio_congelado,))
-
-    combo_id = c.lastrowid
-
-    # 2. insertar cada producto del detalle
-    for item in productos:
+    with cursor_ctx() as c:
+        # 1. insertar el combo
         c.execute("""
-            INSERT INTO combo_detalle (combo_id, producto_id, cantidad_unidades)
-            VALUES (%s, %s, %s)
-        """, (
-            combo_id,
-            item["producto_id"],
-            item["cantidad_unidades"]
-        ))
+            INSERT INTO combos (nombre, precio_frito,precio_congelado, activo, created_at, updated_at)
+            VALUES (%s, %s,%s, 1, NOW(), NOW())
+        """, (nombre, precio_frito,precio_congelado,))
 
-    current_app.mysql.connection.commit()
+        combo_id = c.lastrowid
 
-    # 3. traer el combo recién creado con su detalle
-    c.execute("""
-        SELECT id, nombre, descripcion,precio_frito,precio_congelado, activo
-        FROM combos WHERE id = %s
-    """, (combo_id,))
-    combo = c.fetchone()
+        # 2. insertar cada producto del detalle
+        for item in productos:
+            c.execute("""
+                INSERT INTO combo_detalle (combo_id, producto_id, cantidad_unidades)
+                VALUES (%s, %s, %s)
+            """, (
+                combo_id,
+                item["producto_id"],
+                item["cantidad_unidades"]
+            ))
 
-    c.execute("""
-        SELECT cd.producto_id, p.nombre, cd.cantidad_unidades
-        FROM combo_detalle cd
-        JOIN productos p ON p.id = cd.producto_id
-        WHERE cd.combo_id = %s
-    """, (combo_id,))
-    detalle = c.fetchall()
+        current_app.mysql.connection.commit()
 
-    c.close()
+        # 3. traer el combo recién creado con su detalle
+        c.execute("""
+            SELECT id, nombre, descripcion,precio_frito,precio_congelado, activo
+            FROM combos WHERE id = %s
+        """, (combo_id,))
+        combo = c.fetchone()
+
+        c.execute("""
+            SELECT cd.producto_id, p.nombre, cd.cantidad_unidades
+            FROM combo_detalle cd
+            JOIN productos p ON p.id = cd.producto_id
+            WHERE cd.combo_id = %s
+        """, (combo_id,))
+        detalle = c.fetchall()
 
     return {
         "id"         : combo[0],
@@ -160,27 +169,25 @@ def actualizar_combos(id, nombre, descripcion, precio_frito, precio_congelado, p
     if existe_combo(nombre, solo_activos=True, excluir_id=id):
         return {"error": f"Ya existe otro combo activo con el nombre '{nombre}'"}, 400
 
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        # 1. Actualizar el combo
+        sql = """UPDATE combos 
+                 SET nombre=%s, descripcion=%s, precio_frito=%s, precio_congelado=%s, updated_at=NOW() 
+                 WHERE id=%s AND activo = 1"""
+        c.execute(sql, (nombre, descripcion, precio_frito, precio_congelado, id))
 
-    # 1. Actualizar el combo
-    sql = """UPDATE combos 
-             SET nombre=%s, descripcion=%s, precio_frito=%s, precio_congelado=%s, updated_at=NOW() 
-             WHERE id=%s AND activo = 1"""
-    c.execute(sql, (nombre, descripcion, precio_frito, precio_congelado, id))
+        # 2. Si se enviaron productos, reemplazar el detalle
+        if productos is not None and isinstance(productos, list):
+            # Borrar los productos actuales del combo
+            c.execute("DELETE FROM combo_detalle WHERE combo_id = %s", (id,))
+            # Insertar los nuevos
+            for item in productos:
+                c.execute("""
+                    INSERT INTO combo_detalle (combo_id, producto_id, cantidad_unidades)
+                    VALUES (%s, %s, %s)
+                """, (id, item["producto_id"], item["cantidad_unidades"]))
 
-    # 2. Si se enviaron productos, reemplazar el detalle
-    if productos is not None and isinstance(productos, list):
-        # Borrar los productos actuales del combo
-        c.execute("DELETE FROM combo_detalle WHERE combo_id = %s", (id,))
-        # Insertar los nuevos
-        for item in productos:
-            c.execute("""
-                INSERT INTO combo_detalle (combo_id, producto_id, cantidad_unidades)
-                VALUES (%s, %s, %s)
-            """, (id, item["producto_id"], item["cantidad_unidades"]))
-
-    current_app.mysql.connection.commit()
-    c.close()
+        current_app.mysql.connection.commit()
 
     return {"id": id, "nombre": nombre}
 
@@ -188,8 +195,8 @@ def eliminar_combos(id):
     """
     Realiza el borrado lógico de un producto (RF23).
     """
-    c = current_app.mysql.connection.cursor()
-    sql = "UPDATE combos SET activo = 0, updated_at = NOW() WHERE id = %s"
-    c.execute(sql, (id,))
-    current_app.mysql.connection.commit()
+    with cursor_ctx() as c:
+        sql = "UPDATE combos SET activo = 0, updated_at = NOW() WHERE id = %s"
+        c.execute(sql, (id,))
+        current_app.mysql.connection.commit()
     return True

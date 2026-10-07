@@ -1,6 +1,7 @@
 from flask import current_app
 from models.compra_model import compra
 from services.cortes_services import obtener_corte_abierto, obtener_corte
+from utils.db import cursor_ctx
 
 
 def _existe(cursor, tabla, id):
@@ -14,8 +15,6 @@ def _compra_existe(cursor, id):
 def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
     try:
         offset = (pagina - 1) * limite
-        con    = current_app.mysql.connection
-        cursor = con.cursor()
 
         where = "WHERE c.eliminada = 0 AND c.corte_id = %s"
         params = [corte_id]
@@ -24,21 +23,21 @@ def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
             where += " AND c.descripcion LIKE %s"
             params.append(f"%{busqueda}%")
 
-        cursor.execute(f"SELECT COUNT(*) FROM compras c {where}", tuple(params))
-        total = cursor.fetchone()[0]
+        with cursor_ctx() as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM compras c {where}", tuple(params))
+            total = cursor.fetchone()[0]
 
-        cursor.execute(f"""
-            SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
-                   c.fecha, c.medio_pago, c.total, c.descripcion
-            FROM compras c
-            JOIN proveedores p ON p.id = c.proveedor_id
-            {where}
-            ORDER BY c.fecha DESC
-            LIMIT %s OFFSET %s
-        """, tuple(params + [limite, offset]))
+            cursor.execute(f"""
+                SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
+                       c.fecha, c.medio_pago, c.total, c.descripcion
+                FROM compras c
+                JOIN proveedores p ON p.id = c.proveedor_id
+                {where}
+                ORDER BY c.fecha DESC
+                LIMIT %s OFFSET %s
+            """, tuple(params + [limite, offset]))
 
-        datos = cursor.fetchall()
-        cursor.close()
+            datos = cursor.fetchall()
 
         lista = []
         for fila in datos:
@@ -60,22 +59,18 @@ def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
 
 def obtener_compra(id):
     try:
-        con    = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            if not _compra_existe(cursor, id):
+                return None, "Compra no encontrada"
 
-        if not _compra_existe(cursor, id):
-            cursor.close()
-            return None, "Compra no encontrada"
-
-        cursor.execute("""
-            SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
-                   c.fecha, c.total, c.descripcion
-            FROM compras c
-            JOIN proveedores p ON p.id = c.proveedor_id
-            WHERE c.id = %s AND c.eliminada = 0
-        """, (id,))
-        fila = cursor.fetchone()
-        cursor.close()
+            cursor.execute("""
+                SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
+                       c.fecha, c.total, c.descripcion
+                FROM compras c
+                JOIN proveedores p ON p.id = c.proveedor_id
+                WHERE c.id = %s AND c.eliminada = 0
+            """, (id,))
+            fila = cursor.fetchone()
 
         com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[7])
         d = com.toDic()
@@ -87,34 +82,27 @@ def obtener_compra(id):
 
 def registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion):
     try:
-        con    = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            cursor.execute("SELECT id FROM proveedores WHERE id = %s AND activo = 1", (proveedor_id,))
+            if not cursor.fetchone():
+                return None, f"El proveedor con id {proveedor_id} no existe o no está activo"
 
-        cursor.execute("SELECT id FROM proveedores WHERE id = %s AND activo = 1", (proveedor_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            return None, f"El proveedor con id {proveedor_id} no existe o no está activo"
+            if not _existe(cursor, "cortes", corte_id):
+                return None, f"El corte con id {corte_id} no existe"
 
-        if not _existe(cursor, "cortes", corte_id):
-            cursor.close()
-            return None, f"El corte con id {corte_id} no existe"
+            cursor.execute("SELECT id FROM usuarios WHERE id = %s AND activo = 1", (usuario_id,))
+            if not cursor.fetchone():
+                return None, f"El usuario con id {usuario_id} no existe o no está activo"
 
-        cursor.execute("SELECT id FROM usuarios WHERE id = %s AND activo = 1", (usuario_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            return None, f"El usuario con id {usuario_id} no existe o no está activo"
+            if float(total) <= 0:
+                return None, "El total debe ser mayor a 0"
 
-        if float(total) <= 0:
-            cursor.close()
-            return None, "El total debe ser mayor a 0"
-
-        cursor.execute("""
-            INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
-            VALUES (%s, %s, %s, %s, %s, %s,%s)
-        """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion))
-        con.commit()
-        nuevo_id = cursor.lastrowid
-        cursor.close()
+            cursor.execute("""
+                INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
+                VALUES (%s, %s, %s, %s, %s, %s,%s)
+            """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion))
+            current_app.mysql.connection.commit()
+            nuevo_id = cursor.lastrowid
         return compra(nuevo_id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
     except Exception as e:
         raise Exception(str(e))
@@ -122,40 +110,32 @@ def registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total,
 
 def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion):
     try:
-        con    = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            if not _compra_existe(cursor, id):
+                return None, "Compra no encontrada"
 
-        if not _compra_existe(cursor, id):
-            cursor.close()
-            return None, "Compra no encontrada"
+            cursor.execute("SELECT id FROM proveedores WHERE id = %s AND activo = 1", (proveedor_id,))
+            if not cursor.fetchone():
+                return None, f"El proveedor con id {proveedor_id} no existe o no está activo"
 
-        cursor.execute("SELECT id FROM proveedores WHERE id = %s AND activo = 1", (proveedor_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            return None, f"El proveedor con id {proveedor_id} no existe o no está activo"
+            if not _existe(cursor, "cortes", corte_id):
+                return None, f"El corte con id {corte_id} no existe"
 
-        if not _existe(cursor, "cortes", corte_id):
-            cursor.close()
-            return None, f"El corte con id {corte_id} no existe"
+            cursor.execute("SELECT id FROM usuarios WHERE id = %s AND activo = 1", (usuario_id,))
+            if not cursor.fetchone():
+                return None, f"El usuario con id {usuario_id} no existe o no está activo"
 
-        cursor.execute("SELECT id FROM usuarios WHERE id = %s AND activo = 1", (usuario_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            return None, f"El usuario con id {usuario_id} no existe o no está activo"
+            if float(total) <= 0:
+                return None, "El total debe ser mayor a 0"
 
-        if float(total) <= 0:
-            cursor.close()
-            return None, "El total debe ser mayor a 0"
-
-        cursor.execute("""
-            UPDATE compras
-            SET proveedor_id = %s, corte_id = %s, usuario_id = %s,
-                fecha = %s,medio_pago=%s, total = %s, descripcion = %s,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-        """, (proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion, id))
-        con.commit()
-        cursor.close()
+            cursor.execute("""
+                UPDATE compras
+                SET proveedor_id = %s, corte_id = %s, usuario_id = %s,
+                    fecha = %s,medio_pago=%s, total = %s, descripcion = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion, id))
+            current_app.mysql.connection.commit()
         return compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
     except Exception as e:
         raise Exception(str(e))
@@ -163,18 +143,14 @@ def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, 
 
 def eliminar_compra(id):
     try:
-        con    = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            if not _compra_existe(cursor, id):
+                return False, "Compra no encontrada"
 
-        if not _compra_existe(cursor, id):
-            cursor.close()
-            return False, "Compra no encontrada"
-
-        cursor.execute(
-            "UPDATE compras SET eliminada = 1, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (id,)
-        )
-        con.commit()
-        cursor.close()
+            cursor.execute(
+                "UPDATE compras SET eliminada = 1, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (id,)
+            )
+            current_app.mysql.connection.commit()
         return True, None
     except Exception as e:
         raise Exception(str(e))

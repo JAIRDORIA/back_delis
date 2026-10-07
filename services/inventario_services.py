@@ -1,29 +1,28 @@
 from flask import current_app
 from models.inventario_model import inventarios
 import json
+from utils.db import cursor_ctx
 
 def listado_inventarios(pagina=1, limite=20):
     offset = (pagina - 1) * limite
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT COUNT(*) FROM inventario i
+            JOIN productos p ON p.id = i.producto_id
+            WHERE p.activo = 1
+        """)
+        total = c.fetchone()[0]
 
-    c.execute("""
-        SELECT COUNT(*) FROM inventario i
-        JOIN productos p ON p.id = i.producto_id
-        WHERE p.activo = 1
-    """)
-    total = c.fetchone()[0]
-
-    sql = """
-        SELECT i.id, i.producto_id, p.nombre, i.stock_actual, 
-               i.unidades_sueltas, i.stock_minimo, i.updated_at 
-        FROM inventario i
-        JOIN productos p ON p.id = i.producto_id
-        WHERE p.activo = 1
-        LIMIT %s OFFSET %s
-    """
-    c.execute(sql, (limite, offset))
-    datos = c.fetchall()
-    c.close()
+        sql = """
+            SELECT i.id, i.producto_id, p.nombre, i.stock_actual, 
+                   i.unidades_sueltas, i.stock_minimo, i.updated_at 
+            FROM inventario i
+            JOIN productos p ON p.id = i.producto_id
+            WHERE p.activo = 1
+            LIMIT %s OFFSET %s
+        """
+        c.execute(sql, (limite, offset))
+        datos = c.fetchall()
 
     lista = []
     for p in datos:
@@ -46,36 +45,33 @@ def listado_inventarios(pagina=1, limite=20):
     }
 
 def registro(producto_id):
-    c = current_app.mysql.connection.cursor()
-    sql = """
-        INSERT INTO inventario (producto_id)
-        VALUES (%s)
-    """
-    c.execute(sql, (producto_id,))
-    current_app.mysql.connection.commit()
-    id = c.lastrowid
-    c.close()
+    with cursor_ctx() as c:
+        sql = """
+            INSERT INTO inventario (producto_id)
+            VALUES (%s)
+        """
+        c.execute(sql, (producto_id,))
+        current_app.mysql.connection.commit()
+        id = c.lastrowid
     return inventarios(id, producto_id, 0, 0, 5, None).toDic()
 
 def existe_inventario(producto_id):
-    c = current_app.mysql.connection.cursor()
-    sql = "SELECT id FROM inventario WHERE producto_id = %s"
-    c.execute(sql, (producto_id,))
-    dato = c.fetchone()
-    c.close()
+    with cursor_ctx() as c:
+        sql = "SELECT id FROM inventario WHERE producto_id = %s"
+        c.execute(sql, (producto_id,))
+        dato = c.fetchone()
     return dato is not None
 
 def obtener_inventario(id):
-    c = current_app.mysql.connection.cursor()
-    c.execute("""
-        SELECT i.id, i.producto_id, p.nombre, i.stock_actual, 
-               i.unidades_sueltas, i.stock_minimo, i.updated_at
-        FROM inventario i
-        JOIN productos p ON p.id = i.producto_id
-        WHERE i.id = %s AND p.activo = 1
-    """, (id,))
-    inventario = c.fetchone()
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT i.id, i.producto_id, p.nombre, i.stock_actual, 
+                   i.unidades_sueltas, i.stock_minimo, i.updated_at
+            FROM inventario i
+            JOIN productos p ON p.id = i.producto_id
+            WHERE i.id = %s AND p.activo = 1
+        """, (id,))
+        inventario = c.fetchone()
     if inventario:
         return {
             "id"              : inventario[0],
@@ -89,25 +85,23 @@ def obtener_inventario(id):
     return None  
 
 def actualizar_stock_minimo(id, stock_minimo):
-    c = current_app.mysql.connection.cursor()
-    sql = """
-        UPDATE inventario 
-        SET stock_minimo = %s
-        WHERE id = %s
-    """
-    c.execute(sql, (stock_minimo, id))
-    current_app.mysql.connection.commit()
-    filas_afectadas = c.rowcount
-    c.close()
+    with cursor_ctx() as c:
+        sql = """
+            UPDATE inventario 
+            SET stock_minimo = %s
+            WHERE id = %s
+        """
+        c.execute(sql, (stock_minimo, id))
+        current_app.mysql.connection.commit()
+        filas_afectadas = c.rowcount
     return filas_afectadas > 0
 
 
 def productos_bajo_stock():
-    c = current_app.mysql.connection.cursor()
-    sql = "SELECT id, nombre, stock_actual, stock_minimo FROM v_productos_bajo_stock"
-    c.execute(sql)
-    datos = c.fetchall()
-    c.close()
+    with cursor_ctx() as c:
+        sql = "SELECT id, nombre, stock_actual, stock_minimo FROM v_productos_bajo_stock"
+        c.execute(sql)
+        datos = c.fetchall()
 
     lista = []
     for p in datos:
@@ -122,10 +116,9 @@ def productos_bajo_stock():
 
 
 def obtener_unidades_por_bandeja(producto_id):
-    c = current_app.mysql.connection.cursor()
-    c.execute("SELECT unidades_por_bandeja FROM productos WHERE id = %s", (producto_id,))
-    row = c.fetchone()
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("SELECT unidades_por_bandeja FROM productos WHERE id = %s", (producto_id,))
+        row = c.fetchone()
     return row[0] if row else None
  
  
@@ -164,37 +157,35 @@ def actualizar_cantidades(id, stock_actual, unidades_sueltas, usuario_id):
         stock_actual, unidades_sueltas, unidades_por_bandeja
     )
  
-    c = current_app.mysql.connection.cursor()
- 
-    c.execute("""
-        UPDATE inventario
-        SET stock_actual = %s, unidades_sueltas = %s
-        WHERE id = %s
-    """, (nuevas_bandejas, nuevas_sueltas, id))
- 
-    c.execute("""
-        INSERT INTO auditoria (usuario_id, accion, tabla_afectada, registro_id,
-                                descripcion, datos_anteriores, datos_nuevos)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (
-        usuario_id,
-        'editar',
-        'inventario',
-        id,
-        f"Edicion manual de cantidades de inventario (producto_id {producto_id})",
-        json.dumps({
-            "stock_actual": inventario_actual["stock_actual"],
-            "unidades_sueltas": inventario_actual["unidades_sueltas"],
-        }),
-        json.dumps({
-            "stock_actual": nuevas_bandejas,
-            "unidades_sueltas": nuevas_sueltas,
-        }),
-    ))
- 
-    current_app.mysql.connection.commit()
-    c.close()
- 
+    with cursor_ctx() as c:
+        c.execute("""
+            UPDATE inventario
+            SET stock_actual = %s, unidades_sueltas = %s
+            WHERE id = %s
+        """, (nuevas_bandejas, nuevas_sueltas, id))
+
+        c.execute("""
+            INSERT INTO auditoria (usuario_id, accion, tabla_afectada, registro_id,
+                                    descripcion, datos_anteriores, datos_nuevos)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            usuario_id,
+            'editar',
+            'inventario',
+            id,
+            f"Edicion manual de cantidades de inventario (producto_id {producto_id})",
+            json.dumps({
+                "stock_actual": inventario_actual["stock_actual"],
+                "unidades_sueltas": inventario_actual["unidades_sueltas"],
+            }),
+            json.dumps({
+                "stock_actual": nuevas_bandejas,
+                "unidades_sueltas": nuevas_sueltas,
+            }),
+        ))
+
+        current_app.mysql.connection.commit()
+
     return {
         "id": id,
         "producto_id": producto_id,

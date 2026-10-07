@@ -1,27 +1,26 @@
 from flask import current_app
 from models.producciones_model import producciones
+from utils.db import cursor_ctx
 
 def listado_producciones(pagina=1, limite=20):
     offset = (pagina - 1) * limite
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        c.execute("SELECT COUNT(*) FROM producciones")
+        total = c.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM producciones")
-    total = c.fetchone()[0]
-
-    sql = """
-    SELECT p.id, p.producto_id, p.cantidad, p.unidades_sueltas,
-           p.usuario_id, u.nombre as nombre_usuario, 
-           pr.nombre as nombre_producto,
-           p.fecha, p.observacion, p.created_at
-    FROM producciones p
-    JOIN productos pr ON pr.id = p.producto_id
-    JOIN usuarios u ON u.id = p.usuario_id
-    ORDER BY p.created_at DESC
-    LIMIT %s OFFSET %s
-    """
-    c.execute(sql, (limite, offset))
-    datos = c.fetchall()
-    c.close()
+        sql = """
+        SELECT p.id, p.producto_id, p.cantidad, p.unidades_sueltas,
+               p.usuario_id, u.nombre as nombre_usuario, 
+               pr.nombre as nombre_producto,
+               p.fecha, p.observacion, p.created_at
+        FROM producciones p
+        JOIN productos pr ON pr.id = p.producto_id
+        JOIN usuarios u ON u.id = p.usuario_id
+        ORDER BY p.created_at DESC
+        LIMIT %s OFFSET %s
+        """
+        c.execute(sql, (limite, offset))
+        datos = c.fetchall()
 
     lista = []
     for p in datos:
@@ -48,33 +47,31 @@ def listado_producciones(pagina=1, limite=20):
     }
 
 def registro(producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion):
-    c = current_app.mysql.connection.cursor()
-    sql = """
-             INSERT INTO producciones (producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion)
-             VALUES 
-             (%s, %s, %s, %s, %s, %s)
-             """
-    c.execute(sql, (producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion))
-    current_app.mysql.connection.commit()
-    id = c.lastrowid
-    c.close()
+    with cursor_ctx() as c:
+        sql = """
+                 INSERT INTO producciones (producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion)
+                 VALUES 
+                 (%s, %s, %s, %s, %s, %s)
+                 """
+        c.execute(sql, (producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion))
+        current_app.mysql.connection.commit()
+        id = c.lastrowid
     return producciones(id, producto_id, cantidad, unidades_sueltas , usuario_id, fecha, observacion, None).toDic() 
 
 
 def obtener_produccion(id):
-    c = current_app.mysql.connection.cursor()
-    c.execute("""
-        SELECT p.id, p.producto_id, pr.nombre as nombre_producto, 
-               p.cantidad, p.unidades_sueltas,
-               p.usuario_id, u.nombre as nombre_usuario,
-               p.fecha, p.observacion, p.created_at
-        FROM producciones p
-        JOIN productos pr ON pr.id = p.producto_id
-        JOIN usuarios u ON u.id = p.usuario_id
-        WHERE p.id = %s
-    """, (id,))
-    dato = c.fetchone()
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT p.id, p.producto_id, pr.nombre as nombre_producto, 
+                   p.cantidad, p.unidades_sueltas,
+                   p.usuario_id, u.nombre as nombre_usuario,
+                   p.fecha, p.observacion, p.created_at
+            FROM producciones p
+            JOIN productos pr ON pr.id = p.producto_id
+            JOIN usuarios u ON u.id = p.usuario_id
+            WHERE p.id = %s
+        """, (id,))
+        dato = c.fetchone()
     if dato:
         return {
             "id":                dato[0],

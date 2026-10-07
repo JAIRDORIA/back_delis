@@ -17,6 +17,7 @@ import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from flask import current_app
+from utils.db import cursor_ctx
 
 BOGOTA = ZoneInfo("America/Bogota")
 UTC = ZoneInfo("UTC")
@@ -143,8 +144,7 @@ def pedidos_del_dia(fecha_str=None):
 
     inicio, fin = _rango_utc_del_dia(fecha_str)
 
-    c = current_app.mysql.connection.cursor()
-    try:
+    with cursor_ctx() as c:
         # LEFT JOIN: ventas de clientes ocasionales (sin cliente_id) no deben desaparecer del panel.
         # Las columnas nuevas van al final para no mover los indices f[4] / f[5] de abajo.
         # direccion: la del pedido (ventas.direccion_entrega) manda; si es NULL o vacia,
@@ -168,8 +168,6 @@ def pedidos_del_dia(fecha_str=None):
         total_entregados = len(filas) - len(pendientes)
 
         items = _cargar_items(c, [f[0] for f in pendientes]) if pendientes else {}
-    finally:
-        c.close()
 
     pedidos = []
     for (venta_id, nombre_cliente, fecha_entrega, observacion, estado,
@@ -199,16 +197,13 @@ def pedidos_del_dia(fecha_str=None):
 
 def estado_para_cocina(venta_id):
     """(estado, entregada_cocina_at) de la venta, o None si no existe / esta eliminada."""
-    c = current_app.mysql.connection.cursor()
-    try:
+    with cursor_ctx() as c:
         c.execute("""
             SELECT estado, entregada_cocina_at
             FROM ventas
             WHERE id = %s AND COALESCE(eliminada, 0) = 0
         """, (venta_id,))
         return c.fetchone()
-    finally:
-        c.close()
 
 
 def marcar_entregado_cocina(venta_id, usuario_id):
@@ -220,8 +215,7 @@ def marcar_entregado_cocina(venta_id, usuario_id):
     llamada fue la que lo marco.
     """
     con = current_app.mysql.connection
-    c = con.cursor()
-    try:
+    with cursor_ctx() as c:
         c.execute("""
             UPDATE ventas
             SET entregada_cocina_at = NOW(), entregada_cocina_por = %s
@@ -233,8 +227,6 @@ def marcar_entregado_cocina(venta_id, usuario_id):
         marcado = c.rowcount > 0
         con.commit()
         return marcado
-    finally:
-        c.close()
 
 
 def entregadas_en_cocina_por_confirmar():
@@ -243,8 +235,7 @@ def entregadas_en_cocina_por_confirmar():
     (alimenta el aviso "la venta X fue entregada en cocina" del modulo de ventas).
     Desaparecen solas cuando el admin la marca entregada o la anula.
     """
-    c = current_app.mysql.connection.cursor()
-    try:
+    with cursor_ctx() as c:
         c.execute("""
             SELECT id, nombre_cliente, entregada_cocina_at
             FROM ventas
@@ -254,8 +245,6 @@ def entregadas_en_cocina_por_confirmar():
             ORDER BY entregada_cocina_at DESC
         """)
         filas = c.fetchall()
-    finally:
-        c.close()
 
     resultado = []
     for venta_id, nombre_cliente, marca in filas:

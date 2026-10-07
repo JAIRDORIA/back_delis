@@ -2,66 +2,110 @@ from flask import current_app, json
 from models.venta_model import Ventas
 from datetime import datetime
 import math
+from utils.db import cursor_ctx
 
-def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None):
+# "Error" (tipos_pago=error): ventas donde la aritmetica de dinero no cuadra,
+# es decir total != total_abonado + saldo_pendiente. 0.01 absorbe el redondeo
+# de los DECIMAL. OJO: no habia definicion previa de "error" en el codigo; esta
+# regla es una PROPUESTA (ver entrega) y es el unico punto a confirmar.
+TOLERANCIA_ERROR = 0.01
+
+# Medios de pago reales que existen en abonos.medio_pago.
+MEDIOS_PAGO = ("efectivo", "transferencia", "otro")
+
+
+def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
+                   estados=None, tipos_pago=None):
     offset = (pagina - 1) * limite
-    c = current_app.mysql.connection.cursor()
 
-    # Si no se especifica un corte, se trabaja con el corte abierto
-    if corte_id is None:
-        c.execute("SELECT id FROM cortes WHERE estado = 'abierto' LIMIT 1")
-        corte_abierto = c.fetchone()
-        corte_actual = corte_abierto[0] if corte_abierto else None
-    else:
-        corte_actual = corte_id
+    with cursor_ctx() as c:
+        # Si no se especifica un corte, se trabaja con el corte abierto
+        if corte_id is None:
+            c.execute("SELECT id FROM cortes WHERE estado = 'abierto' LIMIT 1")
+            corte_abierto = c.fetchone()
+            corte_actual = corte_abierto[0] if corte_abierto else None
+        else:
+            corte_actual = corte_id
 
-    # Construir cláusulas WHERE dinámicamente
-    where_clause = "WHERE v.estado != 'anulada'"
-    params_count = {}
-    params_data = {'limite': limite, 'offset': offset}
+        # Un solo dict de parametros para el COUNT y para los datos: los
+        # placeholders son %(nombre)s y MySQLdb ignora las claves que una
+        # consulta no usa (por eso 'limite'/'offset' sobran en el COUNT).
+        params = {'limite': limite, 'offset': offset}
 
-    if cliente_id is not None:
-        where_clause += " AND v.cliente_id = %(cliente_id)s"
-        params_count['cliente_id'] = cliente_id
-        params_data['cliente_id'] = cliente_id
-    elif corte_actual is not None:
-        where_clause += " AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado'))"
-        params_count['corte'] = corte_actual
-        params_data['corte'] = corte_actual
+        # --- Grupo ESTADOS (OR dentro del grupo) ---
+        # Sin el parametro: comportamiento identico al actual (nunca anuladas).
+        if estados:
+            marcadores = []
+            for i, estado in enumerate(estados):
+                clave = f"estado_{i}"
+                marcadores.append(f"%({clave})s")
+                params[clave] = estado
+            where_clause = f"WHERE v.estado IN ({', '.join(marcadores)})"
+        else:
+            where_clause = "WHERE v.estado != 'anulada'"
 
-    # Agregar búsqueda por texto (q)
-    if q:
-        q_param = f"%{q}%"
-        where_clause += " AND (v.id LIKE %(q)s OR cl.nombre LIKE %(q)s OR v.estado LIKE %(q)s)"
-        params_count['q'] = q_param
-        params_data['q'] = q_param
+        # --- Corte o cliente (misma logica que antes) ---
+        if cliente_id is not None:
+            where_clause += " AND v.cliente_id = %(cliente_id)s"
+            params['cliente_id'] = cliente_id
+        elif corte_actual is not None:
+            where_clause += " AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado'))"
+            params['corte'] = corte_actual
 
-    # Consulta de total
-    sql_count = f"""
-        SELECT COUNT(*)
-        FROM ventas v
-        JOIN clientes cl ON cl.id = v.cliente_id
-        JOIN cortes co ON co.id = v.corte_id
-        {where_clause}
-    """
-    c.execute(sql_count, params_count)
-    total = c.fetchone()[0]
+        # --- Busqueda por texto (q) ---
+        if q:
+            q_param = f"%{q}%"
+            where_clause += " AND (v.id LIKE %(q)s OR cl.nombre LIKE %(q)s OR v.estado LIKE %(q)s)"
+            params['q'] = q_param
 
-    # Consulta de datos paginada
-    sql_data = f"""
-        SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
-               v.usuario_id, v.fecha_venta, v.fecha_entrega,
-               v.total, v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
-        FROM ventas v
-        JOIN clientes cl ON cl.id = v.cliente_id
-        JOIN cortes co ON co.id = v.corte_id
-        {where_clause}
-        ORDER BY v.id DESC
-        LIMIT %(limite)s OFFSET %(offset)s
-    """
-    c.execute(sql_data, params_data)
-    datos = c.fetchall()
-    c.close()
+        # --- Grupo TIPOS DE PAGO (OR dentro del grupo, AND con el resto) ---
+        if tipos_pago:
+            condiciones = []
+            # Medios reales: EXISTS sobre abonos. Una venta puede tener abonos
+            # en varios medios; con JOIN se duplicarian filas y el COUNT deja
+            # de ser el real, por eso EXISTS.
+            for i, medio in enumerate([m for m in tipos_pago if m in MEDIOS_PAGO]):
+                clave = f"medio_{i}"
+                condiciones.append(
+                    f"EXISTS (SELECT 1 FROM abonos ab "
+                    f"WHERE ab.venta_id = v.id AND ab.medio_pago = %({clave})s)"
+                )
+                params[clave] = medio
+            if 'deben' in tipos_pago:
+                condiciones.append("v.saldo_pendiente > 0")
+            if 'error' in tipos_pago:
+                condiciones.append(
+                    "ABS(v.total - (v.total_abonado + v.saldo_pendiente)) > %(tolerancia)s"
+                )
+                params['tolerancia'] = TOLERANCIA_ERROR
+            if condiciones:
+                where_clause += " AND (" + " OR ".join(condiciones) + ")"
+
+        # Consulta de total (mismo WHERE exacto que los datos)
+        sql_count = f"""
+            SELECT COUNT(*)
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            JOIN cortes co ON co.id = v.corte_id
+            {where_clause}
+        """
+        c.execute(sql_count, params)
+        total = c.fetchone()[0]
+
+        # Consulta de datos paginada
+        sql_data = f"""
+            SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
+                   v.usuario_id, v.fecha_venta, v.fecha_entrega,
+                   v.total, v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            JOIN cortes co ON co.id = v.corte_id
+            {where_clause}
+            ORDER BY v.id DESC
+            LIMIT %(limite)s OFFSET %(offset)s
+        """
+        c.execute(sql_data, params)
+        datos = c.fetchall()
 
     lista = []
     for p in datos:
@@ -94,63 +138,59 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None):
     
     
 def actualizar_detalle_venta(id, nuevo_detalle):
-    c = current_app.mysql.connection.cursor()
- 
-    # Verificar que la venta existe y está pendiente
-    c.execute("SELECT id, total_abonado, estado FROM ventas WHERE id = %s", (id,))
-    venta = c.fetchone()
-    if not venta or venta[2] != 'pendiente':
-        c.close()
-        return None
- 
-    # Borrar el detalle actual
-    c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
- 
-    # Insertar los nuevos productos/combos y calcular el nuevo total
-    nuevo_total = 0
-    for item in nuevo_detalle:
-        es_combo = 1 if item.get("tipo") == "combo" else 0
-        combo_id = item.get("combo_id", None)
- 
-        # FIX: si el combo trae composicion personalizada (item["productos"]),
-        # se guarda en combo_productos -- antes se perdia aqui, dejando el
-        # combo sin composicion (bug que afectaba tanto al panel de cocina
-        # como al descuento real de inventario al entregar la venta).
-        productos_personalizados = item.get("productos", None)
-        combo_productos_json = None
-        if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
-            combo_productos_json = json.dumps(productos_personalizados)
- 
+    with cursor_ctx() as c:
+        # Verificar que la venta existe y está pendiente
+        c.execute("SELECT id, total_abonado, estado FROM ventas WHERE id = %s", (id,))
+        venta = c.fetchone()
+        if not venta or venta[2] != 'pendiente':
+            return None
+
+        # Borrar el detalle actual
+        c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
+
+        # Insertar los nuevos productos/combos y calcular el nuevo total
+        nuevo_total = 0
+        for item in nuevo_detalle:
+            es_combo = 1 if item.get("tipo") == "combo" else 0
+            combo_id = item.get("combo_id", None)
+
+            # FIX: si el combo trae composicion personalizada (item["productos"]),
+            # se guarda en combo_productos -- antes se perdia aqui, dejando el
+            # combo sin composicion (bug que afectaba tanto al panel de cocina
+            # como al descuento real de inventario al entregar la venta).
+            productos_personalizados = item.get("productos", None)
+            combo_productos_json = None
+            if es_combo and productos_personalizados and isinstance(productos_personalizados, list):
+                combo_productos_json = json.dumps(productos_personalizados)
+
+            c.execute("""
+                INSERT INTO venta_detalle (venta_id, producto_id, combo_id, nombre_producto,
+                                           cantidad, precio_unitario, es_combo, combo_productos)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                id,
+                item.get("producto_id"),       # None para combos
+                combo_id,                       # None para productos y para combos personalizados
+                item["nombre_producto"],
+                item["cantidad"],
+                float(item["precio_unitario"]),
+                es_combo,
+                combo_productos_json
+            ))
+            nuevo_total += item["cantidad"] * float(item["precio_unitario"])
+
+        # Actualizar el total de la venta
         c.execute("""
-            INSERT INTO venta_detalle (venta_id, producto_id, combo_id, nombre_producto,
-                                       cantidad, precio_unitario, es_combo, combo_productos)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            id,
-            item.get("producto_id"),       # None para combos
-            combo_id,                       # None para productos y para combos personalizados
-            item["nombre_producto"],
-            item["cantidad"],
-            float(item["precio_unitario"]),
-            es_combo,
-            combo_productos_json
-        ))
-        nuevo_total += item["cantidad"] * float(item["precio_unitario"])
- 
-    # Actualizar el total de la venta
-    c.execute("""
-        UPDATE ventas SET total = %s WHERE id = %s
-    """, (nuevo_total, id))
- 
-    current_app.mysql.connection.commit()
-    c.close()
- 
+            UPDATE ventas SET total = %s WHERE id = %s
+        """, (nuevo_total, id))
+
+        current_app.mysql.connection.commit()
+
     return obtener_venta_detalle(id)
 
 
 def obtener_venta_detalle(id):
-    c = current_app.mysql.connection.cursor()
-    try:
+    with cursor_ctx() as c:
         # datos de la venta
         # direccion_entrega: la del pedido (propia de la venta, NULL si no tiene).
         # NO se mezcla con la direccion del cliente: eso solo lo hace el panel de cocina.
@@ -187,8 +227,6 @@ def obtener_venta_detalle(id):
             ORDER BY fecha ASC
         """, (id,))
         abonos = c.fetchall()
-    finally:
-        c.close()
 
     def _combo_productos(valor):
         """La columna es JSON; MySQLdb puede devolverla como texto o bytes.
@@ -349,8 +387,7 @@ def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_
 def registro(cliente_id, corte_id, usuario_id,
              fecha_entrega, total, detalle, abonos_iniciales=None, observacion=None,
              direccion_entrega=None):
-    c = current_app.mysql.connection.cursor()
-    try:
+    with cursor_ctx() as c:
         c.execute("SELECT nombre FROM clientes WHERE id = %s", (cliente_id,))
         cliente = c.fetchone()
         nombre_cliente = cliente[0] if cliente else ''
@@ -430,64 +467,60 @@ def registro(cliente_id, corte_id, usuario_id,
                 """, (direccion_entrega, cliente_id))
 
         current_app.mysql.connection.commit()
-    finally:
-        c.close()
+
     return obtener_venta(venta_id)
     
     
 
 def generar_comprobante(venta_id):
-    c = current_app.mysql.connection.cursor()
-
-    # verificar si ya existe comprobante
-    c.execute("""
-        SELECT id, numero, fecha_emision
-        FROM comprobantes
-        WHERE venta_id = %s
-    """, (venta_id,))
-    comp_existente = c.fetchone()
-
-    # si no existe lo creamos
-    if not comp_existente:
-        # generar numero secuencial
-        c.execute("SELECT COUNT(*) FROM comprobantes")
-        total = c.fetchone()[0]
-        numero = f"COMP-{str(total + 1).zfill(4)}"
-
-        c.execute("""
-            INSERT INTO comprobantes (venta_id, numero)
-            VALUES (%s, %s)
-        """, (venta_id, numero))
-        current_app.mysql.connection.commit()
-
+    with cursor_ctx() as c:
+        # verificar si ya existe comprobante
         c.execute("""
             SELECT id, numero, fecha_emision
-            FROM comprobantes WHERE venta_id = %s
+            FROM comprobantes
+            WHERE venta_id = %s
         """, (venta_id,))
-        comp = c.fetchone()
-    else:
-        comp = comp_existente
+        comp_existente = c.fetchone()
 
-    # traer datos completos de la venta
-    c.execute("""
-        SELECT v.id, cl.nombre, v.fecha_venta, v.fecha_entrega,
-               v.total, v.total_abonado, v.saldo_pendiente, v.estado
-        FROM ventas v
-        JOIN clientes cl ON cl.id = v.cliente_id
-        WHERE v.id = %s
-    """, (venta_id,))
-    venta = c.fetchone()
+        # si no existe lo creamos
+        if not comp_existente:
+            # generar numero secuencial
+            c.execute("SELECT COUNT(*) FROM comprobantes")
+            total = c.fetchone()[0]
+            numero = f"COMP-{str(total + 1).zfill(4)}"
 
-    # traer detalle de productos
-    c.execute("""
-        SELECT nombre_producto, cantidad,
-               precio_unitario, subtotal
-        FROM venta_detalle
-        WHERE venta_id = %s
-    """, (venta_id,))
-    detalle = c.fetchall()
+            c.execute("""
+                INSERT INTO comprobantes (venta_id, numero)
+                VALUES (%s, %s)
+            """, (venta_id, numero))
+            current_app.mysql.connection.commit()
 
-    c.close()
+            c.execute("""
+                SELECT id, numero, fecha_emision
+                FROM comprobantes WHERE venta_id = %s
+            """, (venta_id,))
+            comp = c.fetchone()
+        else:
+            comp = comp_existente
+
+        # traer datos completos de la venta
+        c.execute("""
+            SELECT v.id, cl.nombre, v.fecha_venta, v.fecha_entrega,
+                   v.total, v.total_abonado, v.saldo_pendiente, v.estado
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            WHERE v.id = %s
+        """, (venta_id,))
+        venta = c.fetchone()
+
+        # traer detalle de productos
+        c.execute("""
+            SELECT nombre_producto, cantidad,
+                   precio_unitario, subtotal
+            FROM venta_detalle
+            WHERE venta_id = %s
+        """, (venta_id,))
+        detalle = c.fetchall()
 
     return {
         "numero"          : comp[1],
@@ -511,17 +544,16 @@ def generar_comprobante(venta_id):
     }
 
 def obtener_venta(id):
-    c = current_app.mysql.connection.cursor()
-    c.execute("""
-        SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
-               v.fecha_venta, v.fecha_entrega, v.total,
-               v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
-        FROM ventas v
-        JOIN clientes c ON c.id = v.cliente_id
-        WHERE v.id = %s
-    """, (id,))
-    venta = c.fetchone()
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
+                   v.fecha_venta, v.fecha_entrega, v.total,
+                   v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
+            FROM ventas v
+            JOIN clientes c ON c.id = v.cliente_id
+            WHERE v.id = %s
+        """, (id,))
+        venta = c.fetchone()
     if venta:
         return {
             "id"              : venta[0],
@@ -540,71 +572,67 @@ def obtener_venta(id):
     return None
 
 def actualizar_venta(id, fecha_entrega, total, estado):
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        # Obtener el estado anterior para saber si estamos entregando
+        c.execute("SELECT estado FROM ventas WHERE id = %s", (id,))
+        venta_anterior = c.fetchone()
+        if not venta_anterior:
+            return None
+        estado_anterior = venta_anterior[0]
 
-    # Obtener el estado anterior para saber si estamos entregando
-    c.execute("SELECT estado FROM ventas WHERE id = %s", (id,))
-    venta_anterior = c.fetchone()
-    if not venta_anterior:
-        c.close()
-        return None
-    estado_anterior = venta_anterior[0]
+        c.execute("""
+            UPDATE ventas
+            SET fecha_entrega = %s,
+                total         = %s,
+                estado        = %s
+            WHERE id = %s
+        """, (fecha_entrega, total, estado, id))
 
-    c.execute("""
-        UPDATE ventas
-        SET fecha_entrega = %s,
-            total         = %s,
-            estado        = %s
-        WHERE id = %s
-    """, (fecha_entrega, total, estado, id))
+        # Si la venta pasa a "entregada" por primera vez, descontar inventario
+        if estado == 'entregada' and estado_anterior != 'entregada':
+            descontar_inventario_venta(id)
 
-    # Si la venta pasa a "entregada" por primera vez, descontar inventario
-    if estado == 'entregada' and estado_anterior != 'entregada':
-        descontar_inventario_venta(id)
+        current_app.mysql.connection.commit()
 
-    current_app.mysql.connection.commit()
-    c.close()
     return obtener_venta(id)
 
 def revertir_inventario_detalle(venta_id):
-    c = current_app.mysql.connection.cursor()
-    
-    # Obtener solo el detalle de los combos de la venta
-    c.execute("""
-        SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
-        FROM venta_detalle
-        WHERE venta_id = %s AND es_combo = 1
-    """, (venta_id,))
-    detalles_combos = c.fetchall()
+    with cursor_ctx() as c:
+        # Obtener solo el detalle de los combos de la venta
+        c.execute("""
+            SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
+            FROM venta_detalle
+            WHERE venta_id = %s AND es_combo = 1
+        """, (venta_id,))
+        detalles_combos = c.fetchall()
 
-    for d in detalles_combos:
-        producto_id = d[0]
-        cantidad = d[1]          # Cantidad de combos
-        es_combo = d[2]
-        combo_id = d[3]
-        combo_productos_json = d[4]
+        for d in detalles_combos:
+            producto_id = d[0]
+            cantidad = d[1]          # Cantidad de combos
+            es_combo = d[2]
+            combo_id = d[3]
+            combo_productos_json = d[4]
 
-        # Siempre será un combo, así que podemos omitir la verificación de es_combo
-        if combo_productos_json:
-            # Combo personalizado: revertir usando la lista guardada
-            productos_personalizados = json.loads(combo_productos_json)
-            for prod in productos_personalizados:
-                pid = prod["producto_id"]
-                unidades_a_sumar = prod["cantidad_unidades"] * cantidad
-                
-                # Sumar al inventario (inverso de descontar)
-                _sumar_inventario(pid, unidades_a_sumar, c)
-        else:
-            # Combo normal: obtener componentes del combo real
-            c.execute("SELECT producto_id, cantidad_unidades FROM combo_detalle WHERE combo_id = %s", (combo_id,))
-            componentes = c.fetchall()
-            for comp in componentes:
-                pid = comp[0]
-                unidades_a_sumar = comp[1] * cantidad
-                _sumar_inventario(pid, unidades_a_sumar, c)
+            # Siempre será un combo, así que podemos omitir la verificación de es_combo
+            if combo_productos_json:
+                # Combo personalizado: revertir usando la lista guardada
+                productos_personalizados = json.loads(combo_productos_json)
+                for prod in productos_personalizados:
+                    pid = prod["producto_id"]
+                    unidades_a_sumar = prod["cantidad_unidades"] * cantidad
 
-    current_app.mysql.connection.commit()
-    c.close()
+                    # Sumar al inventario (inverso de descontar)
+                    _sumar_inventario(pid, unidades_a_sumar, c)
+            else:
+                # Combo normal: obtener componentes del combo real
+                c.execute("SELECT producto_id, cantidad_unidades FROM combo_detalle WHERE combo_id = %s", (combo_id,))
+                componentes = c.fetchall()
+                for comp in componentes:
+                    pid = comp[0]
+                    unidades_a_sumar = comp[1] * cantidad
+                    _sumar_inventario(pid, unidades_a_sumar, c)
+
+        current_app.mysql.connection.commit()
 
 
 
@@ -658,77 +686,76 @@ def _sumar_inventario(producto_id, unidades_a_sumar, cursor):
 
 
 def descontar_inventario_venta(venta_id):
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        # Obtener todo el detalle de la venta (productos normales y combos)
+        c.execute("""
+            SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
+            FROM venta_detalle
+            WHERE venta_id = %s
+        """, (venta_id,))
+        detalle = c.fetchall()
 
-    # Obtener todo el detalle de la venta (productos normales y combos)
-    c.execute("""
-        SELECT producto_id, cantidad, es_combo, combo_id, combo_productos
-        FROM venta_detalle
-        WHERE venta_id = %s
-    """, (venta_id,))
-    detalle = c.fetchall()
+        for d in detalle:
+            producto_id = d[0]       # None si es combo
+            cantidad = d[1]          # Cantidad de productos o de combos
+            es_combo = d[2]
+            combo_id = d[3]
+            combo_productos_json = d[4]
 
-    for d in detalle:
-        producto_id = d[0]       # None si es combo
-        cantidad = d[1]          # Cantidad de productos o de combos
-        es_combo = d[2]
-        combo_id = d[3]
-        combo_productos_json = d[4]
-
-        if es_combo:
-            if combo_productos_json:
-                # Combo personalizado: usar la lista guardada
-                productos_personalizados = json.loads(combo_productos_json)
-                descontar_inventario_combo_personalizado(
-                    productos_personalizados,
-                    cantidad,
-                    c
-                )
+            if es_combo:
+                if combo_productos_json:
+                    # Combo personalizado: usar la lista guardada
+                    productos_personalizados = json.loads(combo_productos_json)
+                    descontar_inventario_combo_personalizado(
+                        productos_personalizados,
+                        cantidad,
+                        c
+                    )
+                else:
+                    # Combo normal
+                    descontar_inventario_combo(
+                        combo_id,
+                        cantidad,
+                        c
+                    )
             else:
-                # Combo normal
-                descontar_inventario_combo(
-                    combo_id,
-                    cantidad,
-                    c
-                )
-        else:
-            # Producto normal: descontar directamente las bandejas
-            # Manejar inserción si no existe el producto en inventario
-            c.execute("""
-                UPDATE inventario
-                SET stock_actual = stock_actual - %s
-                WHERE producto_id = %s
-            """, (cantidad, producto_id))
-            if c.rowcount == 0:
+                # Producto normal: descontar directamente las bandejas
+                # Manejar inserción si no existe el producto en inventario
                 c.execute("""
-                    INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
-                    VALUES (%s, -%s, 0)
-                """, (producto_id, cantidad))
+                    UPDATE inventario
+                    SET stock_actual = stock_actual - %s
+                    WHERE producto_id = %s
+                """, (cantidad, producto_id))
+                if c.rowcount == 0:
+                    c.execute("""
+                        INSERT INTO inventario (producto_id, stock_actual, unidades_sueltas)
+                        VALUES (%s, -%s, 0)
+                    """, (producto_id, cantidad))
 
-    current_app.mysql.connection.commit()
-    c.close()
+        current_app.mysql.connection.commit()
+
 def anular_venta(id):
-    c = current_app.mysql.connection.cursor()
-    venta = obtener_venta(id)
-    if not venta or venta['estado'] not in ('pendiente', 'entregada'):
-        return None
+    with cursor_ctx() as c:
+        venta = obtener_venta(id)
+        if not venta or venta['estado'] not in ('pendiente', 'entregada'):
+            return None
 
-    # Solo revertir inventario de combos si la venta estaba entregada
-    if venta['estado'] == 'entregada':
-        revertir_inventario_detalle(id)
+        # Solo revertir inventario de combos si la venta estaba entregada
+        if venta['estado'] == 'entregada':
+            revertir_inventario_detalle(id)
 
-    # Cambiar estado a anulada (dispara el trigger)
-    c.execute("""
-        UPDATE ventas SET estado = 'anulada'
-        WHERE id = %s
-    """, (id,))
+        # Cambiar estado a anulada (dispara el trigger)
+        c.execute("""
+            UPDATE ventas SET estado = 'anulada'
+            WHERE id = %s
+        """, (id,))
 
-    # Resetear total_abonado
-    c.execute("""
-        UPDATE ventas SET total_abonado = 0
-        WHERE id = %s
-    """, (id,))
+        # Resetear total_abonado
+        c.execute("""
+            UPDATE ventas SET total_abonado = 0
+            WHERE id = %s
+        """, (id,))
 
-    current_app.mysql.connection.commit()
-    c.close()
+        current_app.mysql.connection.commit()
+
     return obtener_venta(id)

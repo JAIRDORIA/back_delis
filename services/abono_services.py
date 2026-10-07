@@ -1,16 +1,16 @@
 from flask import current_app
 from models.abonos_model import Abono
 from datetime import datetime
+from utils.db import cursor_ctx
 
 def listado_abonos(pagina=1, limite=20):
     offset = (pagina - 1) * limite
 
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        c.execute("SELECT COUNT(*) FROM abonos")
+        total = c.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM abonos")
-    total = c.fetchone()[0]
-
-    c.execute("""
+        c.execute("""
        SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
        a.corte_id, a.usuario_id,
        v.estado AS venta_estado,
@@ -22,8 +22,7 @@ JOIN clientes cl ON cl.id = v.cliente_id
 ORDER BY a.id DESC
 LIMIT %(limite)s OFFSET %(offset)s
     """, {"limite":limite,"offset": offset})
-    datos = c.fetchall()
-    c.close()
+        datos = c.fetchall()
 
     lista = []
     for p in datos:
@@ -53,57 +52,52 @@ LIMIT %(limite)s OFFSET %(offset)s
 
 
 def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago):
-    c = current_app.mysql.connection.cursor()
-    c.execute("""
-        INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                            monto, fecha, observacion, medio_pago)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago))
-    current_app.mysql.connection.commit()
-    id = c.lastrowid
-    
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("""
+            INSERT INTO abonos (venta_id, corte_id, usuario_id,
+                                monto, fecha, observacion, medio_pago)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago))
+        current_app.mysql.connection.commit()
+        id = c.lastrowid
+
     return obtener_abono(id)
     
 def generar_recibo(abono_id):
-    c = current_app.mysql.connection.cursor()
+    with cursor_ctx() as c:
+        # traer datos del abono
+        c.execute("""
+            SELECT a.id, a.monto, a.fecha, a.medio_pago,
+                   a.observacion, a.venta_id
+            FROM abonos a
+            WHERE a.id = %s
+        """, (abono_id,))
+        abono = c.fetchone()
 
-    # traer datos del abono
-    c.execute("""
-        SELECT a.id, a.monto, a.fecha, a.medio_pago,
-               a.observacion, a.venta_id
-        FROM abonos a
-        WHERE a.id = %s
-    """, (abono_id,))
-    abono = c.fetchone()
+        if not abono:
+            return None
 
-    if not abono:
-        c.close()
-        return None
+        venta_id = abono[5]
 
-    venta_id = abono[5]
+        # traer datos de la venta y cliente
+        c.execute("""
+            SELECT v.id, cl.nombre, v.total,
+                   v.total_abonado, v.saldo_pendiente
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            WHERE v.id = %s
+        """, (venta_id,))
+        venta = c.fetchone()
 
-    # traer datos de la venta y cliente
-    c.execute("""
-        SELECT v.id, cl.nombre, v.total,
-               v.total_abonado, v.saldo_pendiente
-        FROM ventas v
-        JOIN clientes cl ON cl.id = v.cliente_id
-        WHERE v.id = %s
-    """, (venta_id,))
-    venta = c.fetchone()
-
-    # traer numero de comprobante si existe
-    c.execute("""
-        SELECT numero FROM comprobantes
-        WHERE venta_id = %s
-    """, (venta_id,))
-    comp = c.fetchone()
+        # traer numero de comprobante si existe
+        c.execute("""
+            SELECT numero FROM comprobantes
+            WHERE venta_id = %s
+        """, (venta_id,))
+        comp = c.fetchone()
 
     # generar numero de recibo
     numero_recibo = f"REC-{str(abono_id).zfill(4)}"
-
-    c.close()
 
     return {
         "numero_recibo"   : numero_recibo,
@@ -120,20 +114,19 @@ def generar_recibo(abono_id):
     }
 
 def obtener_abono(id):
-    c = current_app.mysql.connection.cursor()
-    c.execute("""
-        SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
-               a.corte_id, a.usuario_id,
-               v.estado AS venta_estado,
-               v.saldo_pendiente AS venta_saldo_pendiente,
-               cl.nombre AS nombre_cliente
-        FROM abonos a
-        JOIN ventas v ON v.id = a.venta_id
-        JOIN clientes cl ON cl.id = v.cliente_id
-        WHERE a.id = %s
-    """, (id,))
-    abono = c.fetchone()
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
+                   a.corte_id, a.usuario_id,
+                   v.estado AS venta_estado,
+                   v.saldo_pendiente AS venta_saldo_pendiente,
+                   cl.nombre AS nombre_cliente
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            JOIN clientes cl ON cl.id = v.cliente_id
+            WHERE a.id = %s
+        """, (id,))
+        abono = c.fetchone()
     if abono:
         return Abono(
              id          = abono[0],
@@ -155,30 +148,29 @@ def actualizar_abono(id, monto, fecha, observacion, medio_pago):
     abono_actual = obtener_abono(id)
     diferencia   = monto - abono_actual["monto"]
 
-    c = current_app.mysql.connection.cursor()
-    c.execute("""
-        UPDATE abonos
-        SET monto       = %s,
-            fecha       = %s,
-            observacion = %s,
-            medio_pago  = %s
-        WHERE id = %s
-    """, (monto, fecha, observacion, medio_pago, id))
+    with cursor_ctx() as c:
+        c.execute("""
+            UPDATE abonos
+            SET monto       = %s,
+                fecha       = %s,
+                observacion = %s,
+                medio_pago  = %s
+            WHERE id = %s
+        """, (monto, fecha, observacion, medio_pago, id))
 
-    c.execute("""
-        UPDATE ventas
-        SET total_abonado = total_abonado + %s
-        WHERE id = %s
-    """, (diferencia, abono_actual["venta_id"]))
+        c.execute("""
+            UPDATE ventas
+            SET total_abonado = total_abonado + %s
+            WHERE id = %s
+        """, (diferencia, abono_actual["venta_id"]))
 
-    current_app.mysql.connection.commit()
-    c.close()
+        current_app.mysql.connection.commit()
+
     return obtener_abono(id)
 
 
 def eliminar_abono(id):
-    c = current_app.mysql.connection.cursor()
-    c.execute("DELETE FROM abonos WHERE id = %s", (id,))
-    current_app.mysql.connection.commit()
-    c.close()
+    with cursor_ctx() as c:
+        c.execute("DELETE FROM abonos WHERE id = %s", (id,))
+        current_app.mysql.connection.commit()
     return {"mensaje": f"abono {id} eliminado correctamente"}

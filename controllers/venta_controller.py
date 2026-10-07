@@ -8,6 +8,34 @@ from services.ventas_services import obtener_venta_detalle,actualizar_detalle_ve
 from zoneinfo import ZoneInfo
 
 
+# Valores aceptados por los filtros de GET /ventas/ (lista blanca).
+ESTADOS_VALIDOS = ["pendiente", "entregada", "anulada"]
+TIPOS_PAGO_VALIDOS = ["efectivo", "transferencia", "otro", "deben", "error"]
+
+
+def _parsear_csv(valor, valores_validos, nombre):
+    """
+    Convierte 'a,b,c' en ['a', 'b', 'c'] validando contra lista blanca.
+    Devuelve (lista, None) si esta bien, o (None, mensaje) si hay invalidos.
+    Ausente o vacio => (None, None), es decir sin filtro.
+    """
+    if valor is None:
+        return None, None
+    items = [x.strip().lower() for x in valor.split(",")]
+    items = [x for x in items if x != ""]
+    if not items:
+        return None, None
+    invalidos = [x for x in items if x not in valores_validos]
+    if invalidos:
+        return None, (f"{nombre} invalido(s): {invalidos}. "
+                      f"Valores permitidos: {valores_validos}")
+    unicos = []
+    for x in items:
+        if x not in unicos:
+            unicos.append(x)
+    return unicos, None
+
+
 def cntListado():
     try:
         pagina   = request.args.get("pagina",   1,    type=int)
@@ -21,7 +49,15 @@ def cntListado():
         if limite < 1 or limite > 200:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
 
-        datos = listado_ventas(pagina, limite, corte_id,q,cliente_id)
+        # Filtros nuevos (opcionales). Se validan contra lista blanca.
+        estados, error = _parsear_csv(request.args.get("estados"), ESTADOS_VALIDOS, "estados")
+        if error:
+            return jsonify({"mensaje": error}), 400
+        tipos_pago, error = _parsear_csv(request.args.get("tipos_pago"), TIPOS_PAGO_VALIDOS, "tipos_pago")
+        if error:
+            return jsonify({"mensaje": error}), 400
+
+        datos = listado_ventas(pagina, limite, corte_id,q,cliente_id, estados, tipos_pago)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"errores": str(e)}), 500

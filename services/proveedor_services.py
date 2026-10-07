@@ -1,6 +1,7 @@
 import re
 from flask import current_app
 from models.proveedor_model import proveedores
+from utils.db import cursor_ctx
 
 
 # ─────────────────────────────────────────────
@@ -63,17 +64,15 @@ def _nombre_duplicado(cursor, nombre, excluir_id=None):
 
 def listado_proveedores():
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
-        cursor.execute(
-            "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores"
-        )
-        datos = cursor.fetchall()
-        lista = []
-        for fila in datos:
-            pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
-            lista.append(pro.todic())
-        cursor.close()
+        with cursor_ctx() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores"
+            )
+            datos = cursor.fetchall()
+            lista = []
+            for fila in datos:
+                pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
+                lista.append(pro.todic())
         return lista
     except Exception as e:
         raise Exception(str(e))
@@ -82,17 +81,15 @@ def listado_proveedores():
 def listado_proveedores_activos():
     """Obtiene solo los proveedores activos"""
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
-        cursor.execute(
-            "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE activo = 1"
-        )
-        datos = cursor.fetchall()
-        lista = []
-        for fila in datos:
-            pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
-            lista.append(pro.todic())
-        cursor.close()
+        with cursor_ctx() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE activo = 1"
+            )
+            datos = cursor.fetchall()
+            lista = []
+            for fila in datos:
+                pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
+                lista.append(pro.todic())
         return lista
     except Exception as e:
         raise Exception(str(e))
@@ -104,17 +101,14 @@ def listado_proveedores_activos():
 
 def obtener_proveedor(id):
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
-        if not _proveedor_existe(cursor, id):
-            cursor.close()
-            return None, "Proveedor no encontrado"
-        cursor.execute(
-            "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE id = %s",
-            (id,)
-        )
-        fila = cursor.fetchone()
-        cursor.close()
+        with cursor_ctx() as cursor:
+            if not _proveedor_existe(cursor, id):
+                return None, "Proveedor no encontrado"
+            cursor.execute(
+                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE id = %s",
+                (id,)
+            )
+            fila = cursor.fetchone()
         pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
         return pro.todic(), None
     except Exception as e:
@@ -124,14 +118,12 @@ def obtener_proveedor(id):
 def obtener_proveedor_por_nombre(nombre):
     """Busca un proveedor por nombre"""
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
-        cursor.execute(
-            "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE LOWER(nombre) = LOWER(%s)",
-            (nombre.strip(),)
-        )
-        fila = cursor.fetchone()
-        cursor.close()
+        with cursor_ctx() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE LOWER(nombre) = LOWER(%s)",
+                (nombre.strip(),)
+            )
+            fila = cursor.fetchone()
         if fila:
             pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
             return pro.todic(), None
@@ -143,18 +135,16 @@ def obtener_proveedor_por_nombre(nombre):
 def buscar_proveedores_por_nombre(nombre):
     """Busca proveedores por nombre (parcial)"""
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
-        cursor.execute(
-            "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE LOWER(nombre) LIKE LOWER(%s)",
-            (f"%{nombre}%",)
-        )
-        datos = cursor.fetchall()
-        lista = []
-        for fila in datos:
-            pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
-            lista.append(pro.todic())
-        cursor.close()
+        with cursor_ctx() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE LOWER(nombre) LIKE LOWER(%s)",
+                (f"%{nombre}%",)
+            )
+            datos = cursor.fetchall()
+            lista = []
+            for fila in datos:
+                pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
+                lista.append(pro.todic())
         return lista
     except Exception as e:
         raise Exception(str(e))
@@ -163,18 +153,16 @@ def buscar_proveedores_por_nombre(nombre):
 def buscar_proveedores_por_email(email):
     """Busca proveedores por email (parcial)"""
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
-        cursor.execute(
-            "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE LOWER(email) LIKE LOWER(%s)",
-            (f"%{email}%",)
-        )
-        datos = cursor.fetchall()
-        lista = []
-        for fila in datos:
-            pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
-            lista.append(pro.todic())
-        cursor.close()
+        with cursor_ctx() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores WHERE LOWER(email) LIKE LOWER(%s)",
+                (f"%{email}%",)
+            )
+            datos = cursor.fetchall()
+            lista = []
+            for fila in datos:
+                pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
+                lista.append(pro.todic())
         return lista
     except Exception as e:
         raise Exception(str(e))
@@ -186,32 +174,27 @@ def buscar_proveedores_por_email(email):
 
 def registro_proveedor(nombre, telefono, direccion, email):
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            # ✅ VALIDACIÓN: Nombre (SIN NÚMEROS)
+            es_valido, error = _validar_nombre(nombre)
+            if not es_valido:
+                return None, error
 
-        # ✅ VALIDACIÓN: Nombre (SIN NÚMEROS)
-        es_valido, error = _validar_nombre(nombre)
-        if not es_valido:
-            cursor.close()
-            return None, error
+            # ✅ VALIDACIÓN: Nombre duplicado
+            if _nombre_duplicado(cursor, nombre):
+                return None, f"Ya existe un proveedor con el nombre '{nombre.strip()}'. Los nombres de proveedores deben ser únicos."
 
-        # ✅ VALIDACIÓN: Nombre duplicado
-        if _nombre_duplicado(cursor, nombre):
-            cursor.close()
-            return None, f"Ya existe un proveedor con el nombre '{nombre.strip()}'. Los nombres de proveedores deben ser únicos."
+            # ✅ VALIDACIÓN: Email duplicado (original)
+            
 
-        # ✅ VALIDACIÓN: Email duplicado (original)
-        
-
-        # MISMO SQL DEL ORIGINAL (sin cambios)
-        sql = """
-            INSERT INTO proveedores (nombre, telefono, direccion, email)
-            VALUES (%s, %s, %s, %s)
-        """
-        cursor.execute(sql, (nombre, telefono, direccion, email))
-        con.commit()
-        nuevo_id = cursor.lastrowid
-        cursor.close()
+            # MISMO SQL DEL ORIGINAL (sin cambios)
+            sql = """
+                INSERT INTO proveedores (nombre, telefono, direccion, email)
+                VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(sql, (nombre, telefono, direccion, email))
+            current_app.mysql.connection.commit()
+            nuevo_id = cursor.lastrowid
         return proveedores(nuevo_id, nombre, telefono, direccion, email, 1).todic(), None
     except Exception as e:
         raise Exception(str(e))
@@ -223,37 +206,31 @@ def registro_proveedor(nombre, telefono, direccion, email):
 
 def actualizar_proveedor(id, nombre, telefono, direccion, email, activo):
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            if not _proveedor_existe(cursor, id):
+                return None, "Proveedor no encontrado"
 
-        if not _proveedor_existe(cursor, id):
-            cursor.close()
-            return None, "Proveedor no encontrado"
+            # ✅ VALIDACIÓN: Nombre (SIN NÚMEROS)
+            es_valido, error = _validar_nombre(nombre)
+            if not es_valido:
+                return None, error
 
-        # ✅ VALIDACIÓN: Nombre (SIN NÚMEROS)
-        es_valido, error = _validar_nombre(nombre)
-        if not es_valido:
-            cursor.close()
-            return None, error
+            # ✅ VALIDACIÓN: Nombre duplicado (excluir el ID actual)
+            if _nombre_duplicado(cursor, nombre, excluir_id=id):
+                return None, f"Ya existe otro proveedor con el nombre '{nombre.strip()}'. Los nombres deben ser únicos."
 
-        # ✅ VALIDACIÓN: Nombre duplicado (excluir el ID actual)
-        if _nombre_duplicado(cursor, nombre, excluir_id=id):
-            cursor.close()
-            return None, f"Ya existe otro proveedor con el nombre '{nombre.strip()}'. Los nombres deben ser únicos."
+            # ✅ VALIDACIÓN: Email duplicado (original)
+            
 
-        # ✅ VALIDACIÓN: Email duplicado (original)
-        
-
-        # MISMO SQL DEL ORIGINAL (sin cambios)
-        sql = """
-            UPDATE proveedores
-            SET nombre = %s, telefono = %s, direccion = %s, email = %s, activo = %s,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-        """
-        cursor.execute(sql, (nombre, telefono, direccion, email, activo, id))
-        con.commit()
-        cursor.close()
+            # MISMO SQL DEL ORIGINAL (sin cambios)
+            sql = """
+                UPDATE proveedores
+                SET nombre = %s, telefono = %s, direccion = %s, email = %s, activo = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """
+            cursor.execute(sql, (nombre, telefono, direccion, email, activo, id))
+            current_app.mysql.connection.commit()
         return proveedores(id, nombre, telefono, direccion, email, activo).todic(), None
     except Exception as e:
         raise Exception(str(e))
@@ -265,19 +242,15 @@ def actualizar_proveedor(id, nombre, telefono, direccion, email, activo):
 
 def eliminar_proveedor(id):
     try:
-        con = current_app.mysql.connection
-        cursor = con.cursor()
+        with cursor_ctx() as cursor:
+            if not _proveedor_existe(cursor, id):
+                return False, "Proveedor no encontrado"
 
-        if not _proveedor_existe(cursor, id):
-            cursor.close()
-            return False, "Proveedor no encontrado"
-
-        cursor.execute(
-            "UPDATE proveedores SET activo = 0, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-            (id,)
-        )
-        con.commit()
-        cursor.close()
+            cursor.execute(
+                "UPDATE proveedores SET activo = 0, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                (id,)
+            )
+            current_app.mysql.connection.commit()
         return True, None
     except Exception as e:
         raise Exception(str(e))
