@@ -1,9 +1,10 @@
 """
 Decoradores de autenticacion (reemplaza el contenido de tu archivo actual).
 
-CAMBIO DE FONDO: `token_requerido` ahora RECHAZA al rol 'cocina' (403).
-Asi, todas las rutas que ya existen (clientes, compras, balance, prestamos,
-inventario...) quedan cerradas para cocina SIN tener que tocarlas una por una.
+CAMBIO DE FONDO: `token_requerido` ahora RECHAZA a los roles 'cocina' y
+'produccion' (403). Asi, todas las rutas que ya existen (clientes, compras,
+balance, prestamos, inventario...) quedan cerradas para ellos SIN tener que
+tocarlas una por una.
 
 Si en el futuro se agrega una ruta nueva y se olvida el decorador, el
 resultado es "cocina no entra", nunca "cocina entra por descuido".
@@ -29,7 +30,7 @@ def _validar_token(f, permitir_cocina):
         except Exception:
             return jsonify({"error": "Token inválido o expirado"}), 401
 
-        if payload.get('rol') == 'cocina' and not permitir_cocina:
+        if payload.get('rol') in ('cocina', 'produccion') and not permitir_cocina:
             return jsonify({"error": "No tienes permisos para esta acción"}), 403
 
         g.usuario = payload   # {'id', 'username', 'rol', 'nombre'}
@@ -38,7 +39,7 @@ def _validar_token(f, permitir_cocina):
 
 
 def token_requerido(f):
-    """Token valido. NO permite al rol 'cocina'."""
+    """Token valido. NO permite a los roles 'cocina' ni 'produccion'."""
     return _validar_token(f, permitir_cocina=False)
 
 

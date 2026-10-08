@@ -7,7 +7,7 @@ prestamos_bp = Blueprint ('prestamos', __name__)
 
 
 @prestamos_bp.route('/', methods = ["GET"])
-#@token_requerido
+@token_requerido
 def listado():
     return cntListarPrestamos()
 
