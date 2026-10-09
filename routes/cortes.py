@@ -6,11 +6,12 @@ cortes_bp = Blueprint ('cortes', __name__)
 
 
 @cortes_bp.route('/')
-
+@token_requerido
 def listado():
     return cntListado()
 
 @cortes_bp.route('/historial', methods=['GET'])
+@token_requerido
 def historial():
     return cntHistorial()
 

@@ -76,7 +76,7 @@ def cntRegistro():
     
     password = hashear_password(password)
     
-    roles_validos = ['admin', 'cajero', 'cocina']
+    roles_validos = ['admin', 'cocina', 'produccion']
     if rol not in roles_validos:
         return jsonify({"mensaje": f"El rol debe ser uno de: {roles_validos}"}), 400
     
@@ -133,8 +133,8 @@ def cntActualizar(id):
     if len(username) < 4 or len(username) > 50:
         return jsonify({"mensaje": "El username debe tener entre 4 y 50 caracteres"}), 400
 
-    if rol not in ['admin']:
-        return jsonify({"mensaje": "El rol debe ser admin"}), 400
+    if rol not in ['admin', 'cocina', 'produccion']:
+        return jsonify({"mensaje": "El rol debe ser admin, cocina o produccion"}), 400
     
     if not str(id).isdigit():
        return jsonify({"mensaje": "El id debe ser un número entero"}), 400
