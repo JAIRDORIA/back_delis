@@ -2235,7 +2235,7 @@
           "Ventas"
         ],
         "summary": "Listar ventas",
-        "description": "Paginado. Filtros opcionales; 'estados' y 'tipos_pago' son CSV validados.",
+        "description": "Listado de ventas paginado; filtros opcionales, 'estados' y 'tipos_pago' son CSV validados. Se usa en el módulo Ventas (listado principal) y en el módulo Balance (tabla 'Resumen del próximo corte'). Si se consulta un corte futuro con 'corte_id', devuelve únicamente las ventas asignadas a ese corte; con corte abierto/cerrado o sin 'corte_id' mantiene el comportamiento del listado de Ventas, incluyendo las ventas morosas de cortes cerrados.",
         "security": [
           {
             "BearerAuth": []
@@ -3844,6 +3844,59 @@
           },
           "500": {
             "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/cortes/ingresos-ventas": {
+      "get": {
+        "tags": [
+          "Cortes"
+        ],
+        "summary": "Ingresos por abonos del corte abierto",
+        "description": "Dinero cobrado por abonos de ventas en el corte abierto. Incluye abonos a ventas de cortes anteriores; excluye abonos de ventas anuladas y de ventas asignadas a un corte futuro. Devuelve 0 si no hay corte abierto.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ingresos_ventas_corte": {
+                      "type": "number",
+                      "example": 35000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "No tienes permisos para esta acción"
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

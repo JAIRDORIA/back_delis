@@ -388,3 +388,29 @@ def balance_corte_actual():
             "total_transferencia": total_transferencia - compras_transferencia - neto_prestamos_transferencia,
             "resultado"         : total_ventas - total_compras
         }
+
+def ingresos_ventas_corte_abierto():
+    """Dinero cobrado en el corte abierto por abonos de ventas.
+
+    Fuente: tabla abonos (mismo origen que total_efectivo/total_transferencia),
+    filtrada por abonos.corte_id = corte abierto. Se excluyen abonos de ventas
+    anuladas y de ventas asignadas a un corte futuro (ese dinero va a
+    cortes.saldo_inicial, no a caja del corte abierto). Sin corte abierto: 0.
+    """
+    with cursor_ctx() as c:
+        c.execute("SELECT id FROM cortes WHERE estado = 'abierto' LIMIT 1")
+        corte = c.fetchone()
+        if not corte:
+            return 0.0
+
+        c.execute("""
+            SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            JOIN cortes cv ON cv.id = v.corte_id
+            WHERE a.corte_id = %s
+              AND v.estado != 'anulada'
+              AND cv.estado != 'futuro'
+        """, (corte[0],))
+        total = float(c.fetchone()[0])
+    return total

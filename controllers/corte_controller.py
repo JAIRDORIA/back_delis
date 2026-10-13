@@ -1,6 +1,6 @@
 from flask import jsonify , request
 from  services.cortes_services import listado_cortes,registrar_primer_corte, cerrar_corte,obtener_corte ,obtener_corte_abierto  , obtener_corte_futuro, actualizar_corte
-from services.cortes_services import balance_corte_actual,listar_historial_cortes
+from services.cortes_services import balance_corte_actual,listar_historial_cortes,ingresos_ventas_corte_abierto
 def cntListado():
     try:
         pagina = request.args.get("pagina", 1, type=int)
@@ -111,5 +111,12 @@ def cntBalance():
         if not datos:
             return jsonify({"mensaje": "no existe corte abierto"}), 404
         return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def cntIngresosVentas():
+    try:
+        total = ingresos_ventas_corte_abierto()
+        return jsonify({"ingresos_ventas_corte": total}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

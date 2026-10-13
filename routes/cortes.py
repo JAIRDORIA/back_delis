@@ -1,5 +1,5 @@
 from flask import Blueprint
-from controllers.corte_controller import cntListado,cntPrimerCorte,cntCerrarCorte,cntActualizar,cntBalance,cntHistorial
+from controllers.corte_controller import cntListado,cntPrimerCorte,cntCerrarCorte,cntActualizar,cntBalance,cntHistorial,cntIngresosVentas
 from utils.decorators import token_requerido
 
 cortes_bp = Blueprint ('cortes', __name__)
@@ -35,3 +35,8 @@ def cerrar():
 @token_requerido
 def balance():
     return cntBalance()
+
+@cortes_bp.route('/ingresos-ventas', methods=['GET'])
+@token_requerido
+def ingresos_ventas():
+    return cntIngresosVentas()

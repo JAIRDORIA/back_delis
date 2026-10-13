@@ -20,12 +20,18 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
 
     with cursor_ctx() as c:
         # Si no se especifica un corte, se trabaja con el corte abierto
+        solo_corte = False
         if corte_id is None:
             c.execute("SELECT id FROM cortes WHERE estado = 'abierto' LIMIT 1")
             corte_abierto = c.fetchone()
             corte_actual = corte_abierto[0] if corte_abierto else None
         else:
             corte_actual = corte_id
+            # El corte futuro solo debe listar sus propias ventas; la mezcla
+            # de morosas de cortes cerrados es solo para abierto/cerrado.
+            c.execute("SELECT estado FROM cortes WHERE id = %s", (corte_id,))
+            fila_corte = c.fetchone()
+            solo_corte = bool(fila_corte and fila_corte[0] == 'futuro')
 
         # Un solo dict de parametros para el COUNT y para los datos: los
         # placeholders son %(nombre)s y MySQLdb ignora las claves que una
@@ -49,7 +55,10 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
             where_clause += " AND v.cliente_id = %(cliente_id)s"
             params['cliente_id'] = cliente_id
         elif corte_actual is not None:
-            where_clause += " AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado'))"
+            if solo_corte:
+                where_clause += " AND v.corte_id = %(corte)s"
+            else:
+                where_clause += " AND (v.corte_id = %(corte)s OR (v.saldo_pendiente > 0 AND co.estado = 'cerrado'))"
             params['corte'] = corte_actual
 
         # --- Busqueda por texto (q) ---
