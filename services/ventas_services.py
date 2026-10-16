@@ -230,10 +230,12 @@ def obtener_venta_detalle(id):
 
         # abonos de la venta
         c.execute("""
-            SELECT id, monto, fecha, medio_pago, observacion
-            FROM abonos
-            WHERE venta_id = %s
-            ORDER BY fecha ASC
+            SELECT a.id, a.monto, a.fecha, a.medio_pago, a.observacion,
+                   a.medio_pago_id, mp.nombre AS medio_pago_nombre
+            FROM abonos a
+            LEFT JOIN medios_pago mp ON mp.id = a.medio_pago_id
+            WHERE a.venta_id = %s
+            ORDER BY a.fecha ASC
         """, (id,))
         abonos = c.fetchall()
 
@@ -283,6 +285,8 @@ def obtener_venta_detalle(id):
                 "monto"      : float(a[1]),
                 "fecha"      : str(a[2]),
                 "medio_pago" : a[3],
+                "medio_pago_id"    : a[5],
+                "medio_pago_nombre": a[6],
                 "observacion": a[4]
             } for a in abonos
         ]
@@ -445,15 +449,16 @@ def registro(cliente_id, corte_id, usuario_id,
                     continue
                 c.execute("""
                     INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                                        monto, fecha, observacion, medio_pago)
-                    VALUES (%s, %s, %s, %s, NOW(), %s, %s)
+                                        monto, fecha, observacion, medio_pago, medio_pago_id)
+                    VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s)
                 """, (
                     venta_id,
                     corte_id,
                     usuario_id,
                     abono["monto"],
                     abono.get("observacion", None),
-                    abono.get("medio_pago", "efectivo")
+                    abono.get("medio_pago", "efectivo"),
+                    abono.get("medio_pago_id")
                 ))
 
 

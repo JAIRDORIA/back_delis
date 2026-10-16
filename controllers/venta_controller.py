@@ -5,6 +5,7 @@ from services.cortes_services import obtener_corte ,obtener_corte_abierto, obten
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
 from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta
+from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
 from zoneinfo import ZoneInfo
 
 
@@ -34,6 +35,28 @@ def _parsear_csv(valor, valores_validos, nombre):
         if x not in unicos:
             unicos.append(x)
     return unicos, None
+
+
+def _normalizar_abono_inicial(abono, medio_pago_por_defecto=None):
+    """Valida un abono inicial con resolver_medio_pago y devuelve el dict
+    normalizado con medio_pago y medio_pago_id listos para el INSERT."""
+    medio_pago = abono.get("medio_pago", medio_pago_por_defecto)
+    if medio_pago is None:
+        return None, "cada abono debe tener medio_pago"
+
+    try:
+        medio_pago, medio_pago_id = resolver_medio_pago(
+            medio_pago, abono.get("medio_pago_id")
+        )
+    except MedioPagoInvalido as e:
+        return None, e.mensaje
+
+    return {
+        "monto"        : abono["monto"],
+        "observacion"  : abono.get("observacion", None),
+        "medio_pago"   : medio_pago,
+        "medio_pago_id": medio_pago_id,
+    }, None
 
 
 def cntListado():
@@ -217,25 +240,24 @@ def cntregistrar():
         
         abonos_iniciales = []
         if "abonos_iniciales" in request.json:
-            
-            abonos_iniciales = request.json["abonos_iniciales"]
-            if not isinstance(abonos_iniciales, list):
+            abonos_crudos = request.json["abonos_iniciales"]
+            if not isinstance(abonos_crudos, list):
                 return jsonify({"mensaje": "abonos_iniciales debe ser un array"}), 400
-            for abono in abonos_iniciales:
+            for abono in abonos_crudos:
                 if "monto" not in abono or abono["monto"] <= 0:
-                  return jsonify({"mensaje": "cada abono debe tener monto mayor a 0"}), 400
-                if "medio_pago" not in abono:
-                    return jsonify({"mensaje": "cada abono debe tener medio_pago"}), 400
-                medios_validos = ["efectivo", "transferencia", "otro"]
-                if abono["medio_pago"] not in medios_validos:
-                    return jsonify({"mensaje": f"medio_pago invalido, debe ser: {medios_validos}"}), 400
+                    return jsonify({"mensaje": "cada abono debe tener monto mayor a 0"}), 400
+                normalizado, error = _normalizar_abono_inicial(abono)
+                if error:
+                    return jsonify({"mensaje": error}), 400
+                abonos_iniciales.append(normalizado)
         elif "abono_inicial" in request.json and request.json["abono_inicial"]:
-                
             abono_antiguo = request.json["abono_inicial"]
             if abono_antiguo.get("monto", 0) > 0:
-                abonos_iniciales = [abono_antiguo]
+                normalizado, error = _normalizar_abono_inicial(abono_antiguo, "efectivo")
+                if error:
+                    return jsonify({"mensaje": error}), 400
+                abonos_iniciales.append(normalizado)
 
-        
         suma_abonos = sum(a["monto"] for a in abonos_iniciales)
         if suma_abonos > total:
             return jsonify({"mensaje": "la suma de los abonos no puede superar el total"}), 400

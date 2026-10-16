@@ -2,6 +2,7 @@ from flask import current_app
 from models.abonos_model import Abono
 from datetime import datetime
 from utils.db import cursor_ctx
+from services.medios_pago_services import resolver_medio_pago
 
 def listado_abonos(pagina=1, limite=20):
     offset = (pagina - 1) * limite
@@ -13,12 +14,14 @@ def listado_abonos(pagina=1, limite=20):
         c.execute("""
        SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
        a.corte_id, a.usuario_id,
+       a.medio_pago_id, mp.nombre AS medio_pago_nombre,
        v.estado AS venta_estado,
        v.saldo_pendiente AS venta_saldo_pendiente,
        cl.nombre AS nombre_cliente
 FROM abonos a
 JOIN ventas v ON v.id = a.venta_id
 JOIN clientes cl ON cl.id = v.cliente_id
+LEFT JOIN medios_pago mp ON mp.id = a.medio_pago_id
 ORDER BY a.id DESC
 LIMIT %(limite)s OFFSET %(offset)s
     """, {"limite":limite,"offset": offset})
@@ -36,9 +39,11 @@ LIMIT %(limite)s OFFSET %(offset)s
             fecha       = p[4],
             observacion = p[5],
             medio_pago  = p[3],
-            venta_estado=p[8],
-            venta_saldo_pendiente=p[9],
-            nombre_cliente= p[10],
+            medio_pago_id     = p[8],
+            medio_pago_nombre = p[9],
+            venta_estado=p[10],
+            venta_saldo_pendiente=p[11],
+            nombre_cliente= p[12],
         ).to_dict()
         lista.append(abono)
 
@@ -51,13 +56,13 @@ LIMIT %(limite)s OFFSET %(offset)s
     }
 
 
-def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago):
+def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago, medio_pago_id=None):
     with cursor_ctx() as c:
         c.execute("""
             INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                                monto, fecha, observacion, medio_pago)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago))
+                                monto, fecha, observacion, medio_pago, medio_pago_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago, medio_pago_id))
         current_app.mysql.connection.commit()
         id = c.lastrowid
 
@@ -68,8 +73,10 @@ def generar_recibo(abono_id):
         # traer datos del abono
         c.execute("""
             SELECT a.id, a.monto, a.fecha, a.medio_pago,
-                   a.observacion, a.venta_id
+                   a.observacion, a.venta_id,
+                   a.medio_pago_id, mp.nombre AS medio_pago_nombre
             FROM abonos a
+            LEFT JOIN medios_pago mp ON mp.id = a.medio_pago_id
             WHERE a.id = %s
         """, (abono_id,))
         abono = c.fetchone()
@@ -105,6 +112,8 @@ def generar_recibo(abono_id):
         "monto"           : float(abono[1]),
         "fecha"           : str(abono[2]),
         "medio_pago"      : abono[3],
+        "medio_pago_id"    : abono[6],
+        "medio_pago_nombre": abono[7],
         "observacion"     : abono[4],
         "numero_comp"     : comp[0] if comp else None,
         "nombre_cliente"  : venta[1],
@@ -118,12 +127,14 @@ def obtener_abono(id):
         c.execute("""
             SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
                    a.corte_id, a.usuario_id,
+                   a.medio_pago_id, mp.nombre AS medio_pago_nombre,
                    v.estado AS venta_estado,
                    v.saldo_pendiente AS venta_saldo_pendiente,
                    cl.nombre AS nombre_cliente
             FROM abonos a
             JOIN ventas v ON v.id = a.venta_id
             JOIN clientes cl ON cl.id = v.cliente_id
+            LEFT JOIN medios_pago mp ON mp.id = a.medio_pago_id
             WHERE a.id = %s
         """, (id,))
         abono = c.fetchone()
@@ -137,26 +148,36 @@ def obtener_abono(id):
             fecha       = abono[4],
             observacion =   abono[5],
             medio_pago  =  abono[3],
-            venta_estado=abono[8],
-            venta_saldo_pendiente=abono[9],
-            nombre_cliente= abono[10],
+            medio_pago_id     = abono[8],
+            medio_pago_nombre = abono[9],
+            venta_estado=abono[10],
+            venta_saldo_pendiente=abono[11],
+            nombre_cliente= abono[12],
         ).to_dict()
     return None
 
 
-def actualizar_abono(id, monto, fecha, observacion, medio_pago):
+def actualizar_abono(id, monto, fecha, observacion, medio_pago, medio_pago_id=None):
     abono_actual = obtener_abono(id)
     diferencia   = monto - abono_actual["monto"]
+
+    # Si el medio no cambia y no viene cuenta, se conserva la cuenta actual
+    # sin validar (permite editar solo el monto de abonos antiguos).
+    if medio_pago == abono_actual.get("medio_pago") and medio_pago_id is None:
+        medio_pago_id = abono_actual.get("medio_pago_id")
+    else:
+        medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
 
     with cursor_ctx() as c:
         c.execute("""
             UPDATE abonos
-            SET monto       = %s,
-                fecha       = %s,
-                observacion = %s,
-                medio_pago  = %s
+            SET monto        = %s,
+                fecha        = %s,
+                observacion  = %s,
+                medio_pago   = %s,
+                medio_pago_id = %s
             WHERE id = %s
-        """, (monto, fecha, observacion, medio_pago, id))
+        """, (monto, fecha, observacion, medio_pago, medio_pago_id, id))
 
         c.execute("""
             UPDATE ventas
