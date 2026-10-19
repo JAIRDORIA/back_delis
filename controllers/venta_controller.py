@@ -1,4 +1,4 @@
-from flask import jsonify , request
+from flask import jsonify , request, g
 from  services.ventas_services import listado_ventas,registro, obtener_venta,actualizar_venta, anular_venta,generar_comprobante
 from services.clientes_services import obtener_cliente
 from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
@@ -152,7 +152,7 @@ def cntGenerarComprobante(id):
 def cntregistrar():
     try:
         
-        requeridos = ["cliente_id", "corte_id", "usuario_id",
+        requeridos = ["cliente_id", "corte_id",
                       "fecha_entrega", "total", "detalle"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
@@ -166,7 +166,7 @@ def cntregistrar():
 
         id_cliente    = request.json["cliente_id"]
         corte         = request.json["corte_id"]
-        usuario       = request.json["usuario_id"]
+        usuario       = g.usuario["id"]
         fecha_entrega = request.json["fecha_entrega"]
         total         = request.json["total"]
         detalle       = request.json["detalle"]

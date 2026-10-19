@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify, request, g
 from datetime import datetime
 from services.abono_services import (
     listado_abonos, registro, obtener_abono,
@@ -26,7 +26,7 @@ def cntListado():
 
 def cntregistrar():
     try:
-        requeridos = ["venta_id", "corte_id", "usuario_id",
+        requeridos = ["venta_id", "corte_id",
                       "monto", "fecha", "medio_pago"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
@@ -39,7 +39,7 @@ def cntregistrar():
 
         id_venta   = request.json["venta_id"]
         corte      = request.json["corte_id"]
-        usuario    = request.json["usuario_id"]
+        usuario    = g.usuario["id"]
         monto      = request.json["monto"]
         fecha      = request.json["fecha"]
         medio_pago    = request.json["medio_pago"]

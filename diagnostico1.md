@@ -264,3 +264,7 @@ No encontré `enum` real de JSON Schema en ningún punto: los valores se documen
 - Los números de línea corresponden al commit `e84296a` (HEAD de `feature/cuentas`).
 - Los INSERT a `movimientos_caja` de los **abonos de ventas** los asumo hechos por un **trigger de BD**, porque no existen en el código ni en archivos `.sql` del repo (no verificable aquí); la documentación los da por existentes.
 - `GET /compras/{id}` lo marco como bug probable según lectura estática del código; no lo confirmé contra un dato real de BD.
+
+---
+
+**Actualización 2026-10-18:** se agregó `POST /medios-pago/<id>/retiros` (`cntRetiro` en `controllers/medios_pago_controller.py` y `retirar_cuenta` en `services/medios_pago_services.py`). Los retiros se insertan en `retiros_cuentas` y `v_movimientos_cuenta` ya los expone como `egreso`/`retiro`, por lo que `v_saldos_cuenta` los descuenta. No se modificó el esquema ni la vista. También se agregó `POST /medios-pago/retiros/vaciar` (`cntVaciar` y `vaciar_cuentas_transferencia`), que retira el saldo completo de todas las cuentas de transferencia no de sistema con saldo > 0 en una sola transacción.

@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from flask import current_app
 from MySQLdb import IntegrityError
@@ -127,7 +128,8 @@ def _nombre_duplicado(cursor, nombre, excluir_id=None):
 
 
 def _registrar_auditoria(cursor, usuario_id, accion, registro_id, descripcion,
-                         datos_anteriores=None, datos_nuevos=None):
+                         datos_anteriores=None, datos_nuevos=None,
+                         tabla_afectada="medios_pago"):
     cursor.execute(
         """
         INSERT INTO auditoria (usuario_id, accion, tabla_afectada, registro_id,
@@ -137,7 +139,7 @@ def _registrar_auditoria(cursor, usuario_id, accion, registro_id, descripcion,
         (
             usuario_id,
             accion,
-            "medios_pago",
+            tabla_afectada,
             registro_id,
             descripcion,
             json.dumps(datos_anteriores) if datos_anteriores is not None else None,
@@ -537,3 +539,220 @@ def eliminar_medio_pago(id, usuario_id):
         return True, None
     except Exception as e:
         raise Exception(str(e))
+
+
+# ─────────────────────────────────────────────
+#  RETIRO DE CUENTA A AHORROS
+# ─────────────────────────────────────────────
+
+def retirar_cuenta(medio_pago_id, monto, descripcion, usuario_id):
+    """Registra un retiro de una cuenta de transferencia a ahorros.
+
+    Bloquea la cuenta con SELECT ... FOR UPDATE y valida el saldo contra
+    v_saldos_cuenta dentro de la misma transacción. El retiro se asocia
+    siempre al corte abierto; no lo envía el frontend.
+    Devuelve (retiro, error).
+    """
+    with cursor_ctx() as cursor:
+        try:
+            cursor.execute(
+                """
+                SELECT id, nombre, tipo, activo, es_sistema
+                FROM medios_pago
+                WHERE id = %s
+                FOR UPDATE
+                """,
+                (medio_pago_id,),
+            )
+            fila = cursor.fetchone()
+            if not fila:
+                current_app.mysql.connection.rollback()
+                return None, "Medio de pago no encontrado"
+
+            nombre = fila[1]
+            tipo = fila[2]
+            es_sistema = fila[4]
+
+            if tipo != "transferencia":
+                current_app.mysql.connection.rollback()
+                return None, "Solo se puede retirar de una cuenta de transferencia"
+
+            if es_sistema:
+                current_app.mysql.connection.rollback()
+                return None, "No se puede retirar de una cuenta del sistema"
+
+            cursor.execute(
+                "SELECT id FROM cortes WHERE estado = 'abierto' ORDER BY id ASC LIMIT 1"
+            )
+            corte = cursor.fetchone()
+            if not corte:
+                current_app.mysql.connection.rollback()
+                return None, "No hay un corte abierto para registrar el retiro"
+            corte_id = corte[0]
+
+            cursor.execute(
+                "SELECT saldo FROM v_saldos_cuenta WHERE medio_pago_id = %s",
+                (medio_pago_id,),
+            )
+            saldo_fila = cursor.fetchone()
+            saldo_anterior = (
+                Decimal(str(saldo_fila[0]))
+                if saldo_fila and saldo_fila[0] is not None
+                else Decimal("0.00")
+            )
+
+            if monto > saldo_anterior:
+                current_app.mysql.connection.rollback()
+                return None, (
+                    f"Saldo insuficiente en la cuenta '{nombre}': "
+                    f"disponible {saldo_anterior:.2f}"
+                )
+
+            cursor.execute(
+                """
+                INSERT INTO retiros_cuentas
+                    (medio_pago_id, corte_id, usuario_id, monto, descripcion)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (medio_pago_id, corte_id, usuario_id, monto, descripcion),
+            )
+            retiro_id = cursor.lastrowid
+            saldo_nuevo = saldo_anterior - monto
+
+            cursor.execute(
+                "SELECT fecha FROM retiros_cuentas WHERE id = %s",
+                (retiro_id,),
+            )
+            fecha = cursor.fetchone()[0]
+
+            _registrar_auditoria(
+                cursor,
+                usuario_id,
+                "crear",
+                retiro_id,
+                f"Retiro a ahorros de la cuenta '{nombre}'",
+                datos_anteriores={"saldo_disponible": float(saldo_anterior)},
+                datos_nuevos={
+                    "medio_pago_id": medio_pago_id,
+                    "corte_id": corte_id,
+                    "monto": float(monto),
+                    "descripcion": descripcion,
+                    "saldo_nuevo": float(saldo_nuevo),
+                },
+                tabla_afectada="retiros_cuentas",
+            )
+
+            current_app.mysql.connection.commit()
+        except Exception:
+            current_app.mysql.connection.rollback()
+            raise
+
+    return {
+        "id": retiro_id,
+        "medio_pago_id": medio_pago_id,
+        "nombre": nombre,
+        "monto": float(monto),
+        "saldo_anterior": float(saldo_anterior),
+        "saldo_nuevo": float(saldo_nuevo),
+        "corte_id": corte_id,
+        "fecha": str(fecha) if fecha is not None else None,
+    }, None
+
+
+def vaciar_cuentas_transferencia(descripcion, usuario_id):
+    """Retira a ahorros el saldo completo de todas las cuentas de
+    transferencia no de sistema con saldo > 0.
+
+    Todo ocurre en una sola transacción: se bloquean las cuentas con
+    FOR UPDATE, se lee el saldo de cada una en v_saldos_cuenta y se inserta
+    un retiro (más su auditoría) por el saldo completo en el corte abierto.
+    Si algo falla se revierte todo. Devuelve (resultado, error).
+    """
+    with cursor_ctx() as cursor:
+        try:
+            cursor.execute(
+                "SELECT id FROM cortes WHERE estado = 'abierto' ORDER BY id ASC LIMIT 1"
+            )
+            corte = cursor.fetchone()
+            if not corte:
+                current_app.mysql.connection.rollback()
+                return None, "No hay un corte abierto para registrar los retiros"
+            corte_id = corte[0]
+
+            cursor.execute(
+                """
+                SELECT id, nombre
+                FROM medios_pago
+                WHERE tipo = 'transferencia' AND es_sistema = 0
+                ORDER BY id ASC
+                FOR UPDATE
+                """
+            )
+            cuentas = cursor.fetchall()
+
+            retiros = []
+            total = Decimal("0.00")
+
+            for medio_pago_id, nombre in cuentas:
+                cursor.execute(
+                    "SELECT saldo FROM v_saldos_cuenta WHERE medio_pago_id = %s",
+                    (medio_pago_id,),
+                )
+                saldo_fila = cursor.fetchone()
+                saldo_anterior = (
+                    Decimal(str(saldo_fila[0]))
+                    if saldo_fila and saldo_fila[0] is not None
+                    else Decimal("0.00")
+                )
+
+                if saldo_anterior <= 0:
+                    continue
+
+                cursor.execute(
+                    """
+                    INSERT INTO retiros_cuentas
+                        (medio_pago_id, corte_id, usuario_id, monto, descripcion)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (medio_pago_id, corte_id, usuario_id, saldo_anterior, descripcion),
+                )
+                retiro_id = cursor.lastrowid
+
+                _registrar_auditoria(
+                    cursor,
+                    usuario_id,
+                    "crear",
+                    retiro_id,
+                    f"Retiro a ahorros de la cuenta '{nombre}' (vaciado)",
+                    datos_anteriores={"saldo_disponible": float(saldo_anterior)},
+                    datos_nuevos={
+                        "medio_pago_id": medio_pago_id,
+                        "corte_id": corte_id,
+                        "monto": float(saldo_anterior),
+                        "descripcion": descripcion,
+                        "saldo_nuevo": 0.0,
+                    },
+                    tabla_afectada="retiros_cuentas",
+                )
+
+                total += saldo_anterior
+                retiros.append({
+                    "medio_pago_id": medio_pago_id,
+                    "nombre": nombre,
+                    "monto": float(saldo_anterior),
+                })
+
+            if not retiros:
+                current_app.mysql.connection.rollback()
+                return {"cantidad": 0, "total": 0.0, "retiros": []}, None
+
+            current_app.mysql.connection.commit()
+        except Exception:
+            current_app.mysql.connection.rollback()
+            raise
+
+    return {
+        "cantidad": len(retiros),
+        "total": float(total),
+        "retiros": retiros,
+    }, None

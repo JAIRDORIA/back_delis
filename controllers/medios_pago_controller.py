@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from flask import g, jsonify, request
 
@@ -11,6 +12,8 @@ from services.medios_pago_services import (
     actualizar_medio_pago,
     cambiar_estado_medio_pago,
     eliminar_medio_pago,
+    retirar_cuenta,
+    vaciar_cuentas_transferencia,
 )
 
 TIPOS_VALIDOS = ("efectivo", "transferencia")
@@ -93,6 +96,38 @@ def _validar_fecha(valor, nombre):
         return None, f"El filtro {nombre} debe tener formato YYYY-MM-DD"
 
 
+def _validar_monto_retiro(valor):
+    if isinstance(valor, bool) or not isinstance(valor, (int, float, Decimal)):
+        return None, "El monto debe ser un número"
+    try:
+        monto = Decimal(str(valor))
+    except (InvalidOperation, ValueError):
+        return None, "El monto debe ser un número"
+    if not monto.is_finite():
+        return None, "El monto debe ser un número"
+    if monto <= 0:
+        return None, "El monto debe ser mayor a 0"
+    try:
+        if monto != monto.quantize(Decimal("0.01")):
+            return None, "El monto no puede tener más de 2 decimales"
+    except InvalidOperation:
+        return None, "El monto debe ser un número válido"
+    return monto, None
+
+
+def _validar_descripcion_retiro(valor, defecto="Retiro a ahorros"):
+    if valor is None:
+        return defecto, None
+    if not isinstance(valor, str):
+        return None, "La descripción debe ser texto"
+    descripcion = valor.strip()
+    if descripcion == "":
+        return defecto, None
+    if len(descripcion) > 255:
+        return None, "La descripción no puede exceder 255 caracteres"
+    return descripcion, None
+
+
 def _status_para_error(error):
     low = error.lower()
     if "no encontrado" in low:
@@ -108,6 +143,20 @@ def _body_json():
     if not request.is_json:
         return None, "El cuerpo debe ser JSON"
     data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return None, "El cuerpo debe ser JSON"
+    return data, None
+
+
+def _body_json_opcional():
+    """Como _body_json, pero acepta una petición sin cuerpo."""
+    if not request.is_json:
+        if request.content_length in (None, 0):
+            return {}, None
+        return None, "El cuerpo debe ser JSON"
+    data = request.get_json(silent=True)
+    if data is None:
+        return {}, None
     if not isinstance(data, dict):
         return None, "El cuerpo debe ser JSON"
     return data, None
@@ -374,3 +423,71 @@ def cntEliminar(id):
         return jsonify({"mensaje": f"Medio de pago {id_num} eliminado"}), 200
     except Exception as e:
         return jsonify({"mensaje": f"Error al eliminar medio de pago: {str(e)}"}), 500
+
+
+def cntRetiro(id):
+    """POST /medios-pago/<id>/retiros  (admin y cajero, igual que /cortes/cerrar)
+    Retira dinero de una cuenta de transferencia a ahorros.
+    Body: {monto, descripcion?}. El usuario sale del token y el corte del
+    corte abierto, nunca del cuerpo."""
+    id_num, error = _validar_id(id)
+    if error:
+        return jsonify({"mensaje": error}), 400
+
+    data, error = _body_json()
+    if error:
+        return jsonify({"mensaje": error}), 400
+
+    if "monto" not in data:
+        return jsonify({"mensaje": "Faltan los siguientes campos: ['monto']"}), 400
+
+    monto, error = _validar_monto_retiro(data.get("monto"))
+    if error:
+        return jsonify({"mensaje": error}), 400
+
+    descripcion, error = _validar_descripcion_retiro(data.get("descripcion"))
+    if error:
+        return jsonify({"mensaje": error}), 400
+
+    usuario_id = g.usuario["id"]
+
+    try:
+        retiro, error = retirar_cuenta(id_num, monto, descripcion, usuario_id)
+        if error:
+            return jsonify({"mensaje": error}), _status_para_error(error)
+        return jsonify({"mensaje": "Retiro registrado", "retiro": retiro}), 201
+    except Exception as e:
+        return jsonify({"mensaje": f"Error al registrar retiro: {str(e)}"}), 500
+
+
+def cntVaciar():
+    """POST /medios-pago/retiros/vaciar  (admin y cajero, igual que /cortes/cerrar)
+    Retira a ahorros el saldo completo de todas las cuentas de transferencia
+    no de sistema con saldo > 0. Body opcional: {descripcion?}."""
+    data, error = _body_json_opcional()
+    if error:
+        return jsonify({"mensaje": error}), 400
+
+    descripcion, error = _validar_descripcion_retiro(
+        data.get("descripcion"), "Retiro a ahorros (cierre de corte)"
+    )
+    if error:
+        return jsonify({"mensaje": error}), 400
+
+    usuario_id = g.usuario["id"]
+
+    try:
+        resultado, error = vaciar_cuentas_transferencia(descripcion, usuario_id)
+        if error:
+            return jsonify({"mensaje": error}), _status_para_error(error)
+        if resultado["cantidad"] == 0:
+            return jsonify({
+                "mensaje": "No hay saldo para retirar",
+                **resultado,
+            }), 200
+        return jsonify({
+            "mensaje": "Vaciado de cuentas registrado",
+            **resultado,
+        }), 200
+    except Exception as e:
+        return jsonify({"mensaje": f"Error al vaciar cuentas: {str(e)}"}), 500

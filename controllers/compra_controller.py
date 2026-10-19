@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify, request, g
 from services.compra_services import (
     listado_compra, obtener_compra, registro_compra,
     actualizar_compra, eliminar_compra
@@ -48,13 +48,13 @@ def cntRegistroCompra():
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'usuario_id', 'fecha', 'total']
+    requeridos = ['proveedor_id', 'fecha', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
-    usuario_id   = request.json['usuario_id']
+    usuario_id   = g.usuario["id"]
     fecha        = request.json['fecha']
     medio_pago   = request.json.get('medio_pago', 'efectivo')
     medio_pago_id = request.json.get('medio_pago_id')
@@ -89,13 +89,13 @@ def cntActualizarCompra(id):
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'usuario_id', 'fecha','medio_pago', 'total']
+    requeridos = ['proveedor_id', 'fecha','medio_pago', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
-    usuario_id   = request.json['usuario_id']
+    usuario_id   = g.usuario["id"]
     fecha        = request.json['fecha']
     medio_pago   = request.json['medio_pago']
     medio_pago_id = request.json.get('medio_pago_id')

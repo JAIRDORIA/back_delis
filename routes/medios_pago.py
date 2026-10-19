@@ -9,6 +9,8 @@ from controllers.medios_pago_controller import (
     cntActualizar,
     cntCambiarEstado,
     cntEliminar,
+    cntRetiro,
+    cntVaciar,
 )
 from utils.decorators import token_requerido, rol_requerido
 
@@ -25,6 +27,14 @@ def listado():
 @token_requerido
 def saldos():
     return cntSaldos()
+
+
+@medios_pago_bp.route("/retiros/vaciar", methods=["POST"])
+@token_requerido
+def vaciar():
+    """Mismos roles que POST /cortes/cerrar: token válido, sin rol_requerido.
+    Se declara antes de /<int:id> para no chocar con las rutas por id."""
+    return cntVaciar()
 
 
 @medios_pago_bp.route("/<int:id>", methods=["GET"])
@@ -65,3 +75,10 @@ def cambiar_estado(id):
 @rol_requerido(["admin"])
 def eliminar(id):
     return cntEliminar(id)
+
+
+@medios_pago_bp.route("/<int:id>/retiros", methods=["POST"])
+@token_requerido
+def retiro(id):
+    """Mismos roles que POST /cortes/cerrar: token válido, sin rol_requerido."""
+    return cntRetiro(id)

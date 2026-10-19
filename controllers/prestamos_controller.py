@@ -4,7 +4,7 @@ Controller: Prestamos a clientes (v2, con abonos parciales).
 IMPORTANTE: ajusta los imports de obtener_cliente / obtener_usuario a las
 rutas reales donde ya los tengas definidos en tu proyecto.
 """
-from flask import request, jsonify
+from flask import request, jsonify, g
 
 from services.prestamos_services import (
     registrar, abonar_prestamo, listar_prestamos, listar_pagos_prestamo,
@@ -37,7 +37,7 @@ def cntListarPagosPrestamo(prestamo_id):
 
 def cntRegistrarPrestamo():
     try:
-        requeridos = ["cliente_id", "usuario_id", "monto", "medio_pago"]
+        requeridos = ["cliente_id", "monto", "medio_pago"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
             return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
@@ -47,7 +47,7 @@ def cntRegistrarPrestamo():
             return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
         cliente_id  = request.json["cliente_id"]
-        usuario_id  = request.json["usuario_id"]
+        usuario_id  = g.usuario["id"]
         monto       = request.json["monto"]
         medio_pago  = request.json["medio_pago"]
         medio_pago_id = request.json.get("medio_pago_id")
@@ -107,7 +107,7 @@ def cntAbonarPrestamo(prestamo_id):
     los abonos de ventas).
     """
     try:
-        requeridos = ["usuario_id", "monto", "medio_pago"]
+        requeridos = ["monto", "medio_pago"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
             return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
@@ -116,7 +116,7 @@ def cntAbonarPrestamo(prestamo_id):
         if vacios:
             return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
-        usuario_id  = request.json["usuario_id"]
+        usuario_id  = g.usuario["id"]
         monto       = request.json["monto"]
         medio_pago  = request.json["medio_pago"]
         medio_pago_id = request.json.get("medio_pago_id")
