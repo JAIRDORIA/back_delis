@@ -150,6 +150,7 @@ serializar. No contienen SQL.
 | Archivo | De qué se encarga |
 | --- | --- |
 | `decorators.py` | Seguridad de endpoints. `token_requerido` valida el `Bearer` y **rechaza a `cocina` (403)**; `token_requerido_cocina` permite cualquier rol; `rol_requerido([...])` restringe por rol. Deja el payload en `g.usuario` (`id`, `username`, `rol`, `nombre`). Es la pieza que cierra todo SnackFlow al rol de cocina salvo `/pedidos-cocina/*`. |
+| `db.py` | Acceso a BD: **pool de conexiones por proceso** (`PoolMySQL`) + `cursor_ctx` (cierre garantizado de cursores en `finally`). El pool evita abrir una conexión MySQL nueva por request (causa del `1226` con el plan free de Clever Cloud, 5 conexiones). Env: `DB_POOL_SIZE` (default 2), `DB_POOL_TIMEOUT` (default 10) y `DB_POOL_ENABLED` (default 1; con `0` vuelve al comportamiento original). |
 
 ---
 
@@ -173,7 +174,7 @@ serializar. No contienen SQL.
 
 ## Notas rápidas de arquitectura
 
-- **Sin ORM**: todo el SQL está en `services/`, con cursores de `Flask-MySQLdb` (`current_app.mysql.connection.cursor()`).
+- **Sin ORM**: todo el SQL está en `services/`, con cursores de `Flask-MySQLdb`. Desde 2026-10-21 los cursores salen de un **pool de conexiones por proceso** (`utils/db.py`, `PoolMySQL`): cada request toma una conexión prestada y la devuelve en el teardown, en lugar de abrir una conexión nueva por request (evita el `1226` con el plan free de Clever Cloud, 5 conexiones).
 - **Seguridad centralizada**: los decoradores de `utils/decorators.py` son la única puerta; por defecto todo queda cerrado a `cocina` y solo `/pedidos-cocina/*` la abre explícitamente.
 - **Punto de entrada único**: añadir un módulo nuevo implica crear `routes/x.py`, `controllers/x_controller.py`, `services/x_services.py` (+ `models/`) y registrarlo en `routes/__init__.py`.
 - **Cocina separada del admin**: la lógica contable (descuento de inventario, cambio de estado de venta) sigue ocurriendo solo cuando el **admin** confirma la entrega en `/ventas`; cocina únicamente deja la marca `entregada_cocina_at`.

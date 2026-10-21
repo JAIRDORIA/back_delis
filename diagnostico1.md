@@ -283,3 +283,14 @@ No encontré `enum` real de JSON Schema en ningún punto: los valores se documen
 **Actualización 2026-11-06 (valor del inventario):** se agregó `GET /inventarios/valor` (`cntValorInventario` y `valor_inventario`). Solo lectura, sin cambios de esquema. Respuesta `{valor_detal, valor_mayor}`; usa bandejas completas de productos activos, ignora sueltas y stock negativo. `swagger.json` no se actualizó.
 
 **Actualización 2026-11-06 (compras):** `GET /compras/` amplía `q` (descripción, proveedor, id) y agrega `resumen` global por corte (`cantidad_compras`, `total_gastado`). Sin cambios de esquema. `swagger.json` no se actualizó.
+
+**Actualización 2026-10-21 (pool de conexiones):**
+
+- **Problema:** el plan free de Clever Cloud limita a **5 conexiones por usuario** (`@@max_user_connections = 5`, medido). El backend abría 1 conexión MySQL por request (Flask-MySQLdb sin pool), así que los picos de requests simultáneos (ej. módulo de cuentas: POST + recargas en paralelo) agotaban el límite con `1226`.
+- **Solución aplicada:** pool por proceso en `utils/db.py` (`PoolMySQL` + `_adquirir` + `_liberar` + `init_pool`) y activación condicional en `app.py`.
+  - Env: `DB_POOL_SIZE=2` (conexiones por proceso), `DB_POOL_TIMEOUT=10`, `DB_POOL_ENABLED=1` (default; `0` vuelve al comportamiento original).
+  - Los services/controllers no cambiaron para el pool: `current_app.mysql.connection` y los `commit()/rollback()` siguen igual (el proxy presta la conexión).
+  - La conexión se guarda en `g._pool_conn` (no en `g.mysql_db`) para que el teardown de Flask-MySQLdb no la cierre; `_liberar` hace `rollback()` y devuelve la conexión al pool.
+- **Verificado:** compilación/import sin conexión y smoke test con contexto de aplicación: 2 requests reutilizan 1 conexión (`SELECT 1`/`SELECT 2`), `conexiones_vivas = 1` y la conexión vuelve a la cola.
+- **Rollback:** poner `DB_POOL_ENABLED=0` y redeployar (sin revertir código).
+- **Pendiente en Render:** revisar `WEB_CONCURRENCY` (gunicorn) y confirmar que el usuario nunca supera `workers × DB_POOL_SIZE` conexiones.
