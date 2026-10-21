@@ -268,3 +268,16 @@ No encontré `enum` real de JSON Schema en ningún punto: los valores se documen
 ---
 
 **Actualización 2026-10-18:** se agregó `POST /medios-pago/<id>/retiros` (`cntRetiro` en `controllers/medios_pago_controller.py` y `retirar_cuenta` en `services/medios_pago_services.py`). Los retiros se insertan en `retiros_cuentas` y `v_movimientos_cuenta` ya los expone como `egreso`/`retiro`, por lo que `v_saldos_cuenta` los descuenta. No se modificó el esquema ni la vista. También se agregó `POST /medios-pago/retiros/vaciar` (`cntVaciar` y `vaciar_cuentas_transferencia`), que retira el saldo completo de todas las cuentas de transferencia no de sistema con saldo > 0 en una sola transacción.
+
+---
+
+**Actualización 2026-10-21 (pool de conexiones):**
+
+- **Problema:** el plan free de Clever Cloud limita a **5 conexiones por usuario** (`@@max_user_connections = 5`, medido). El backend abría 1 conexión MySQL por request (Flask-MySQLdb sin pool), así que los picos de requests simultáneos (ej. módulo de cuentas: POST + recargas en paralelo) agotaban el límite con `1226`.
+- **Solución aplicada:** pool por proceso en `utils/db.py` (`PoolMySQL` + `_adquirir` + `_liberar` + `init_pool`) y activación condicional en `app.py`.
+  - Env: `DB_POOL_SIZE=2` (conexiones por proceso), `DB_POOL_TIMEOUT=10`, `DB_POOL_ENABLED=1` (default; `0` vuelve al comportamiento original).
+  - Los services/controllers no cambiaron para el pool: `current_app.mysql.connection` y los `commit()/rollback()` siguen igual (el proxy presta la conexión).
+  - La conexión se guarda en `g._pool_conn` (no en `g.mysql_db`) para que el teardown de Flask-MySQLdb no la cierre; `_liberar` hace `rollback()` y devuelve la conexión al pool.
+- **Verificado:** compilación/import sin conexión y smoke test con contexto de aplicación: 2 requests reutilizan 1 conexión (`SELECT 1`/`SELECT 2`), `conexiones_vivas = 1` y la conexión vuelve a la cola.
+- **Rollback:** poner `DB_POOL_ENABLED=0` y redeployar (sin revertir código).
+- **Pendiente en Render:** revisar `WEB_CONCURRENCY` (gunicorn) y confirmar que el usuario nunca supera `workers × DB_POOL_SIZE` conexiones.

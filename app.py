@@ -6,6 +6,7 @@ from flask_jwt_extended import JWTManager
 import os
 from flask_cors import CORS
 from routes.usuarios import auth_bp
+from utils.db import PoolMySQL, init_pool
 
 app = Flask(__name__)
 app.config.from_object(config)
@@ -25,7 +26,13 @@ jwt = JWTManager(app)
 
 
 mysql = MySQL(app)
-app.mysql = mysql
+if os.getenv("DB_POOL_ENABLED", "1") != "0":
+    # Pool de conexiones por proceso (ver utils/db.py). DB_POOL_ENABLED=0
+    # devuelve el comportamiento original de Flask-MySQLdb.
+    app.mysql = PoolMySQL(mysql)
+    init_pool(app)
+else:
+    app.mysql = mysql
 cargarRuta(app)
 
 
