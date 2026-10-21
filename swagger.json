@@ -23,6 +23,75 @@
         "bearerFormat": "JWT",
         "description": "Token JWT obtenido desde POST /auth/login"
       }
+    },
+    "schemas": {
+      "MedioPago": {
+        "type": "object",
+        "description": "Cuenta de pago (tabla `medios_pago`). `tipo` = 'efectivo' (cuenta de sistema, id 1) o 'transferencia' (cuentas reales y la cuenta de sistema id 2).",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3
+          },
+          "nombre": {
+            "type": "string",
+            "example": "Nequi Miguel"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "efectivo",
+              "transferencia"
+            ],
+            "example": "transferencia"
+          },
+          "titular": {
+            "type": "string",
+            "nullable": true,
+            "example": "Miguel Cantillo"
+          },
+          "saldo_inicial": {
+            "type": "number",
+            "format": "float",
+            "example": 100000,
+            "description": "Saldo con el que abre la cuenta (base de v_saldos_cuenta)"
+          },
+          "activo": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 1,
+            "description": "1 = activa, 0 = inactiva"
+          },
+          "es_sistema": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0,
+            "description": "1 = cuenta de sistema: no se renombra, no se desactiva (si es efectivo) y no se elimina"
+          },
+          "orden": {
+            "type": "integer",
+            "example": 3
+          },
+          "created_at": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-15 14:34:02",
+            "description": "UTC"
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-18 19:35:07",
+            "description": "UTC"
+          }
+        }
+      }
     }
   },
   "tags": [
@@ -93,6 +162,10 @@
     {
       "name": "Auditoria",
       "description": "Registro de acciones sensibles"
+    },
+    {
+      "name": "Medios de Pago",
+      "description": "Cuentas de pago (efectivo y transferencia), saldos por cuenta y movimientos"
     }
   ],
   "paths": {
@@ -2470,7 +2543,18 @@
                         },
                         "medio_pago": {
                           "type": "string",
-                          "example": "efectivo"
+                          "enum": [
+                            "efectivo",
+                            "transferencia"
+                          ],
+                          "example": "efectivo",
+                          "description": "efectivo|transferencia. Con 'transferencia' es obligatorio medio_pago_id de una cuenta de transferencia activa y no de sistema."
+                        },
+                        "medio_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 3,
+                          "description": "Opcional. Obligatorio si medio_pago='transferencia'. Debe ser una cuenta tipo 'transferencia', activa y es_sistema=0 (ej. 3 = Nequi Miguel); con 'efectivo' solo se admite 1 o null."
                         },
                         "observacion": {
                           "type": "string",
@@ -2506,7 +2590,7 @@
             "description": "Venta registrada"
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye medio de pago inválido en abonos_iniciales: 'transferencia' sin medio_pago_id (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema (solo se admite una cuenta real, ej. id 3), 'efectivo' con medio_pago_id distinto de 1, o un medio_pago fuera de efectivo|transferencia."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -2789,7 +2873,22 @@
                           },
                           "medio_pago": {
                             "type": "string",
+                            "enum": [
+                              "efectivo",
+                              "transferencia"
+                            ],
                             "example": "efectivo"
+                          },
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 1,
+                            "description": "Cuenta usada en el abono (1 = cuenta de sistema de efectivo)"
+                          },
+                          "medio_pago_nombre": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Efectivo"
                           },
                           "observacion": {
                             "type": "string"
@@ -2972,7 +3071,21 @@
                           },
                           "medio_pago": {
                             "type": "string",
+                            "enum": [
+                              "efectivo",
+                              "transferencia"
+                            ],
                             "example": "efectivo"
+                          },
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 3
+                          },
+                          "medio_pago_nombre": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Nequi Miguel"
                           },
                           "fecha": {
                             "type": "string",
@@ -3048,8 +3161,18 @@
                   },
                   "medio_pago": {
                     "type": "string",
+                    "enum": [
+                      "efectivo",
+                      "transferencia"
+                    ],
                     "example": "efectivo",
-                    "description": "efectivo|transferencia|otro"
+                    "description": "efectivo|transferencia"
+                  },
+                  "medio_pago_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 3,
+                    "description": "Opcional. Obligatorio si medio_pago='transferencia': cuenta tipo 'transferencia', activa y es_sistema=0 (ej. 3 = Nequi Miguel). Con 'efectivo' solo se admite 1 o null."
                   },
                   "observacion": {
                     "type": "string",
@@ -3070,10 +3193,86 @@
         },
         "responses": {
           "201": {
-            "description": "Abono registrado"
+            "description": "Abono registrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "abono registrado"
+                    },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 508
+                        },
+                        "venta_id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "corte_id": {
+                          "type": "integer",
+                          "example": 4
+                        },
+                        "usuario_id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "monto": {
+                          "type": "number",
+                          "example": 5000
+                        },
+                        "fecha": {
+                          "type": "string",
+                          "example": "2026-10-18"
+                        },
+                        "observacion": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "medio_pago": {
+                          "type": "string",
+                          "enum": [
+                            "efectivo",
+                            "transferencia"
+                          ],
+                          "example": "transferencia"
+                        },
+                        "medio_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 3
+                        },
+                        "medio_pago_nombre": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "Nequi Miguel"
+                        },
+                        "venta_estado": {
+                          "type": "string",
+                          "example": "pendiente"
+                        },
+                        "venta_saldo_pendiente": {
+                          "type": "number",
+                          "example": 15000
+                        },
+                        "nombre_cliente": {
+                          "type": "string",
+                          "example": "Alejandra rodriguez"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye 'transferencia' sin medio_pago_id (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago distinto de efectivo|transferencia, monto <= 0 o que supera el saldo pendiente."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -3126,7 +3325,17 @@
                   },
                   "medio_pago": {
                     "type": "string",
+                    "enum": [
+                      "efectivo",
+                      "transferencia"
+                    ],
                     "example": "efectivo"
+                  },
+                  "medio_pago_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 3,
+                    "description": "Opcional. Si medio_pago no cambia y no se envía, se conserva la cuenta actual del abono (permite editar solo el monto); si cambia a 'transferencia' es obligatorio y debe ser una cuenta real activa y no de sistema."
                   },
                   "observacion": {
                     "type": "string",
@@ -3144,10 +3353,58 @@
         },
         "responses": {
           "200": {
-            "description": "Abono actualizado"
+            "description": "Abono actualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "abono actualizado"
+                    },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 508
+                        },
+                        "venta_id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "monto": {
+                          "type": "number",
+                          "example": 5000
+                        },
+                        "medio_pago": {
+                          "type": "string",
+                          "enum": [
+                            "efectivo",
+                            "transferencia"
+                          ],
+                          "example": "transferencia"
+                        },
+                        "medio_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 3
+                        },
+                        "medio_pago_nombre": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "Nequi Miguel"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye 'transferencia' sin cuenta válida (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia, fecha con formato distinto a DD/MM/YYYY, monto <= 0 o mayor al saldo pendiente + monto actual."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -3249,7 +3506,21 @@
                     },
                     "medio_pago": {
                       "type": "string",
+                      "enum": [
+                        "efectivo",
+                        "transferencia"
+                      ],
                       "example": "efectivo"
+                    },
+                    "medio_pago_id": {
+                      "type": "integer",
+                      "nullable": true,
+                      "example": 1
+                    },
+                    "medio_pago_nombre": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "Efectivo"
                     },
                     "observacion": {
                       "type": "string"
@@ -3351,7 +3622,41 @@
                       },
                       "medio_pago": {
                         "type": "string",
+                        "enum": [
+                          "efectivo",
+                          "transferencia"
+                        ],
                         "example": "efectivo"
+                      },
+                      "medio_pago_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "example": 1
+                      },
+                      "medio_pago_nombre": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "Efectivo"
+                      },
+                      "medio_pago_pago": {
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                          "efectivo",
+                          "transferencia"
+                        ],
+                        "example": "transferencia",
+                        "description": "Medio con el que se pagó el préstamo (null mientras no esté pagado)"
+                      },
+                      "medio_pago_pago_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "example": 3
+                      },
+                      "medio_pago_pago_nombre": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "Nequi Miguel"
                       },
                       "estado": {
                         "type": "string",
@@ -3410,8 +3715,18 @@
                   },
                   "medio_pago": {
                     "type": "string",
+                    "enum": [
+                      "efectivo",
+                      "transferencia"
+                    ],
                     "example": "efectivo",
                     "description": "efectivo|transferencia"
+                  },
+                  "medio_pago_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 3,
+                    "description": "Opcional. Obligatorio si medio_pago='transferencia': cuenta tipo 'transferencia', activa y es_sistema=0. Con 'efectivo' solo se admite 1 o null."
                   },
                   "observacion": {
                     "type": "string",
@@ -3430,10 +3745,114 @@
         },
         "responses": {
           "201": {
-            "description": "Préstamo registrado"
+            "description": "Préstamo registrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "prestamo registrado"
+                    },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 20
+                        },
+                        "cliente_id": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "cliente_nombre": {
+                          "type": "string",
+                          "example": "Alejandra rodriguez"
+                        },
+                        "corte_id": {
+                          "type": "integer",
+                          "example": 4
+                        },
+                        "usuario_id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "monto": {
+                          "type": "number",
+                          "example": 10000
+                        },
+                        "total_abonado": {
+                          "type": "number",
+                          "example": 0
+                        },
+                        "saldo_pendiente": {
+                          "type": "number",
+                          "example": 10000
+                        },
+                        "medio_pago": {
+                          "type": "string",
+                          "enum": [
+                            "efectivo",
+                            "transferencia"
+                          ],
+                          "example": "efectivo"
+                        },
+                        "medio_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 1
+                        },
+                        "medio_pago_nombre": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "Efectivo"
+                        },
+                        "estado": {
+                          "type": "string",
+                          "example": "pendiente"
+                        },
+                        "observacion": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "PRUEBA P1 efectivo 10000"
+                        },
+                        "fecha": {
+                          "type": "string",
+                          "example": "2026-10-18 19:23:50"
+                        },
+                        "fecha_pago": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "usuario_pago_id": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "medio_pago_pago": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": null
+                        },
+                        "medio_pago_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": null
+                        },
+                        "medio_pago_pago_nombre": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": null
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye 'transferencia' sin medio_pago_id (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia, monto <= 0 o saldo insuficiente en la cuenta/caja."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -3453,7 +3872,7 @@
           "Prestamos"
         ],
         "summary": "Listar pagos de un préstamo",
-        "description": "Nota: en el código la vista se llama sin parámetro (posible error 500); documentado según la ruta.",
+        "description": "Historial de abonos del préstamo ordenado por fecha DESC. 404 si el préstamo no existe.",
         "security": [
           {
             "BearerAuth": []
@@ -3502,7 +3921,21 @@
                       },
                       "medio_pago": {
                         "type": "string",
+                        "enum": [
+                          "efectivo",
+                          "transferencia"
+                        ],
                         "example": "efectivo"
+                      },
+                      "medio_pago_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "example": 1
+                      },
+                      "medio_pago_nombre": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "Efectivo"
                       },
                       "observacion": {
                         "type": "string"
@@ -3567,8 +4000,18 @@
                   },
                   "medio_pago": {
                     "type": "string",
+                    "enum": [
+                      "efectivo",
+                      "transferencia"
+                    ],
                     "example": "efectivo",
                     "description": "efectivo|transferencia"
+                  },
+                  "medio_pago_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 3,
+                    "description": "Opcional. Obligatorio si medio_pago='transferencia': cuenta tipo 'transferencia', activa y es_sistema=0. Con 'efectivo' solo se admite 1 o null."
                   },
                   "observacion": {
                     "type": "string",
@@ -3586,10 +4029,101 @@
         },
         "responses": {
           "201": {
-            "description": "Abono registrado"
+            "description": "Abono registrado. Devuelve el préstamo actualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "abono registrado"
+                    },
+                    "datos": {
+                      "type": "object",
+                      "description": "Préstamo actualizado con los saldos y, si quedó pagado, el medio de pago del pago.",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 21
+                        },
+                        "monto": {
+                          "type": "number",
+                          "example": 2000
+                        },
+                        "total_abonado": {
+                          "type": "number",
+                          "example": 2000
+                        },
+                        "saldo_pendiente": {
+                          "type": "number",
+                          "example": 0
+                        },
+                        "estado": {
+                          "type": "string",
+                          "enum": [
+                            "pendiente",
+                            "pagado"
+                          ],
+                          "example": "pagado"
+                        },
+                        "medio_pago": {
+                          "type": "string",
+                          "enum": [
+                            "efectivo",
+                            "transferencia"
+                          ],
+                          "example": "efectivo",
+                          "description": "Medio con el que se desembolsó el préstamo"
+                        },
+                        "medio_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 1
+                        },
+                        "medio_pago_nombre": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "Efectivo"
+                        },
+                        "medio_pago_pago": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "efectivo",
+                            "transferencia"
+                          ],
+                          "example": "transferencia"
+                        },
+                        "medio_pago_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 3
+                        },
+                        "medio_pago_pago_nombre": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "Nequi Miguel"
+                        },
+                        "fecha_pago": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "2026-10-18 19:24:43"
+                        },
+                        "usuario_pago_id": {
+                          "type": "integer",
+                          "nullable": true,
+                          "example": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye 'transferencia' sin medio_pago_id (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia, monto <= 0, monto mayor al saldo pendiente o préstamo ya pagado."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -3826,6 +4360,26 @@
                     "total_transferencia": {
                       "type": "number",
                       "example": 20000
+                    },
+                    "transferencia_cuentas": {
+                      "type": "number",
+                      "example": 64000,
+                      "description": "Saldo total de las cuentas de transferencia reales (v_saldos_cuenta con tipo='transferencia' y es_sistema=0). Incluye las cuentas inactivas con saldo distinto de 0."
+                    },
+                    "transferencia_adelantada": {
+                      "type": "number",
+                      "example": 0,
+                      "description": "Abonos por transferencia de ventas del corte abierto que se registraron en otro corte (dinero ya sumado al saldo_inicial)."
+                    },
+                    "efectivo_caja": {
+                      "type": "number",
+                      "example": 321000,
+                      "description": "saldo_inicial del corte - transferencia_adelantada + neto de movimientos de caja en efectivo del corte (excluye abonos de ventas de cortes futuros)."
+                    },
+                    "dinero_caja_total": {
+                      "type": "number",
+                      "example": 385000,
+                      "description": "efectivo_caja + transferencia_cuentas."
                     },
                     "resultado": {
                       "type": "number",
@@ -5400,7 +5954,21 @@
                           },
                           "medio_pago": {
                             "type": "string",
+                            "enum": [
+                              "efectivo",
+                              "transferencia"
+                            ],
                             "example": "efectivo"
+                          },
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 3
+                          },
+                          "medio_pago_nombre": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Nequi Miguel"
                           },
                           "total": {
                             "type": "number",
@@ -5468,8 +6036,18 @@
                   },
                   "medio_pago": {
                     "type": "string",
+                    "enum": [
+                      "efectivo",
+                      "transferencia"
+                    ],
                     "example": "efectivo",
                     "description": "Opcional; por defecto efectivo"
+                  },
+                  "medio_pago_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 3,
+                    "description": "Opcional. Obligatorio si medio_pago='transferencia': cuenta tipo 'transferencia', activa y es_sistema=0 (ej. 3 = Nequi Miguel). Con 'efectivo' solo se admite 1 o null."
                   },
                   "descripcion": {
                     "type": "string",
@@ -5492,7 +6070,7 @@
             "description": "Compra registrada"
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye 'transferencia' sin medio_pago_id (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia o sin corte abierto. Un total <= 0 lo rechaza el service y devuelve 409."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -5562,7 +6140,21 @@
                     },
                     "medio_pago": {
                       "type": "string",
+                      "enum": [
+                        "efectivo",
+                        "transferencia"
+                      ],
                       "example": "efectivo"
+                    },
+                    "medio_pago_id": {
+                      "type": "integer",
+                      "nullable": true,
+                      "example": 3
+                    },
+                    "medio_pago_nombre": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "Nequi Miguel"
                     },
                     "total": {
                       "type": "number",
@@ -5631,7 +6223,17 @@
                   },
                   "medio_pago": {
                     "type": "string",
+                    "enum": [
+                      "efectivo",
+                      "transferencia"
+                    ],
                     "example": "efectivo"
+                  },
+                  "medio_pago_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 3,
+                    "description": "Opcional. Si el medio no cambia y no se envía, se conserva la cuenta actual (permite editar solo el total de compras antiguas); si cambia a 'transferencia' es obligatorio y debe ser una cuenta real activa y no de sistema."
                   },
                   "total": {
                     "type": "number",
@@ -5658,7 +6260,7 @@
             "description": "Compra actualizada"
           },
           "400": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. Incluye 'transferencia' sin cuenta válida (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia o sin corte abierto. Un total <= 0 lo rechaza el service y devuelve 409."
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -6607,6 +7209,955 @@
           },
           "409": {
             "description": "El registro ya no está en estado 'pendiente'"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/": {
+      "get": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Listar medios de pago",
+        "description": "Cuentas ordenadas por `orden` y `nombre`. Requiere token: cualquier rol autenticado excepto cocina/produccion (esos reciben 403).",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "activos",
+            "in": "query",
+            "required": false,
+            "description": "1 = solo activas, 0 = solo inactivas. Si se omite, trae todas.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por tipo de medio de pago (sin distinguir mayúsculas).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "efectivo",
+                "transferencia"
+              ]
+            }
+          },
+          {
+            "name": "asignables",
+            "in": "query",
+            "required": false,
+            "description": "1 = solo cuentas utilizables en un pago: tipo='transferencia' AND activo=1 AND es_sistema=0. Se combina con los otros filtros.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de medios de pago",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "datos": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MedioPago"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Filtro inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "El filtro tipo debe ser uno de: ['efectivo', 'transferencia']"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "No tienes permisos para esta acción (cocina y produccion no pueden acceder)"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Crear medio de pago (admin)",
+        "description": "Crea una cuenta. El `tipo` siempre se guarda como 'transferencia' (lo que envíe el frontend se ignora). Si `orden` no se envía se calcula como MAX(orden)+1. Registra auditoría.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nombre"
+                ],
+                "properties": {
+                  "nombre": {
+                    "type": "string",
+                    "description": "Obligatorio, no vacío, máximo 80 caracteres. Debe ser único.",
+                    "example": "Nequi Miguel"
+                  },
+                  "titular": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Opcional, máximo 100 caracteres. Vacío o null se guarda como NULL.",
+                    "example": "Miguel Cantillo"
+                  },
+                  "saldo_inicial": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Opcional, no puede ser negativo. Por defecto 0.",
+                    "example": 100000
+                  },
+                  "orden": {
+                    "type": "integer",
+                    "description": "Opcional. Por defecto MAX(orden)+1.",
+                    "example": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Medio de pago creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago creado"
+                    },
+                    "datos": {
+                      "$ref": "#/components/schemas/MedioPago"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido o campos fuera de rango (nombre vacío o > 80, titular > 100, saldo_inicial negativo o no numérico, orden no entero, cuerpo no JSON)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "El saldo_inicial no puede ser negativo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Solo admin (No tienes permisos para esta acción)"
+          },
+          "409": {
+            "description": "Ya existe un medio de pago con ese nombre",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Ya existe un medio de pago con el nombre 'Nequi Miguel'"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/saldos": {
+      "get": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Saldos de las cuentas de transferencia",
+        "description": "Lee la vista `v_saldos_cuenta` para las cuentas tipo 'transferencia' no de sistema. Incluye las activas y las inactivas que aún tengan saldo distinto de 0. `buscar` filtra el detalle por nombre o titular (LIKE) y NO altera `total_transferencia`.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "description": "Texto a buscar en nombre o titular.",
+            "schema": {
+              "type": "string",
+              "example": "nequi"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saldos por cuenta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_transferencia": {
+                      "type": "number",
+                      "format": "float",
+                      "example": 64000,
+                      "description": "Suma de los saldos de las cuentas listadas"
+                    },
+                    "cantidad": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "cuentas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "nombre": {
+                            "type": "string",
+                            "example": "Nequi Miguel"
+                          },
+                          "titular": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Miguel Cantillo"
+                          },
+                          "activo": {
+                            "type": "integer",
+                            "enum": [
+                              0,
+                              1
+                            ],
+                            "example": 1
+                          },
+                          "saldo_inicial": {
+                            "type": "number",
+                            "format": "float",
+                            "example": 100000
+                          },
+                          "ingresos": {
+                            "type": "number",
+                            "format": "float",
+                            "example": 14000
+                          },
+                          "egresos": {
+                            "type": "number",
+                            "format": "float",
+                            "example": 50000
+                          },
+                          "saldo": {
+                            "type": "number",
+                            "format": "float",
+                            "example": 64000,
+                            "description": "saldo_inicial + ingresos - egresos"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "No tienes permisos para esta acción (cocina y produccion no pueden acceder)"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/{id}": {
+      "get": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Obtener un medio de pago",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Medio de pago encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedioPago"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id inválido (no entero o menor/igual a 0)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "El id debe ser mayor a 0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "No tienes permisos para esta acción (cocina y produccion no pueden acceder)"
+          },
+          "404": {
+            "description": "Medio de pago no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago no encontrado"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Editar medio de pago (admin)",
+        "description": "Edita `nombre`, `titular`, `saldo_inicial` y/u `orden`; el `tipo` no se puede cambiar. Hay que enviar al menos uno de esos campos. El nombre de una cuenta de sistema (`es_sistema=1`) no se puede cambiar. Registra auditoría con datos anteriores y nuevos.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Al menos uno de: nombre, titular, saldo_inicial, orden.",
+                "properties": {
+                  "nombre": {
+                    "type": "string",
+                    "description": "No vacío, máximo 80 caracteres, único.",
+                    "example": "Nequi Miguel"
+                  },
+                  "titular": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Vacío o null deja el titular en NULL. Máximo 100 caracteres.",
+                    "example": "Miguel Cantillo"
+                  },
+                  "saldo_inicial": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "No puede ser negativo.",
+                    "example": 200000
+                  },
+                  "orden": {
+                    "type": "integer",
+                    "example": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Medio de pago actualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago actualizado"
+                    },
+                    "datos": {
+                      "$ref": "#/components/schemas/MedioPago"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido, sin campos editables, nombre de cuenta de sistema, o sin cambios que aplicar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Debe enviar al menos uno de: ['nombre', 'titular', 'saldo_inicial', 'orden']"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Solo admin (No tienes permisos para esta acción)"
+          },
+          "404": {
+            "description": "Medio de pago no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago no encontrado"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El nombre ya lo usa otro medio de pago",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Ya existe otro medio de pago con el nombre 'Nequi Miguel'"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Eliminar medio de pago (admin)",
+        "description": "Solo elimina cuentas que no sean de sistema y que no tengan registros asociados (abonos, compras, movimientos_caja, prestamos, pagos_prestamos). Si tiene movimientos, la respuesta sugiere desactivarla. Registra auditoría.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Medio de pago eliminado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago 3 eliminado"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id inválido o cuenta de sistema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "No se puede eliminar un medio de pago del sistema"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Solo admin (No tienes permisos para esta acción)"
+          },
+          "404": {
+            "description": "Medio de pago no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago no encontrado"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La cuenta tiene movimientos asociados y no se puede eliminar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "No se puede eliminar el medio de pago porque tiene movimientos asociados. Sugerencia: desactívalo para que no se use en nuevos registros."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/{id}/movimientos": {
+      "get": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Movimientos de una cuenta",
+        "description": "Lee `v_movimientos_cuenta` (abonos, compras, prestamos y pagos de prestamos) ordenado por fecha DESC. Paginación con `pagina` y `limite` (máximo 100). `desde` y `hasta` se aplican por día completo y en formato YYYY-MM-DD.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 1
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Entre 1 y 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "example": 20
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Fecha inicial inclusive (YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-01"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fecha final inclusive (YYYY-MM-DD). Debe ser >= desde.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-18"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cuenta y sus movimientos paginados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cuenta": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 3
+                        },
+                        "nombre": {
+                          "type": "string",
+                          "example": "Nequi Miguel"
+                        },
+                        "titular": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "Miguel Cantillo"
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 6
+                    },
+                    "movimientos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "tipo": {
+                            "type": "string",
+                            "enum": [
+                              "ingreso",
+                              "egreso"
+                            ],
+                            "example": "ingreso"
+                          },
+                          "concepto": {
+                            "type": "string",
+                            "enum": [
+                              "abono",
+                              "compra",
+                              "prestamo",
+                              "pago_prestamo"
+                            ],
+                            "example": "abono"
+                          },
+                          "referencia_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 469,
+                            "description": "id del registro origen (abono, compra o prestamo)"
+                          },
+                          "monto": {
+                            "type": "number",
+                            "format": "float",
+                            "example": 5000
+                          },
+                          "fecha": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "2026-10-18 19:35:18",
+                            "description": "UTC"
+                          },
+                          "corte_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 4
+                          },
+                          "usuario_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 1
+                          },
+                          "descripcion": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Abono a venta ID: 469"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id inválido, página o límite fuera de rango, fecha con formato distinto a YYYY-MM-DD, o hasta < desde",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "El filtro hasta debe ser mayor o igual a desde"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "No tienes permisos para esta acción (cocina y produccion no pueden acceder)"
+          },
+          "404": {
+            "description": "Medio de pago no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago no encontrado"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Activar o desactivar un medio de pago (admin)",
+        "description": "Cambia el campo `activo`. La cuenta de tipo 'efectivo' no se puede desactivar y una cuenta que ya tiene ese estado devuelve 400 con el mensaje correspondiente. Registra auditoría.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activo"
+                ],
+                "properties": {
+                  "activo": {
+                    "type": "boolean",
+                    "description": "Acepta true/false (también 1/0 o \"1\"/\"0\").",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado actualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Estado actualizado"
+                    },
+                    "datos": {
+                      "$ref": "#/components/schemas/MedioPago"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id inválido, cuerpo inválido, falta 'activo', valor no booleano, intento de desactivar la cuenta de efectivo, o la cuenta ya está en ese estado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "No se puede desactivar el medio de pago de tipo efectivo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Solo admin (No tienes permisos para esta acción)"
+          },
+          "404": {
+            "description": "Medio de pago no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Medio de pago no encontrado"
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
             "description": "Error interno del servidor"

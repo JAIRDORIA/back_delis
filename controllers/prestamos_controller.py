@@ -4,14 +4,15 @@ Controller: Prestamos a clientes (v2, con abonos parciales).
 IMPORTANTE: ajusta los imports de obtener_cliente / obtener_usuario a las
 rutas reales donde ya los tengas definidos en tu proyecto.
 """
-from flask import request, jsonify
+from flask import request, jsonify, g
 
 from services.prestamos_services import (
     registrar, abonar_prestamo, listar_prestamos, listar_pagos_prestamo,
-    obtener_prestamo, obtener_disponible_caja, obtener_corte_abierto
+    obtener_prestamo, obtener_disponible_caja, obtener_saldo_cuenta, obtener_corte_abierto
 )
 from services.clientes_services import obtener_cliente
 from services.usuarios_servicies import obtener_usuario
+from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
 
 
 def cntListarPrestamos():
@@ -36,7 +37,7 @@ def cntListarPagosPrestamo(prestamo_id):
 
 def cntRegistrarPrestamo():
     try:
-        requeridos = ["cliente_id", "usuario_id", "monto", "medio_pago"]
+        requeridos = ["cliente_id", "monto", "medio_pago"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
             return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
@@ -46,14 +47,16 @@ def cntRegistrarPrestamo():
             return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
         cliente_id  = request.json["cliente_id"]
-        usuario_id  = request.json["usuario_id"]
+        usuario_id  = g.usuario["id"]
         monto       = request.json["monto"]
         medio_pago  = request.json["medio_pago"]
+        medio_pago_id = request.json.get("medio_pago_id")
         observacion = request.json.get("observacion", None)
 
-        medios_validos = ["efectivo", "transferencia"]
-        if medio_pago not in medios_validos:
-            return jsonify({"mensaje": f"medio de pago invalido, debe ser: {medios_validos}"}), 400
+        try:
+            medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
+        except MedioPagoInvalido as e:
+            return jsonify({"mensaje": e.mensaje}), 400
 
         if monto <= 0:
             return jsonify({"mensaje": "el monto debe ser mayor a 0"}), 400
@@ -71,16 +74,26 @@ def cntRegistrarPrestamo():
             return jsonify({"mensaje": "no existe un corte abierto"}), 400
         corte_id = corte_abierto["id"]
 
-        disponible = obtener_disponible_caja(corte_id, medio_pago)
-        if monto > disponible:
-            return jsonify({
-                "mensaje": (
-                    f"saldo insuficiente en caja ({medio_pago}): "
-                    f"disponible ${disponible:,.2f}, solicitado ${monto:,.2f}"
-                )
-            }), 400
+        if medio_pago == "efectivo":
+            disponible = obtener_disponible_caja(corte_id, medio_pago)
+            if monto > disponible:
+                return jsonify({
+                    "mensaje": (
+                        f"saldo insuficiente en caja ({medio_pago}): "
+                        f"disponible ${disponible:,.2f}, solicitado ${monto:,.2f}"
+                    )
+                }), 400
+        else:
+            nombre_cuenta, saldo_cuenta = obtener_saldo_cuenta(medio_pago_id)
+            if monto > saldo_cuenta:
+                return jsonify({
+                    "mensaje": (
+                        f"saldo insuficiente en caja ({medio_pago} - {nombre_cuenta}): "
+                        f"disponible ${saldo_cuenta:,.2f}, solicitado ${monto:,.2f}"
+                    )
+                }), 400
 
-        p = registrar(cliente_id, corte_id, usuario_id, monto, medio_pago, observacion)
+        p = registrar(cliente_id, corte_id, usuario_id, monto, medio_pago, medio_pago_id, observacion)
         return jsonify({"mensaje": "prestamo registrado", "datos": p}), 201
 
     except Exception as e:
@@ -94,7 +107,7 @@ def cntAbonarPrestamo(prestamo_id):
     los abonos de ventas).
     """
     try:
-        requeridos = ["usuario_id", "monto", "medio_pago"]
+        requeridos = ["monto", "medio_pago"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
             return jsonify({"mensaje": f"faltan los siguientes campos {faltantes}"}), 400
@@ -103,14 +116,16 @@ def cntAbonarPrestamo(prestamo_id):
         if vacios:
             return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
-        usuario_id  = request.json["usuario_id"]
+        usuario_id  = g.usuario["id"]
         monto       = request.json["monto"]
         medio_pago  = request.json["medio_pago"]
+        medio_pago_id = request.json.get("medio_pago_id")
         observacion = request.json.get("observacion", None)
 
-        medios_validos = ["efectivo", "transferencia"]
-        if medio_pago not in medios_validos:
-            return jsonify({"mensaje": f"medio de pago invalido, debe ser: {medios_validos}"}), 400
+        try:
+            medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
+        except MedioPagoInvalido as e:
+            return jsonify({"mensaje": e.mensaje}), 400
 
         if monto <= 0:
             return jsonify({"mensaje": "el monto debe ser mayor a 0"}), 400
@@ -138,7 +153,7 @@ def cntAbonarPrestamo(prestamo_id):
         if not corte_abierto:
             return jsonify({"mensaje": "no existe un corte abierto"}), 400
 
-        p = abonar_prestamo(prestamo_id, usuario_id, monto, medio_pago, observacion)
+        p = abonar_prestamo(prestamo_id, usuario_id, monto, medio_pago, medio_pago_id, observacion)
         return jsonify({"mensaje": "abono registrado", "datos": p}), 201
 
     except Exception as e:

@@ -372,6 +372,50 @@ def balance_corte_actual():
         """, (corte_id,))
         neto_prestamos_transferencia = float(c.fetchone()[0])
 
+        # saldo total de cuentas de transferencia (v_saldos_cuenta).
+        # Incluye cuentas inactivas con saldo <> 0 (no se filtra por activo).
+        c.execute("""
+            SELECT COALESCE(SUM(saldo), 0)
+            FROM v_saldos_cuenta
+            WHERE tipo = 'transferencia' AND es_sistema = 0
+        """)
+        transferencia_cuentas = float(c.fetchone()[0])
+
+        # abonos de ventas del corte abierto registrados en otro corte
+        # (dinero adelantado por transferencia que ya entró a saldo_inicial)
+        c.execute("""
+            SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            JOIN medios_pago mp
+              ON mp.id = COALESCE(a.medio_pago_id, IF(a.medio_pago = 'transferencia', 2, 1))
+            WHERE v.corte_id = %s
+              AND a.corte_id <> %s
+              AND mp.tipo = 'transferencia'
+              AND v.estado <> 'anulada'
+        """, (corte_id, corte_id))
+        transferencia_adelantada = float(c.fetchone()[0])
+
+        # neto de movimientos de caja del corte abierto cuyo medio es efectivo,
+        # con la MISMA exclusión de abonos de ventas de corte futuro que
+        # dinero_caja_real
+        c.execute("""
+            SELECT COALESCE(SUM(CASE WHEN m.tipo = 'ingreso' THEN m.monto
+                                     WHEN m.tipo = 'egreso'  THEN -m.monto
+                                     ELSE 0 END), 0)
+            FROM movimientos_caja m
+            LEFT JOIN ventas v ON v.id = m.referencia_id AND m.concepto = 'abono'
+            LEFT JOIN cortes cv ON cv.id = v.corte_id
+            WHERE m.corte_id = %s
+              AND (cv.estado IS NULL OR cv.estado != 'futuro')
+              AND COALESCE(m.medio_pago_id, IF(m.medio_pago = 'transferencia', 2, 1)) IN
+                  (SELECT id FROM medios_pago WHERE tipo = 'efectivo')
+        """, (corte_id,))
+        neto_efectivo = float(c.fetchone()[0])
+
+        efectivo_caja = float(corte[3]) - transferencia_adelantada + neto_efectivo
+        dinero_caja_total = efectivo_caja + transferencia_cuentas
+
 
         return {
             "corte_id"          : corte[0], 
@@ -386,7 +430,11 @@ def balance_corte_actual():
             "dinero_caja_real"  : dinero_caja_real, 
             "total_efectivo"    : total_efectivo - compras_efectivo - neto_prestamos_efectivo,
             "total_transferencia": total_transferencia - compras_transferencia - neto_prestamos_transferencia,
-            "resultado"         : total_ventas - total_compras
+            "resultado"         : total_ventas - total_compras,
+            "transferencia_cuentas"    : transferencia_cuentas,
+            "transferencia_adelantada" : transferencia_adelantada,
+            "efectivo_caja"            : efectivo_caja,
+            "dinero_caja_total"        : dinero_caja_total
         }
 
 def ingresos_ventas_corte_abierto():

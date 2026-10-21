@@ -1,6 +1,7 @@
 from flask import current_app
 from models.compra_model import compra
 from services.cortes_services import obtener_corte_abierto, obtener_corte
+from services.medios_pago_services import resolver_medio_pago
 from utils.db import cursor_ctx
 
 
@@ -29,9 +30,11 @@ def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
 
             cursor.execute(f"""
                 SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
-                       c.fecha, c.medio_pago, c.total, c.descripcion
+                       c.fecha, c.medio_pago, c.medio_pago_id, mp.nombre AS medio_pago_nombre,
+                       c.total, c.descripcion
                 FROM compras c
                 JOIN proveedores p ON p.id = c.proveedor_id
+                LEFT JOIN medios_pago mp ON mp.id = c.medio_pago_id
                 {where}
                 ORDER BY c.fecha DESC
                 LIMIT %s OFFSET %s
@@ -41,7 +44,7 @@ def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
 
         lista = []
         for fila in datos:
-            com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[7], fila[8])
+            com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[9], fila[10], fila[7], fila[8])
             d = com.toDic()
             d['nombre_proveedor'] = fila[2]
             lista.append(d)
@@ -65,14 +68,16 @@ def obtener_compra(id):
 
             cursor.execute("""
                 SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
-                       c.fecha, c.total, c.descripcion
+                       c.fecha, c.medio_pago, c.medio_pago_id, mp.nombre AS medio_pago_nombre,
+                       c.total, c.descripcion
                 FROM compras c
                 JOIN proveedores p ON p.id = c.proveedor_id
+                LEFT JOIN medios_pago mp ON mp.id = c.medio_pago_id
                 WHERE c.id = %s AND c.eliminada = 0
             """, (id,))
             fila = cursor.fetchone()
 
-        com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[7])
+        com = compra(fila[0], fila[1], fila[3], fila[4], fila[5], fila[6], fila[9], fila[10], fila[7], fila[8])
         d = com.toDic()
         d['nombre_proveedor'] = fila[2]
         return d, None
@@ -80,7 +85,7 @@ def obtener_compra(id):
         raise Exception(str(e))
 
 
-def registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion):
+def registro_compra(proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion):
     try:
         with cursor_ctx() as cursor:
             cursor.execute("SELECT id FROM proveedores WHERE id = %s AND activo = 1", (proveedor_id,))
@@ -98,21 +103,34 @@ def registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total,
                 return None, "El total debe ser mayor a 0"
 
             cursor.execute("""
-                INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
-                VALUES (%s, %s, %s, %s, %s, %s,%s)
-            """, (proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion))
+                INSERT INTO compras (proveedor_id, corte_id, usuario_id, fecha,
+                                     medio_pago, medio_pago_id, total, descripcion)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion))
             current_app.mysql.connection.commit()
             nuevo_id = cursor.lastrowid
-        return compra(nuevo_id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
+        return compra(nuevo_id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion).toDic(), None
     except Exception as e:
         raise Exception(str(e))
 
 
-def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion):
+def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion):
     try:
         with cursor_ctx() as cursor:
-            if not _compra_existe(cursor, id):
+            cursor.execute(
+                "SELECT medio_pago, medio_pago_id FROM compras WHERE id = %s AND eliminada = 0",
+                (id,),
+            )
+            compra_actual = cursor.fetchone()
+            if not compra_actual:
                 return None, "Compra no encontrada"
+
+            # Si el medio no cambia y no viene cuenta, se conserva la cuenta
+            # actual sin validar (permite editar solo el total de una compra antigua).
+            if medio_pago == compra_actual[0] and medio_pago_id is None:
+                medio_pago_id = compra_actual[1]
+            else:
+                medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
 
             cursor.execute("SELECT id FROM proveedores WHERE id = %s AND activo = 1", (proveedor_id,))
             if not cursor.fetchone():
@@ -131,12 +149,13 @@ def actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, 
             cursor.execute("""
                 UPDATE compras
                 SET proveedor_id = %s, corte_id = %s, usuario_id = %s,
-                    fecha = %s,medio_pago=%s, total = %s, descripcion = %s,
+                    fecha = %s, medio_pago = %s, medio_pago_id = %s,
+                    total = %s, descripcion = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-            """, (proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion, id))
+            """, (proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion, id))
             current_app.mysql.connection.commit()
-        return compra(id, proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion).toDic(), None
+        return compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion).toDic(), None
     except Exception as e:
         raise Exception(str(e))
 

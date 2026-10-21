@@ -16,7 +16,7 @@ app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 CORS(
     app,
     resources={r"/*": {"origins": "*"}},
-    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"],
     allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Authorization"]
 )

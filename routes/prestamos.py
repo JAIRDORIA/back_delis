@@ -18,8 +18,8 @@ def registro():
 
 @prestamos_bp.route('/<int:prestamo_id>/abonos', methods = ["GET"])
 @token_requerido
-def listarpagos():
-    return cntListarPagosPrestamo()
+def listarpagos(prestamo_id):
+    return cntListarPagosPrestamo(prestamo_id)
 
 @prestamos_bp.route('/<int:prestamo_id>/abonos', methods = ["POST"])
 @token_requerido

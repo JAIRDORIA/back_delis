@@ -1,6 +1,6 @@
 # SnackFlow — Backend (negocio Delis)
 
-Explora el repo tú mismo; no pidas archivos. Responde breve, con edición mínima y sin refactors no pedidos. Al terminar, lista archivos modificados y cualquier supuesto que hayas hecho.
+Explora el repo tú mismo; no pidas archivos. Responde breve, con edición mínima y sin refactors no pedidos. Al terminar, lista archivos modificados y cualquier supuesto que hayas hecho.ante de hacer cualquier cambio lee los archivos estructura_proyecto.md,snackflow_contexto.md y diagnostico1.md; si hicistes algun cambio tambien registralo en estos archivos segun sea el caso
 
 ## Stack y despliegue
 - Flask + MySQL con MySQLdb, **sin ORM**, por cursores. Estructura: controllers + services (+ modelos donde existan).

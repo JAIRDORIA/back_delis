@@ -1,9 +1,10 @@
-from flask import jsonify, request
+from flask import jsonify, request, g
 from services.compra_services import (
     listado_compra, obtener_compra, registro_compra,
     actualizar_compra, eliminar_compra
 )
 from services.cortes_services import obtener_corte_abierto, obtener_corte
+from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
 
 def cntListadoCompra():
     try:
@@ -47,19 +48,24 @@ def cntRegistroCompra():
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'usuario_id', 'fecha', 'total']
+    requeridos = ['proveedor_id', 'fecha', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"mensaje": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
-    usuario_id   = request.json['usuario_id']
+    usuario_id   = g.usuario["id"]
     fecha        = request.json['fecha']
-    medio_pago = request.json.get('medio_pago', 'efectivo')
+    medio_pago   = request.json.get('medio_pago', 'efectivo')
+    medio_pago_id = request.json.get('medio_pago_id')
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
 
-    
+    try:
+        medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
+    except MedioPagoInvalido as e:
+        return jsonify({"mensaje": e.mensaje}), 400
+
     corte_abierto = obtener_corte_abierto()
     if not corte_abierto:
         return jsonify({"error": "no hay corte abierto para registrar la compra"}), 400
@@ -71,7 +77,7 @@ def cntRegistroCompra():
         return jsonify({"error": "El total debe ser un número"}), 400
 
     try:
-        dato, error = registro_compra(proveedor_id, corte_id, usuario_id, fecha,medio_pago, total, descripcion)
+        dato, error = registro_compra(proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion)
         if error:
             return jsonify({"error": error}), 409
         return jsonify(dato), 201
@@ -83,15 +89,16 @@ def cntActualizarCompra(id):
     if not request.is_json:
         return jsonify({"error": "El cuerpo debe ser JSON"}), 400
 
-    requeridos = ['proveedor_id', 'usuario_id', 'fecha','medio_pago', 'total']
+    requeridos = ['proveedor_id', 'fecha','medio_pago', 'total']
     faltantes  = [x for x in requeridos if x not in request.json]
     if faltantes:
         return jsonify({"error": f"Faltan los siguientes campos: {faltantes}"}), 400
 
     proveedor_id = request.json['proveedor_id']
-    usuario_id   = request.json['usuario_id']
+    usuario_id   = g.usuario["id"]
     fecha        = request.json['fecha']
-    medio_pago   =request.json['medio_pago']
+    medio_pago   = request.json['medio_pago']
+    medio_pago_id = request.json.get('medio_pago_id')
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
 
@@ -106,11 +113,13 @@ def cntActualizarCompra(id):
         return jsonify({"error": "El total debe ser un número"}), 400
 
     try:
-        dato, error = actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago,total, descripcion)
+        dato, error = actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion)
         if error:
             status = 404 if "no encontrada" in error else 409
             return jsonify({"error": error}), status
         return jsonify(dato), 200
+    except MedioPagoInvalido as e:
+        return jsonify({"mensaje": e.mensaje}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

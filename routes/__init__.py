@@ -15,6 +15,7 @@ from .empleados import empleados_bp
 from .produccion_empleados import produccion_empleados_bp
 from routes.auditoria import auditoria_bp
 from routes.pedidos_cocina_routes import pedidos_cocina_bp # ajusta la ruta del import a tu proyecto
+from .medios_pago import medios_pago_bp
 
    
 def cargarRuta(app):
@@ -35,6 +36,7 @@ def cargarRuta(app):
     app.register_blueprint(prestamos_bp, url_prefix='/prestamos')
     app.register_blueprint(empleados_bp, url_prefix='/empleados')
     app.register_blueprint(produccion_empleados_bp, url_prefix='/produccion-empleados')
+    app.register_blueprint(medios_pago_bp, url_prefix='/medios-pago')
     
 
 

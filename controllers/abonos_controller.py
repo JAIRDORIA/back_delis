@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify, request, g
 from datetime import datetime
 from services.abono_services import (
     listado_abonos, registro, obtener_abono,
@@ -7,6 +7,7 @@ from services.abono_services import (
 from services.ventas_services import obtener_venta
 from services.cortes_services import obtener_corte, obtener_corte_abierto
 from services.usuarios_servicies import obtener_usuario
+from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
 
 def cntListado():
     try:
@@ -25,7 +26,7 @@ def cntListado():
 
 def cntregistrar():
     try:
-        requeridos = ["venta_id", "corte_id", "usuario_id",
+        requeridos = ["venta_id", "corte_id",
                       "monto", "fecha", "medio_pago"]
         faltantes = [x for x in requeridos if x not in request.json]
         if faltantes:
@@ -38,15 +39,17 @@ def cntregistrar():
 
         id_venta   = request.json["venta_id"]
         corte      = request.json["corte_id"]
-        usuario    = request.json["usuario_id"]
+        usuario    = g.usuario["id"]
         monto      = request.json["monto"]
         fecha      = request.json["fecha"]
-        medio_pago = request.json["medio_pago"]
-        obs        = request.json.get("observacion", None)
+        medio_pago    = request.json["medio_pago"]
+        medio_pago_id = request.json.get("medio_pago_id")
+        obs           = request.json.get("observacion", None)
 
-        medios_validos = ["efectivo", "transferencia", "otro"]
-        if medio_pago not in medios_validos:
-            return jsonify({"mensaje": f"medio de pago invalido, debe ser: {medios_validos}"}), 400
+        try:
+            medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
+        except MedioPagoInvalido as e:
+            return jsonify({"mensaje": e.mensaje}), 400
 
         venta_db = obtener_venta(id_venta)
         if not venta_db:
@@ -83,7 +86,7 @@ def cntregistrar():
 
         fecha = fecha.strftime("%Y-%m-%d")
 
-        p = registro(id_venta, corte, usuario, monto, fecha, obs, medio_pago)
+        p = registro(id_venta, corte, usuario, monto, fecha, obs, medio_pago, medio_pago_id)
         return jsonify({"mensaje": "abono registrado", "datos": p}), 201
 
     except Exception as e:
@@ -114,14 +117,11 @@ def cntActualizar(id):
         if vacios:
             return jsonify({"mensaje": f"los siguientes campos estan vacios {vacios}"}), 400
 
-        monto       = request.json["monto"]
-        fecha       = request.json["fecha"]
-        medio_pago  = request.json["medio_pago"]
-        observacion = request.json.get("observacion", None)
-
-        medios_validos = ["efectivo", "transferencia", "otro"]
-        if medio_pago not in medios_validos:
-            return jsonify({"mensaje": f"medio de pago invalido, debe ser: {medios_validos}"}), 400
+        monto         = request.json["monto"]
+        fecha         = request.json["fecha"]
+        medio_pago    = request.json["medio_pago"]
+        medio_pago_id = request.json.get("medio_pago_id")
+        observacion   = request.json.get("observacion", None)
 
         abono = obtener_abono(id)
         if not abono:
@@ -150,9 +150,11 @@ def cntActualizar(id):
 
         fecha = fecha_dt.strftime("%Y-%m-%d")
 
-        resultado = actualizar_abono(id, monto, fecha, observacion, medio_pago)
+        resultado = actualizar_abono(id, monto, fecha, observacion, medio_pago, medio_pago_id)
         return jsonify({"mensaje": "abono actualizado", "datos": resultado}), 200
 
+    except MedioPagoInvalido as e:
+        return jsonify({"mensaje": e.mensaje}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
