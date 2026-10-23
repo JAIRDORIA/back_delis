@@ -55,8 +55,8 @@ Cada archivo crea un `Blueprint` y registra las URLs; casi todas las rutas lleva
 | Archivo | Prefijo | Endpoints principales |
 | --- | --- | --- |
 | `__init__.py` | — | `cargarRuta(app)`: importa y registra **todos** los blueprints con su `url_prefix` (`/ventas`, `/cortes`, `/usuarios`, `/productos`, `/inventarios`, `/combos`, `/clientes`, `/abonos`, `/compras`, `/proveedores`, `/producciones`, `/auditoria`, `/prestamos`, `/pedidos-cocina`, `/documentacion`, `/medios-pago`). Es el índice real de la API. |
-| `ventas.py` | `/ventas` | Listar, detalle (`GET/PUT /<id>/detalle`), crear (abonos iniciales validados con `resolver_medio_pago` y guardan `medio_pago_id`; el `usuario_id` sale del token, no del cuerpo), actualizar (cambia `estado`, dispara el descuento/anulación de inventario), anular (`PUT /<id>/anulacion`) y comprobante. |
-| `abonos.py` | `/abonos` | Listar, registrar (valida con `resolver_medio_pago` y guarda `medio_pago_id`; el `usuario_id` sale del token, no del cuerpo), actualizar (edita `medio_pago` y `medio_pago_id` juntos), eliminar y `GET /<id>/recibo` (recibo del abono). |
+| `ventas.py` | `/ventas` | Listar, detalle (`GET/PUT /<id>/detalle`), crear (abonos iniciales validados con `resolver_medio_pago` y guardan `medio_pago_id`; guarda `valor_domicilio` en la venta y `es_domicilio` en cada abono; el `usuario_id` sale del token, no del cuerpo), actualizar (cambia `estado`, dispara el descuento/anulación de inventario), anular (`PUT /<id>/anulacion`) y comprobante. |
+| `abonos.py` | `/abonos` | Listar, registrar (valida con `resolver_medio_pago` y guarda `medio_pago_id` y `es_domicilio`; tope por tipo productos/domicilio; el `usuario_id` sale del token, no del cuerpo), actualizar (edita `medio_pago` y `medio_pago_id` juntos; `es_domicilio` no cambia), eliminar y `GET /<id>/recibo` (recibo del abono). |
 | `clientes.py` | `/clientes` | CRUD de clientes más `GET /top` (clientes con más consumo). |
 | `productos.py` | `/productos` | CRUD de productos más `GET /mas-vendidos`. |
 | `combos.py` | `/combos` | CRUD de combos (crear/actualizar incluyen su composición `combo_detalle`). |

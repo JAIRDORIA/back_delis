@@ -14,7 +14,7 @@ def listado_abonos(pagina=1, limite=20):
         c.execute("""
        SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
        a.corte_id, a.usuario_id,
-       a.medio_pago_id, mp.nombre AS medio_pago_nombre,
+       a.medio_pago_id, a.es_domicilio, mp.nombre AS medio_pago_nombre,
        v.estado AS venta_estado,
        v.saldo_pendiente AS venta_saldo_pendiente,
        cl.nombre AS nombre_cliente
@@ -40,10 +40,11 @@ LIMIT %(limite)s OFFSET %(offset)s
             observacion = p[5],
             medio_pago  = p[3],
             medio_pago_id     = p[8],
-            medio_pago_nombre = p[9],
-            venta_estado=p[10],
-            venta_saldo_pendiente=p[11],
-            nombre_cliente= p[12],
+            medio_pago_nombre = p[10],
+            es_domicilio      = p[9],
+            venta_estado=p[11],
+            venta_saldo_pendiente=p[12],
+            nombre_cliente= p[13],
         ).to_dict()
         lista.append(abono)
 
@@ -56,17 +57,44 @@ LIMIT %(limite)s OFFSET %(offset)s
     }
 
 
-def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago, medio_pago_id=None):
+def registro(venta_id, corte_id, usuario_id, monto, fecha, observacion,
+             medio_pago, medio_pago_id=None, es_domicilio=0):
     with cursor_ctx() as c:
         c.execute("""
             INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                                monto, fecha, observacion, medio_pago, medio_pago_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (venta_id, corte_id, usuario_id, monto, fecha, observacion, medio_pago, medio_pago_id))
+                                monto, fecha, observacion, medio_pago,
+                                medio_pago_id, es_domicilio)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (venta_id, corte_id, usuario_id, monto, fecha, observacion,
+              medio_pago, medio_pago_id, es_domicilio))
         current_app.mysql.connection.commit()
         id = c.lastrowid
 
     return obtener_abono(id)
+
+
+def obtener_suma_abonos_por_tipo(venta_id):
+    """Devuelve (pagado_productos, pagado_domicilio) de una venta.
+
+    productos: abonos con es_domicilio = 0; domicilio: es_domicilio = 1."""
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN es_domicilio = 0 THEN monto ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN es_domicilio = 1 THEN monto ELSE 0 END), 0)
+            FROM abonos
+            WHERE venta_id = %s
+        """, (venta_id,))
+        fila = c.fetchone()
+    return float(fila[0]), float(fila[1])
+
+
+def obtener_es_domicilio_abono(abono_id):
+    """Devuelve 0 o 1 segun el tipo guardado del abono, o None si no existe."""
+    with cursor_ctx() as c:
+        c.execute("SELECT es_domicilio FROM abonos WHERE id = %s", (abono_id,))
+        fila = c.fetchone()
+    return int(fila[0]) if fila else None
     
 def generar_recibo(abono_id):
     with cursor_ctx() as c:
@@ -74,7 +102,8 @@ def generar_recibo(abono_id):
         c.execute("""
             SELECT a.id, a.monto, a.fecha, a.medio_pago,
                    a.observacion, a.venta_id,
-                   a.medio_pago_id, mp.nombre AS medio_pago_nombre
+                   a.medio_pago_id, a.es_domicilio,
+                   mp.nombre AS medio_pago_nombre
             FROM abonos a
             LEFT JOIN medios_pago mp ON mp.id = a.medio_pago_id
             WHERE a.id = %s
@@ -88,13 +117,22 @@ def generar_recibo(abono_id):
 
         # traer datos de la venta y cliente
         c.execute("""
-            SELECT v.id, cl.nombre, v.total,
-                   v.total_abonado, v.saldo_pendiente
+            SELECT v.id, cl.nombre, v.total, v.valor_domicilio,
+                   v.total_abonado, v.saldo_pendiente, v.estado
             FROM ventas v
             JOIN clientes cl ON cl.id = v.cliente_id
             WHERE v.id = %s
         """, (venta_id,))
         venta = c.fetchone()
+
+        # lo pagado por tipo de la venta (una sola consulta agregada)
+        c.execute("""
+            SELECT COALESCE(SUM(CASE WHEN es_domicilio = 0 THEN monto ELSE 0 END), 0),
+                   COALESCE(SUM(CASE WHEN es_domicilio = 1 THEN monto ELSE 0 END), 0)
+            FROM abonos
+            WHERE venta_id = %s
+        """, (venta_id,))
+        pagado = c.fetchone()
 
         # traer numero de comprobante si existe
         c.execute("""
@@ -106,6 +144,12 @@ def generar_recibo(abono_id):
     # generar numero de recibo
     numero_recibo = f"REC-{str(abono_id).zfill(4)}"
 
+    es_anulada = venta[6] == 'anulada'
+    pagado_productos = 0.0 if es_anulada else float(pagado[0])
+    pagado_domicilio = 0.0 if es_anulada else float(pagado[1])
+    domicilio_pendiente = 0.0 if es_anulada else float(venta[3]) - pagado_domicilio
+    productos_pendiente = 0.0 if es_anulada else (float(venta[2]) - float(venta[3])) - pagado_productos
+
     return {
         "numero_recibo"   : numero_recibo,
         "abono_id"        : abono[0],
@@ -113,13 +157,17 @@ def generar_recibo(abono_id):
         "fecha"           : str(abono[2]),
         "medio_pago"      : abono[3],
         "medio_pago_id"    : abono[6],
-        "medio_pago_nombre": abono[7],
+        "es_domicilio"     : bool(abono[7]),
+        "medio_pago_nombre": abono[8],
         "observacion"     : abono[4],
         "numero_comp"     : comp[0] if comp else None,
         "nombre_cliente"  : venta[1],
         "total_venta"     : float(venta[2]),
-        "total_abonado"   : float(venta[3]),
-        "saldo_pendiente" : float(venta[4])
+        "valor_domicilio" : float(venta[3]),
+        "domicilio_pendiente" : domicilio_pendiente,
+        "productos_pendiente" : productos_pendiente,
+        "total_abonado"   : float(venta[4]),
+        "saldo_pendiente" : float(venta[5])
     }
 
 def obtener_abono(id):
@@ -127,7 +175,7 @@ def obtener_abono(id):
         c.execute("""
             SELECT a.id, a.venta_id, a.monto, a.medio_pago, a.fecha, a.observacion,
                    a.corte_id, a.usuario_id,
-                   a.medio_pago_id, mp.nombre AS medio_pago_nombre,
+                   a.medio_pago_id, a.es_domicilio, mp.nombre AS medio_pago_nombre,
                    v.estado AS venta_estado,
                    v.saldo_pendiente AS venta_saldo_pendiente,
                    cl.nombre AS nombre_cliente
@@ -149,10 +197,11 @@ def obtener_abono(id):
             observacion =   abono[5],
             medio_pago  =  abono[3],
             medio_pago_id     = abono[8],
-            medio_pago_nombre = abono[9],
-            venta_estado=abono[10],
-            venta_saldo_pendiente=abono[11],
-            nombre_cliente= abono[12],
+            medio_pago_nombre = abono[10],
+            es_domicilio      = abono[9],
+            venta_estado=abono[11],
+            venta_saldo_pendiente=abono[12],
+            nombre_cliente= abono[13],
         ).to_dict()
     return None
 

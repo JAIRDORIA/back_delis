@@ -101,14 +101,25 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
         c.execute(sql_count, params)
         total = c.fetchone()[0]
 
-        # Consulta de datos paginada
+        # Consulta de datos paginada. El LEFT JOIN agregado evita N+1:
+        # una sola consulta trae lo pagado de domicilio de todas las ventas.
         sql_data = f"""
             SELECT v.id, v.cliente_id, cl.nombre, v.corte_id, co.numero,
                    v.usuario_id, v.fecha_venta, v.fecha_entrega,
-                   v.total, v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
+                   v.total, v.valor_domicilio, v.total_abonado, v.saldo_pendiente,
+                   v.estado, v.observacion,
+                   CASE WHEN v.estado = 'anulada' THEN 0
+                        ELSE GREATEST(v.valor_domicilio - COALESCE(dom.dom_pagado, 0), 0)
+                   END AS domicilio_pendiente
             FROM ventas v
             JOIN clientes cl ON cl.id = v.cliente_id
             JOIN cortes co ON co.id = v.corte_id
+            LEFT JOIN (
+                SELECT venta_id, COALESCE(SUM(monto), 0) AS dom_pagado
+                FROM abonos
+                WHERE es_domicilio = 1
+                GROUP BY venta_id
+            ) dom ON dom.venta_id = v.id
             {where_clause}
             ORDER BY v.id DESC
             LIMIT %(limite)s OFFSET %(offset)s
@@ -128,10 +139,12 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
             fecha_venta     = p[6],
             fecha_entrega   = p[7],
             total           = p[8],
-            total_abonado   = p[9],
-            saldo_pendiente = p[10],
-            estado          = p[11],
-            observacion     = p[12],
+            total_abonado   = p[10],
+            saldo_pendiente = p[11],
+            estado          = p[12],
+            observacion     = p[13],
+            valor_domicilio     = p[9],
+            domicilio_pendiente = p[14],
         ).to_dict()
         lista.append(venta)
 
@@ -146,19 +159,51 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
     
     
     
-def actualizar_detalle_venta(id, nuevo_detalle):
+def actualizar_detalle_venta(id, nuevo_detalle, valor_domicilio=None):
     with cursor_ctx() as c:
-        # Verificar que la venta existe y está pendiente
-        c.execute("SELECT id, total_abonado, estado FROM ventas WHERE id = %s", (id,))
+        # Verificar que la venta existe y está pendiente. FOR UPDATE evita
+        # que entren abonos concurrentes mientras se validan los ya pagados.
+        c.execute("""
+            SELECT total_abonado, estado, valor_domicilio
+            FROM ventas WHERE id = %s FOR UPDATE
+        """, (id,))
         venta = c.fetchone()
-        if not venta or venta[2] != 'pendiente':
+        if not venta or venta[1] != 'pendiente':
             return None
+
+        # Domicilio efectivo: el del body o, si no vino, el actual de la BD.
+        if valor_domicilio is None:
+            valor_domicilio = float(venta[2]) if venta[2] is not None else 0.0
+
+        # Lo ya pagado: productos (es_domicilio=0) y domicilio (es_domicilio=1).
+        c.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN es_domicilio = 0 THEN monto ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN es_domicilio = 1 THEN monto ELSE 0 END), 0)
+            FROM abonos
+            WHERE venta_id = %s
+        """, (id,))
+        pagado_productos, pagado_domicilio = (float(x) for x in c.fetchone())
+
+        # Nuevo total solo de productos/combos (se calcula antes de tocar la BD).
+        nuevo_total_detalle = sum(
+            float(item["cantidad"]) * float(item["precio_unitario"])
+            for item in nuevo_detalle
+        )
+
+        if nuevo_total_detalle < pagado_productos:
+            raise ValueError(
+                f"la suma del detalle no puede ser menor que lo ya pagado en productos ({pagado_productos})"
+            )
+        if valor_domicilio < pagado_domicilio:
+            raise ValueError(
+                f"valor_domicilio no puede ser menor que el domicilio ya pagado ({pagado_domicilio})"
+            )
 
         # Borrar el detalle actual
         c.execute("DELETE FROM venta_detalle WHERE venta_id = %s", (id,))
 
-        # Insertar los nuevos productos/combos y calcular el nuevo total
-        nuevo_total = 0
+        # Insertar los nuevos productos/combos
         for item in nuevo_detalle:
             es_combo = 1 if item.get("tipo") == "combo" else 0
             combo_id = item.get("combo_id", None)
@@ -186,12 +231,11 @@ def actualizar_detalle_venta(id, nuevo_detalle):
                 es_combo,
                 combo_productos_json
             ))
-            nuevo_total += item["cantidad"] * float(item["precio_unitario"])
 
-        # Actualizar el total de la venta
+        # Actualizar total = detalle + domicilio efectivo, y el domicilio.
         c.execute("""
-            UPDATE ventas SET total = %s WHERE id = %s
-        """, (nuevo_total, id))
+            UPDATE ventas SET total = %s, valor_domicilio = %s WHERE id = %s
+        """, (nuevo_total_detalle + valor_domicilio, valor_domicilio, id))
 
         current_app.mysql.connection.commit()
 
@@ -206,8 +250,8 @@ def obtener_venta_detalle(id):
         c.execute("""
             SELECT v.id, v.cliente_id, cl.nombre, v.corte_id,
                    v.usuario_id, v.fecha_venta, v.fecha_entrega,
-                   v.total, v.total_abonado, v.saldo_pendiente, v.estado,
-                   v.direccion_entrega
+                   v.total, v.valor_domicilio, v.total_abonado,
+                   v.saldo_pendiente, v.estado, v.direccion_entrega
             FROM ventas v
             JOIN clientes cl ON cl.id = v.cliente_id
             WHERE v.id = %s
@@ -231,7 +275,8 @@ def obtener_venta_detalle(id):
         # abonos de la venta
         c.execute("""
             SELECT a.id, a.monto, a.fecha, a.medio_pago, a.observacion,
-                   a.medio_pago_id, mp.nombre AS medio_pago_nombre
+                   a.medio_pago_id, mp.nombre AS medio_pago_nombre,
+                   a.es_domicilio
             FROM abonos a
             LEFT JOIN medios_pago mp ON mp.id = a.medio_pago_id
             WHERE a.venta_id = %s
@@ -254,6 +299,17 @@ def obtener_venta_detalle(id):
         except (ValueError, TypeError):
             return None
 
+    es_anulada = venta[11] == 'anulada'
+    if es_anulada:
+        pagado_domicilio = 0.0
+        pagado_productos = 0.0
+    else:
+        pagado_domicilio = sum(float(a[1]) for a in abonos if a[7])
+        pagado_productos = sum(float(a[1]) for a in abonos if not a[7])
+    subtotal_productos = float(venta[7]) - float(venta[8])
+    domicilio_pendiente = 0.0 if es_anulada else float(venta[8]) - pagado_domicilio
+    productos_pendiente = 0.0 if es_anulada else subtotal_productos - pagado_productos
+
     return {
         "id"              : venta[0],
         "cliente_id"      : venta[1],
@@ -263,10 +319,16 @@ def obtener_venta_detalle(id):
         "fecha_venta"     : str(venta[5]),
         "fecha_entrega"   : str(venta[6]),
         "total"           : float(venta[7]),
-        "total_abonado"   : float(venta[8]),
-        "saldo_pendiente" : float(venta[9]),
-        "estado"          : venta[10],
-        "direccion_entrega": venta[11],
+        "valor_domicilio" : float(venta[8]),
+        "domicilio_pagado"     : pagado_domicilio,
+        "domicilio_pendiente"  : domicilio_pendiente,
+        "subtotal_productos"   : subtotal_productos,
+        "productos_pagado"     : pagado_productos,
+        "productos_pendiente"  : productos_pendiente,
+        "total_abonado"   : float(venta[9]),
+        "saldo_pendiente" : float(venta[10]),
+        "estado"          : venta[11],
+        "direccion_entrega": venta[12],
         "detalle"         : [
             {
                 "producto_id"    : d[0],
@@ -287,6 +349,7 @@ def obtener_venta_detalle(id):
                 "medio_pago" : a[3],
                 "medio_pago_id"    : a[5],
                 "medio_pago_nombre": a[6],
+                "es_domicilio": bool(a[7]),
                 "observacion": a[4]
             } for a in abonos
         ]
@@ -399,7 +462,7 @@ def descontar_inventario_combo_personalizado(productos_personalizados, cantidad_
             
 def registro(cliente_id, corte_id, usuario_id,
              fecha_entrega, total, detalle, abonos_iniciales=None, observacion=None,
-             direccion_entrega=None):
+             direccion_entrega=None, valor_domicilio=0):
     with cursor_ctx() as c:
         c.execute("SELECT nombre FROM clientes WHERE id = %s", (cliente_id,))
         cliente = c.fetchone()
@@ -407,10 +470,11 @@ def registro(cliente_id, corte_id, usuario_id,
 
         c.execute("""
             INSERT INTO ventas (cliente_id, corte_id, usuario_id,
-                                fecha_entrega, direccion_entrega, total, nombre_cliente, observacion)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                fecha_entrega, direccion_entrega, total,
+                                nombre_cliente, observacion, valor_domicilio)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (cliente_id, corte_id, usuario_id, fecha_entrega, direccion_entrega,
-              total, nombre_cliente, observacion))
+              total, nombre_cliente, observacion, valor_domicilio))
 
 
         venta_id = c.lastrowid
@@ -449,8 +513,9 @@ def registro(cliente_id, corte_id, usuario_id,
                     continue
                 c.execute("""
                     INSERT INTO abonos (venta_id, corte_id, usuario_id,
-                                        monto, fecha, observacion, medio_pago, medio_pago_id)
-                    VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s)
+                                        monto, fecha, observacion, medio_pago,
+                                        medio_pago_id, es_domicilio)
+                    VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s, %s)
                 """, (
                     venta_id,
                     corte_id,
@@ -458,7 +523,8 @@ def registro(cliente_id, corte_id, usuario_id,
                     abono["monto"],
                     abono.get("observacion", None),
                     abono.get("medio_pago", "efectivo"),
-                    abono.get("medio_pago_id")
+                    abono.get("medio_pago_id"),
+                    abono.get("es_domicilio", False)
                 ))
 
 
@@ -520,12 +586,22 @@ def generar_comprobante(venta_id):
         # traer datos completos de la venta
         c.execute("""
             SELECT v.id, cl.nombre, v.fecha_venta, v.fecha_entrega,
-                   v.total, v.total_abonado, v.saldo_pendiente, v.estado
+                   v.total, v.valor_domicilio, v.total_abonado,
+                   v.saldo_pendiente, v.estado
             FROM ventas v
             JOIN clientes cl ON cl.id = v.cliente_id
             WHERE v.id = %s
         """, (venta_id,))
         venta = c.fetchone()
+
+        # lo pagado por tipo (una sola consulta agregada)
+        c.execute("""
+            SELECT COALESCE(SUM(CASE WHEN es_domicilio = 0 THEN monto ELSE 0 END), 0),
+                   COALESCE(SUM(CASE WHEN es_domicilio = 1 THEN monto ELSE 0 END), 0)
+            FROM abonos
+            WHERE venta_id = %s
+        """, (venta_id,))
+        pagado = c.fetchone()
 
         # traer detalle de productos
         c.execute("""
@@ -536,6 +612,13 @@ def generar_comprobante(venta_id):
         """, (venta_id,))
         detalle = c.fetchall()
 
+    es_anulada = venta[8] == 'anulada'
+    pagado_productos = 0.0 if es_anulada else float(pagado[0])
+    pagado_domicilio = 0.0 if es_anulada else float(pagado[1])
+    subtotal_productos = float(venta[4]) - float(venta[5])
+    domicilio_pendiente = 0.0 if es_anulada else float(venta[5]) - pagado_domicilio
+    productos_pendiente = 0.0 if es_anulada else subtotal_productos - pagado_productos
+
     return {
         "numero"          : comp[1],
         "fecha_emision"   : str(comp[2]),
@@ -544,9 +627,15 @@ def generar_comprobante(venta_id):
         "fecha_venta"     : str(venta[2]),
         "fecha_entrega"   : str(venta[3]),
         "total"           : float(venta[4]),
-        "total_abonado"   : float(venta[5]),
-        "saldo_pendiente" : float(venta[6]),
-        "estado"          : venta[7],
+        "valor_domicilio" : float(venta[5]),
+        "domicilio_pagado"     : pagado_domicilio,
+        "domicilio_pendiente"  : domicilio_pendiente,
+        "subtotal_productos"   : subtotal_productos,
+        "productos_pagado"     : pagado_productos,
+        "productos_pendiente"  : productos_pendiente,
+        "total_abonado"   : float(venta[6]),
+        "saldo_pendiente" : float(venta[7]),
+        "estado"          : venta[8],
         "detalle"         : [
             {
                 "nombre_producto": d[0],
@@ -561,7 +650,7 @@ def obtener_venta(id):
     with cursor_ctx() as c:
         c.execute("""
             SELECT v.id, v.cliente_id, c.nombre, v.corte_id, v.usuario_id,
-                   v.fecha_venta, v.fecha_entrega, v.total,
+                   v.fecha_venta, v.fecha_entrega, v.total, v.valor_domicilio,
                    v.total_abonado, v.saldo_pendiente, v.estado, v.observacion
             FROM ventas v
             JOIN clientes c ON c.id = v.cliente_id
@@ -578,14 +667,15 @@ def obtener_venta(id):
             "fecha_venta"     : str(venta[5]),
             "fecha_entrega"   : str(venta[6]),
             "total"           : float(venta[7]),
-            "total_abonado"   : float(venta[8]),
-            "saldo_pendiente" : float(venta[9]),
-            "estado"          : venta[10],
-            "observacion"     : venta[11],
+            "valor_domicilio" : float(venta[8]),
+            "total_abonado"   : float(venta[9]),
+            "saldo_pendiente" : float(venta[10]),
+            "estado"          : venta[11],
+            "observacion"     : venta[12],
         }
     return None
 
-def actualizar_venta(id, fecha_entrega, total, estado):
+def actualizar_venta(id, fecha_entrega, estado):
     with cursor_ctx() as c:
         # Obtener el estado anterior para saber si estamos entregando
         c.execute("SELECT estado FROM ventas WHERE id = %s", (id,))
@@ -594,13 +684,14 @@ def actualizar_venta(id, fecha_entrega, total, estado):
             return None
         estado_anterior = venta_anterior[0]
 
+        # El total NO se escribe aca: lo calcula POST /ventas o
+        # PUT /ventas/<id>/detalle. El "total" del payload se ignora.
         c.execute("""
             UPDATE ventas
             SET fecha_entrega = %s,
-                total         = %s,
                 estado        = %s
             WHERE id = %s
-        """, (fecha_entrega, total, estado, id))
+        """, (fecha_entrega, estado, id))
 
         # Si la venta pasa a "entregada" por primera vez, descontar inventario
         if estado == 'entregada' and estado_anterior != 'entregada':
