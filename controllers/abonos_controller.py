@@ -2,7 +2,8 @@ from flask import jsonify, request, g
 from datetime import datetime
 from services.abono_services import (
     listado_abonos, registro, obtener_abono,
-    actualizar_abono, eliminar_abono,generar_recibo
+    actualizar_abono, eliminar_abono,generar_recibo,
+    obtener_suma_abonos_por_tipo, obtener_es_domicilio_abono
 )
 from services.ventas_services import obtener_venta
 from services.cortes_services import obtener_corte, obtener_corte_abierto
@@ -46,6 +47,10 @@ def cntregistrar():
         medio_pago_id = request.json.get("medio_pago_id")
         obs           = request.json.get("observacion", None)
 
+        es_domicilio = request.json.get("es_domicilio", False)
+        if not isinstance(es_domicilio, bool):
+            return jsonify({"mensaje": "es_domicilio debe ser true o false"}), 400
+
         try:
             medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
         except MedioPagoInvalido as e:
@@ -77,6 +82,19 @@ def cntregistrar():
                 "mensaje": f"el abono de ${monto} supera el saldo pendiente de ${venta_db['saldo_pendiente']}"
             }), 400
 
+        # Tope por tipo: productos vs domicilio.
+        pagado_productos, pagado_domicilio = obtener_suma_abonos_por_tipo(id_venta)
+        if es_domicilio:
+            pendiente = venta_db["valor_domicilio"] - pagado_domicilio
+            tipo = "domicilio"
+        else:
+            pendiente = (venta_db["total"] - venta_db["valor_domicilio"]) - pagado_productos
+            tipo = "productos"
+        if monto > pendiente:
+            return jsonify({
+                "mensaje": f"el abono de ${monto} supera lo pendiente de {tipo}: ${pendiente}"
+            }), 400
+
         try:
             fecha = datetime.strptime(fecha, "%d/%m/%Y")
         except ValueError:
@@ -86,7 +104,8 @@ def cntregistrar():
 
         fecha = fecha.strftime("%Y-%m-%d")
 
-        p = registro(id_venta, corte, usuario, monto, fecha, obs, medio_pago, medio_pago_id)
+        p = registro(id_venta, corte, usuario, monto, fecha, obs,
+                     medio_pago, medio_pago_id, es_domicilio)
         return jsonify({"mensaje": "abono registrado", "datos": p}), 201
 
     except Exception as e:
@@ -137,9 +156,31 @@ def cntActualizar(id):
         if monto <= 0:
             return jsonify({"mensaje": "el monto debe ser mayor a 0"}), 400
 
+        # es_domicilio no se puede cambiar; si llega distinto al guardado, 400.
+        es_domicilio_actual = obtener_es_domicilio_abono(id)
+        if "es_domicilio" in request.json:
+            es_domicilio_nuevo = request.json["es_domicilio"]
+            if not isinstance(es_domicilio_nuevo, bool):
+                return jsonify({"mensaje": "es_domicilio debe ser true o false"}), 400
+            if (1 if es_domicilio_nuevo else 0) != es_domicilio_actual:
+                return jsonify({"mensaje": "no se puede cambiar es_domicilio de un abono"}), 400
+
+        # Tope por tipo, excluyendo el monto anterior de este mismo abono.
+        pagado_productos, pagado_domicilio = obtener_suma_abonos_por_tipo(venta["id"])
+        if es_domicilio_actual == 1:
+            pendiente = venta["valor_domicilio"] - (pagado_domicilio - abono["monto"])
+            tipo = "domicilio"
+        else:
+            pendiente = (venta["total"] - venta["valor_domicilio"]) - (pagado_productos - abono["monto"])
+            tipo = "productos"
+
         maximo = venta["saldo_pendiente"] + abono["monto"]
         if monto > maximo:
             return jsonify({"mensaje": f"el monto no puede superar {maximo}"}), 400
+        if monto > pendiente:
+            return jsonify({
+                "mensaje": f"el monto no puede superar lo pendiente de {tipo}: ${pendiente}"
+            }), 400
 
         try:
             fecha_dt = datetime.strptime(fecha, "%d/%m/%Y")

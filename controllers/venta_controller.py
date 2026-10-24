@@ -13,6 +13,9 @@ from zoneinfo import ZoneInfo
 ESTADOS_VALIDOS = ["pendiente", "entregada", "anulada"]
 TIPOS_PAGO_VALIDOS = ["efectivo", "transferencia", "otro", "deben", "error"]
 
+# Tope razonable para valor_domicilio (evita montos accidentales en el POST).
+VALOR_DOMICILIO_MAXIMO = 1000000
+
 
 def _parsear_csv(valor, valores_validos, nombre):
     """
@@ -44,6 +47,10 @@ def _normalizar_abono_inicial(abono, medio_pago_por_defecto=None):
     if medio_pago is None:
         return None, "cada abono debe tener medio_pago"
 
+    es_domicilio = abono.get("es_domicilio", False)
+    if not isinstance(es_domicilio, bool):
+        return None, "es_domicilio debe ser true o false"
+
     try:
         medio_pago, medio_pago_id = resolver_medio_pago(
             medio_pago, abono.get("medio_pago_id")
@@ -56,6 +63,7 @@ def _normalizar_abono_inicial(abono, medio_pago_por_defecto=None):
         "observacion"  : abono.get("observacion", None),
         "medio_pago"   : medio_pago,
         "medio_pago_id": medio_pago_id,
+        "es_domicilio" : es_domicilio,
     }, None
 
 
@@ -117,12 +125,28 @@ def cntActualizarDetalle(id):
                     if p['cantidad_unidades'] <= 0:
                         return jsonify({"mensaje": "cantidad_unidades debe ser mayor a 0 en cada producto del combo"}), 400
  
-        resultado = actualizar_detalle_venta(id, detalle)
+        # valor_domicilio: opcional. Si no viene, el service conserva el actual
+        # de la BD (nunca el del payload). Si viene, se valida igual que en POST.
+        valor_domicilio = data.get("valor_domicilio")
+        if valor_domicilio is not None:
+            if isinstance(valor_domicilio, bool) or not isinstance(valor_domicilio, (int, float)):
+                return jsonify({"mensaje": "valor_domicilio debe ser un número"}), 400
+            if valor_domicilio < 0:
+                return jsonify({"mensaje": "valor_domicilio no puede ser negativo"}), 400
+            if valor_domicilio > VALOR_DOMICILIO_MAXIMO:
+                return jsonify({"mensaje": f"valor_domicilio supera el tope permitido de {VALOR_DOMICILIO_MAXIMO}"}), 400
+            if abs(valor_domicilio * 100 - round(valor_domicilio * 100)) > 0.000001:
+                return jsonify({"mensaje": "valor_domicilio debe tener máximo 2 decimales"}), 400
+            valor_domicilio = round(valor_domicilio, 2)
+
+        resultado = actualizar_detalle_venta(id, detalle, valor_domicilio)
         if resultado is None:
             return jsonify({"mensaje": f"La venta con id {id} no existe o no está pendiente"}), 404
  
         return jsonify(resultado), 200
- 
+
+    except ValueError as e:
+        return jsonify({"mensaje": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
  
@@ -172,6 +196,18 @@ def cntregistrar():
         detalle       = request.json["detalle"]
         abono_inicial = request.json.get("abono_inicial", None)
         observacion   = request.json.get("observacion", None)
+
+        # valor_domicilio: opcional, >= 0, max 2 decimales y tope razonable.
+        valor_domicilio = request.json.get("valor_domicilio", 0)
+        if isinstance(valor_domicilio, bool) or not isinstance(valor_domicilio, (int, float)):
+            return jsonify({"mensaje": "valor_domicilio debe ser un número"}), 400
+        if valor_domicilio < 0:
+            return jsonify({"mensaje": "valor_domicilio no puede ser negativo"}), 400
+        if valor_domicilio > VALOR_DOMICILIO_MAXIMO:
+            return jsonify({"mensaje": f"valor_domicilio supera el tope permitido de {VALOR_DOMICILIO_MAXIMO}"}), 400
+        if abs(valor_domicilio * 100 - round(valor_domicilio * 100)) > 0.000001:
+            return jsonify({"mensaje": "valor_domicilio debe tener máximo 2 decimales"}), 400
+        valor_domicilio = round(valor_domicilio, 2)
 
         # direccion_entrega: opcional y SOLO para este pedido.
         # No modifica la direccion del cliente. Vacia o ausente => NULL.
@@ -232,9 +268,13 @@ def cntregistrar():
         total_calculado = sum(
             item["cantidad"] * item["precio_unitario"] for item in detalle
         )
-        if total != total_calculado:
+        total_esperado = round(total_calculado + valor_domicilio, 2)
+        if total != total_esperado:
             return jsonify({
-                "mensaje": f"el total {total} no coincide con el detalle {total_calculado}"
+                "mensaje": (
+                    f"el total {total} no coincide con el detalle "
+                    f"{total_calculado} + domicilio {valor_domicilio} = {total_esperado}"
+                )
             }), 400
 
         
@@ -258,9 +298,15 @@ def cntregistrar():
                     return jsonify({"mensaje": error}), 400
                 abonos_iniciales.append(normalizado)
 
-        suma_abonos = sum(a["monto"] for a in abonos_iniciales)
-        if suma_abonos > total:
-            return jsonify({"mensaje": "la suma de los abonos no puede superar el total"}), 400
+        suma_abonos_productos = sum(a["monto"] for a in abonos_iniciales if not a["es_domicilio"])
+        suma_abonos_domicilio = sum(a["monto"] for a in abonos_iniciales if a["es_domicilio"])
+
+        if suma_abonos_domicilio > 0 and valor_domicilio == 0:
+            return jsonify({"mensaje": "no se aceptan abonos de domicilio cuando valor_domicilio es 0"}), 400
+        if suma_abonos_productos > total - valor_domicilio:
+            return jsonify({"mensaje": "la suma de abonos de productos supera el total sin domicilio"}), 400
+        if suma_abonos_domicilio > valor_domicilio:
+            return jsonify({"mensaje": "la suma de abonos de domicilio supera valor_domicilio"}), 400
 
        
         cliente_db = obtener_cliente(id_cliente)
@@ -292,7 +338,7 @@ def cntregistrar():
 
         p = registro(id_cliente, corte, usuario, fecha_entrega,
                      total, detalle, abonos_iniciales, observacion,
-                     direccion_entrega)
+                     direccion_entrega, valor_domicilio)
         return jsonify({"mensaje": "venta registrada", "datos": p}), 201
 
     except Exception as e:
@@ -310,17 +356,14 @@ def cntActualizar(id):
 
         
         fecha_entrega = request.json.get("fecha_entrega", venta["fecha_entrega"])
-        total         = request.json.get("total",         venta["total"])
         estado        = request.json.get("estado",        venta["estado"])
 
+        # El campo "total" del payload se ignora: el total solo lo calcula
+        # el backend (POST /ventas o PUT /ventas/<id>/detalle).
         
         estados_validos = ["pendiente", "entregada", "anulada"]
         if estado not in estados_validos:
             return jsonify({"mensaje": f"estado invalido, debe ser: {estados_validos}"}), 400
-
-       
-        if total <= 0:
-            return jsonify({"mensaje": "el total debe ser mayor a 0"}), 400
 
         
         formatos = [
@@ -350,7 +393,7 @@ def cntActualizar(id):
         if estado == 'pendiente' and venta['estado'] != 'pendiente':
             return jsonify({"mensaje": "No se puede volver a estado pendiente"}), 400
        
-        resultado = actualizar_venta(id, fecha_entrega, total, estado)
+        resultado = actualizar_venta(id, fecha_entrega, estado)
         return jsonify({"mensaje": "venta actualizada", "datos": resultado}), 200
 
     except Exception as e:
