@@ -8,11 +8,16 @@ def cntListado():
     try:
         pagina = int(request.args.get('pagina', 1))
         limite = int(request.args.get('limite', 20))
+        busqueda = (request.args.get('q', '') or '').strip() or None
 
         if pagina < 1 or limite < 1:
             return jsonify({"mensaje": "pagina y limite deben ser mayores a 0"}), 400
+        if limite > 200:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 200"}), 400
+        if busqueda and len(busqueda) > 100:
+            return jsonify({"mensaje": "q no puede exceder 100 caracteres"}), 400
 
-        datos = listado_inventarios(pagina=pagina, limite=limite)
+        datos = listado_inventarios(pagina=pagina, limite=limite, busqueda=busqueda)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

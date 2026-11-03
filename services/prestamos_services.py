@@ -67,7 +67,8 @@ def obtener_prestamo(prestamo_id):
     return _row_a_dict(row)
 
 
-def listar_prestamos(estado=None):
+def listar_prestamos(estado=None, pagina=1, limite=20, busqueda=None, cliente_id=None):
+    offset = (pagina - 1) * limite
     query = """
         SELECT p.id, p.cliente_id, cl.nombre AS cliente_nombre, p.corte_id,
                p.usuario_id, p.monto, p.total_abonado, p.saldo_pendiente,
@@ -80,16 +81,39 @@ def listar_prestamos(estado=None):
         LEFT JOIN medios_pago mp ON mp.id = p.medio_pago_id
         LEFT JOIN medios_pago mpp ON mpp.id = p.medio_pago_pago_id
     """
-    params = ()
+    condiciones = []
+    params = []
     if estado:
-        query += " WHERE p.estado = %s"
-        params = (estado,)
-    query += " ORDER BY p.fecha DESC"
+        condiciones.append("p.estado = %s")
+        params.append(estado)
+    if cliente_id:
+        condiciones.append("p.cliente_id = %s")
+        params.append(cliente_id)
+    if busqueda:
+        condiciones.append("(cl.nombre LIKE %s OR p.observacion LIKE %s OR p.id LIKE %s)")
+        like = f"%{busqueda}%"
+        params += [like, like, like]
+    where = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
     with cursor_ctx() as c:
-        c.execute(query, params)
+        c.execute(
+            "SELECT COUNT(*) FROM prestamos p JOIN clientes cl ON cl.id = p.cliente_id" + where,
+            tuple(params)
+        )
+        total = c.fetchone()[0]
+
+        c.execute(
+            query + where + " ORDER BY p.fecha DESC, p.id DESC LIMIT %s OFFSET %s",
+            tuple(params + [limite, offset])
+        )
         rows = c.fetchall()
-    return [_row_a_dict(r) for r in rows]
+    return {
+        "datos": [_row_a_dict(r) for r in rows],
+        "total": total,
+        "pagina": pagina,
+        "limite": limite,
+        "total_paginas": -(-total // limite)
+    }
 
 
 def listar_pagos_prestamo(prestamo_id):

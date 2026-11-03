@@ -18,7 +18,21 @@ from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
 def cntListarPrestamos():
     try:
         estado = request.args.get("estado")  # opcional: 'pendiente' | 'pagado'
-        datos = listar_prestamos(estado)
+        pagina = request.args.get("pagina", 1, type=int)
+        limite = request.args.get("limite", 20, type=int)
+        busqueda = (request.args.get("q", "") or "").strip() or None
+        cliente_id = request.args.get("cliente_id", None, type=int)
+
+        if estado and estado not in ("pendiente", "pagado"):
+            return jsonify({"mensaje": "estado debe ser pendiente o pagado"}), 400
+        if pagina is None or pagina < 1:
+            return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
+        if limite is None or limite < 1 or limite > 100:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
+        if busqueda and len(busqueda) > 100:
+            return jsonify({"mensaje": "q no puede exceder 100 caracteres"}), 400
+
+        datos = listar_prestamos(estado, pagina, limite, busqueda, cliente_id)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

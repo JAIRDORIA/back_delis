@@ -2,19 +2,27 @@ from flask import current_app
 from models.productos_model import productos
 from utils.db import cursor_ctx
 
-def listado_productos(pagina=1, limite=20):
+def listado_productos(pagina=1, limite=20, busqueda=None):
     offset = (pagina - 1) * limite
+    where = "WHERE activo = 1"
+    params = []
+    if busqueda:
+        where += " AND (nombre LIKE %s OR descripcion LIKE %s)"
+        like = f"%{busqueda}%"
+        params += [like, like]
+
     with cursor_ctx() as c:
-        c.execute("SELECT COUNT(*) FROM productos WHERE activo = 1")
+        c.execute(f"SELECT COUNT(*) FROM productos {where}", tuple(params))
         total = c.fetchone()[0]
 
-        sql = """
+        sql = f"""
             SELECT id, nombre, descripcion, precio_detal, precio_almayor,unidades_por_bandeja, activo, created_at, updated_at 
             FROM productos 
-            WHERE activo = 1
+            {where}
+            ORDER BY id ASC
             LIMIT %s OFFSET %s
         """
-        c.execute(sql, (limite, offset))
+        c.execute(sql, tuple(params + [limite, offset]))
         datos = c.fetchall()
 
     lista = []

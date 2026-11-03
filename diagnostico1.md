@@ -268,3 +268,12 @@ No encontré `enum` real de JSON Schema en ningún punto: los valores se documen
 ---
 
 **Actualización 2026-10-18:** se agregó `POST /medios-pago/<id>/retiros` (`cntRetiro` en `controllers/medios_pago_controller.py` y `retirar_cuenta` en `services/medios_pago_services.py`). Los retiros se insertan en `retiros_cuentas` y `v_movimientos_cuenta` ya los expone como `egreso`/`retiro`, por lo que `v_saldos_cuenta` los descuenta. No se modificó el esquema ni la vista. También se agregó `POST /medios-pago/retiros/vaciar` (`cntVaciar` y `vaciar_cuentas_transferencia`), que retira el saldo completo de todas las cuentas de transferencia no de sistema con saldo > 0 en una sola transacción.
+
+---
+
+**Actualización 2026-11-03 (paginación y búsqueda en listados):** se paginó y/o se agregó búsqueda `q` en cuatro listados, sin tocar lógica de negocio ni esquema.
+- `GET /prestamos/`: ahora devuelve `{datos, total, pagina, limite, total_paginas}` (antes era un array). Params: `pagina` (≥1), `limite` (1–100, def. 20), `q` (cliente, observación o id), `estado` (`pendiente|pagado`, validado), `cliente_id`.
+- `GET /proveedores/`: mantiene `exito` y `datos`; `total` ahora es el total real e incluye `pagina`, `limite`, `total_paginas`. Params: `pagina`, `limite` (1–100), `q` (nombre, email, teléfono). `/activos` y `/buscar/*` no cambian.
+- `GET /inventarios/`: se agrega `q` (nombre de producto) y tope `limite` ≤ 200. Mismo shape.
+- `GET /productos/`: se agrega `q` (nombre o descripción) y tope `limite` ≤ 200. Mismo shape.
+- Todos con `ORDER BY` estable y SQL parametrizado. Queda pendiente: clientes, combos, producciones, usuarios, abonos, auditoría, cortes y `produccion-empleados/pendientes` (ver diagnóstico anterior). `swagger.json` no se actualizó.

@@ -19,11 +19,21 @@ def cntListadoProveedores():
     GET /proveedores/
     """
     try:
-        datos = listado_proveedores()
+        pagina = request.args.get("pagina", 1, type=int)
+        limite = request.args.get("limite", 20, type=int)
+        busqueda = (request.args.get("q", "") or "").strip() or None
+
+        if pagina is None or pagina < 1:
+            return jsonify({"exito": False, "mensaje": "la pagina debe ser mayor a 0"}), 400
+        if limite is None or limite < 1 or limite > 100:
+            return jsonify({"exito": False, "mensaje": "el limite debe ser entre 1 y 100"}), 400
+        if busqueda and len(busqueda) > 100:
+            return jsonify({"exito": False, "mensaje": "q no puede exceder 100 caracteres"}), 400
+
+        resultado = listado_proveedores(pagina, limite, busqueda)
         return jsonify({
             "exito": True,
-            "total": len(datos),
-            "datos": datos
+            **resultado
         }), 200
     except Exception as e:
         return jsonify({
