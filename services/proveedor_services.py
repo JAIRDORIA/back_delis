@@ -62,18 +62,38 @@ def _nombre_duplicado(cursor, nombre, excluir_id=None):
 #  LISTADO
 # ─────────────────────────────────────────────
 
-def listado_proveedores():
+def listado_proveedores(pagina=1, limite=20, busqueda=None):
+    """Listado paginado de proveedores con busqueda opcional (nombre, email, telefono)."""
     try:
+        offset = (pagina - 1) * limite
+        where = ""
+        params = []
+        if busqueda:
+            where = "WHERE (nombre LIKE %s OR email LIKE %s OR telefono LIKE %s)"
+            like = f"%{busqueda}%"
+            params += [like, like, like]
+
         with cursor_ctx() as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM proveedores {where}", tuple(params))
+            total = cursor.fetchone()[0]
+
             cursor.execute(
-                "SELECT id, nombre, telefono, direccion, email, activo FROM proveedores"
+                f"SELECT id, nombre, telefono, direccion, email, activo FROM proveedores {where} "
+                "ORDER BY nombre ASC, id ASC LIMIT %s OFFSET %s",
+                tuple(params + [limite, offset])
             )
             datos = cursor.fetchall()
             lista = []
             for fila in datos:
                 pro = proveedores(fila[0], fila[1], fila[2], fila[3], fila[4], fila[5])
                 lista.append(pro.todic())
-        return lista
+        return {
+            "datos": lista,
+            "total": total,
+            "pagina": pagina,
+            "limite": limite,
+            "total_paginas": -(-total // limite)
+        }
     except Exception as e:
         raise Exception(str(e))
 

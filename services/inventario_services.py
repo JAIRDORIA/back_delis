@@ -3,25 +3,32 @@ from models.inventario_model import inventarios
 import json
 from utils.db import cursor_ctx
 
-def listado_inventarios(pagina=1, limite=20):
+def listado_inventarios(pagina=1, limite=20, busqueda=None):
     offset = (pagina - 1) * limite
+    where = "WHERE p.activo = 1"
+    params = []
+    if busqueda:
+        where += " AND p.nombre LIKE %s"
+        params.append(f"%{busqueda}%")
+
     with cursor_ctx() as c:
-        c.execute("""
+        c.execute(f"""
             SELECT COUNT(*) FROM inventario i
             JOIN productos p ON p.id = i.producto_id
-            WHERE p.activo = 1
-        """)
+            {where}
+        """, tuple(params))
         total = c.fetchone()[0]
 
-        sql = """
+        sql = f"""
             SELECT i.id, i.producto_id, p.nombre, i.stock_actual, 
                    i.unidades_sueltas, i.stock_minimo, i.updated_at 
             FROM inventario i
             JOIN productos p ON p.id = i.producto_id
-            WHERE p.activo = 1
+            {where}
+            ORDER BY i.id ASC
             LIMIT %s OFFSET %s
         """
-        c.execute(sql, (limite, offset))
+        c.execute(sql, tuple(params + [limite, offset]))
         datos = c.fetchall()
 
     lista = []
