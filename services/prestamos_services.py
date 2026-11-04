@@ -67,6 +67,29 @@ def obtener_prestamo(prestamo_id):
     return _row_a_dict(row)
 
 
+def resumen_prestamos():
+    """Totales globales de toda la tabla prestamos (no dependen de filtros ni de la paginación)."""
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT
+                COALESCE(SUM(p.monto), 0),
+                COALESCE(SUM(p.total_abonado), 0),
+                COALESCE(SUM(p.saldo_pendiente), 0),
+                COALESCE(SUM(p.estado = 'pendiente'), 0),
+                COALESCE(SUM(p.estado = 'pagado'), 0)
+            FROM prestamos p
+            JOIN clientes cl ON cl.id = p.cliente_id
+        """)
+        r = c.fetchone()
+    return {
+        "total_prestado": float(r[0]),
+        "total_abonado": float(r[1]),
+        "saldo_por_cobrar": float(r[2]),
+        "pendientes": int(r[3]),
+        "pagados": int(r[4]),
+    }
+
+
 def listar_prestamos(estado=None, pagina=1, limite=20, busqueda=None, cliente_id=None):
     offset = (pagina - 1) * limite
     query = """
@@ -112,7 +135,8 @@ def listar_prestamos(estado=None, pagina=1, limite=20, busqueda=None, cliente_id
         "total": total,
         "pagina": pagina,
         "limite": limite,
-        "total_paginas": -(-total // limite)
+        "total_paginas": -(-total // limite),
+        "resumen": resumen_prestamos()
     }
 
 

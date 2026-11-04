@@ -272,7 +272,7 @@ No encontré `enum` real de JSON Schema en ningún punto: los valores se documen
 ---
 
 **Actualización 2026-11-03 (paginación y búsqueda en listados):** se paginó y/o se agregó búsqueda `q` en cuatro listados, sin tocar lógica de negocio ni esquema.
-- `GET /prestamos/`: ahora devuelve `{datos, total, pagina, limite, total_paginas}` (antes era un array). Params: `pagina` (≥1), `limite` (1–100, def. 20), `q` (cliente, observación o id), `estado` (`pendiente|pagado`, validado), `cliente_id`.
+- `GET /prestamos/`: ahora devuelve `{datos, total, pagina, limite, total_paginas, resumen}` (antes era un array). Params: `pagina` (≥1), `limite` (1–100, def. 20), `q` (cliente, observación o id), `estado` (`pendiente|pagado`, validado), `cliente_id`. `resumen` (`resumen_prestamos()` en `services/prestamos_services.py`) trae los totales globales `total_prestado`/`total_abonado`/`saldo_por_cobrar`/`pendientes`/`pagados`, independientes de filtros y paginación.
 - `GET /proveedores/`: mantiene `exito` y `datos`; `total` ahora es el total real e incluye `pagina`, `limite`, `total_paginas`. Params: `pagina`, `limite` (1–100), `q` (nombre, email, teléfono). `/activos` y `/buscar/*` no cambian.
 - `GET /inventarios/`: se agrega `q` (nombre de producto) y tope `limite` ≤ 200. Mismo shape.
 - `GET /productos/`: se agrega `q` (nombre o descripción) y tope `limite` ≤ 200. Mismo shape.
