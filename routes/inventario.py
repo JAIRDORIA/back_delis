@@ -1,8 +1,13 @@
 from flask import Blueprint
 from utils.decorators import token_requerido, rol_requerido
-from controllers.inventario_controller import cntListado, cntRegistro, cntActualizar, cntObtenerInventario, cntProductosBajoStock,cntActualizarCantidades
+from controllers.inventario_controller import cntListado, cntRegistro, cntActualizar, cntObtenerInventario, cntProductosBajoStock,cntActualizarCantidades, cntValorInventario
 
 inventario_bp = Blueprint ('inventarios', __name__)
+
+@inventario_bp.route('/valor', methods=["GET"])
+@token_requerido
+def valor():
+    return cntValorInventario()
 
 @inventario_bp.route('/')
 @token_requerido

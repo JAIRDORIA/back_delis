@@ -21,12 +21,24 @@ def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
         params = [corte_id]
 
         if busqueda:
-            where += " AND c.descripcion LIKE %s"
-            params.append(f"%{busqueda}%")
+            where += " AND (c.descripcion LIKE %s OR p.nombre LIKE %s OR CAST(c.id AS CHAR) = %s)"
+            params.extend([f"%{busqueda}%", f"%{busqueda}%", busqueda])
 
         with cursor_ctx() as cursor:
-            cursor.execute(f"SELECT COUNT(*) FROM compras c {where}", tuple(params))
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM compras c
+                JOIN proveedores p ON p.id = c.proveedor_id
+                {where}
+            """, tuple(params))
             total = cursor.fetchone()[0]
+
+            # Resumen global del corte: no depende de q ni de la paginacion
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(total), 0)
+                FROM compras
+                WHERE eliminada = 0 AND corte_id = %s
+            """, (corte_id,))
+            res = cursor.fetchone()
 
             cursor.execute(f"""
                 SELECT c.id, c.proveedor_id, p.nombre, c.corte_id, c.usuario_id,
@@ -54,7 +66,11 @@ def listado_compra(pagina=1, limite=20, corte_id=None, busqueda=None):
             "pagina"       : pagina,
             "limite"       : limite,
             "total_paginas": -(-total // limite),
-            "compras"      : lista
+            "compras"      : lista,
+            "resumen"      : {
+                "cantidad_compras": res[0],
+                "total_gastado"   : float(res[1])
+            }
         }
     except Exception as e:
         raise Exception(str(e))

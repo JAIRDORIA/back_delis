@@ -1,5 +1,5 @@
 from flask import jsonify, request
-from services.inventario_services import (listado_inventarios, registro, existe_inventario,obtener_inventario, actualizar_stock_minimo, productos_bajo_stock,actualizar_cantidades )
+from services.inventario_services import (listado_inventarios, registro, existe_inventario,obtener_inventario, actualizar_stock_minimo, productos_bajo_stock,actualizar_cantidades, valor_inventario )
 from services.productos_services import existe_producto
 from services.usuarios_servicies import obtener_usuario
 
@@ -21,6 +21,13 @@ def cntListado():
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def cntValorInventario():
+    """Valor del inventario a precio de venta: {valor_detal, valor_mayor}."""
+    try:
+        return jsonify(valor_inventario()), 200
+    except Exception as e:
+        return jsonify({"mensaje": str(e)}), 500
 
 def cntRegistro():
     requeridos = ['producto_id']

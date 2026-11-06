@@ -277,3 +277,9 @@ No encontré `enum` real de JSON Schema en ningún punto: los valores se documen
 - `GET /inventarios/`: se agrega `q` (nombre de producto) y tope `limite` ≤ 200. Mismo shape.
 - `GET /productos/`: se agrega `q` (nombre o descripción) y tope `limite` ≤ 200. Mismo shape.
 - Todos con `ORDER BY` estable y SQL parametrizado. Queda pendiente: clientes, combos, producciones, usuarios, abonos, auditoría, cortes y `produccion-empleados/pendientes` (ver diagnóstico anterior). `swagger.json` no se actualizó.
+
+---
+
+**Actualización 2026-11-06 (valor del inventario):** se agregó `GET /inventarios/valor` (`cntValorInventario` y `valor_inventario`). Solo lectura, sin cambios de esquema. Respuesta `{valor_detal, valor_mayor}`; usa bandejas completas de productos activos, ignora sueltas y stock negativo. `swagger.json` no se actualizó.
+
+**Actualización 2026-11-06 (compras):** `GET /compras/` amplía `q` (descripción, proveedor, id) y agrega `resumen` global por corte (`cantidad_compras`, `total_gastado`). Sin cambios de esquema. `swagger.json` no se actualizó.

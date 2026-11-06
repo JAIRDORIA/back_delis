@@ -11,12 +11,14 @@ def cntListadoCompra():
         pagina    = request.args.get("pagina", 1, type=int)
         limite    = request.args.get("limite", 20, type=int)
         corte_id  = request.args.get("corte_id", None, type=int)
-        busqueda  = request.args.get("q", None, type=str)
+        busqueda  = (request.args.get("q", "", type=str) or "").strip() or None
 
         if pagina < 1:
             return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
         if limite < 1 or limite > 100:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
+        if busqueda and len(busqueda) > 100:
+            return jsonify({"mensaje": "q no puede exceder 100 caracteres"}), 400
 
         if corte_id is None:
             corte_abierto = obtener_corte_abierto()
