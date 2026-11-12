@@ -242,21 +242,45 @@ def balance_corte_actual():
 
         corte_id = corte[0]
 
-        # total de ventas del corte actual
+        # Ingreso por ventas del corte actual: SOLO productos. El domicilio
+        # (valor_domicilio) NO es ingreso: es dinero de paso que luego sale
+        # como compra categoria='domicilio'. total_ventas cambia de
+        # significado y queda igual a ventas_productos (documentado).
         c.execute("""
-            SELECT COALESCE(SUM(total), 0)
+            SELECT COALESCE(SUM(GREATEST(total - valor_domicilio, 0)), 0)
             FROM ventas
             WHERE corte_id = %s AND estado != 'anulada'
         """, (corte_id,))
-        total_ventas = float(c.fetchone()[0])
+        ventas_productos = float(c.fetchone()[0])
+        total_ventas = ventas_productos
 
-        # total de compras del corte actual
+        # Compras del corte separadas por categoria.
         c.execute("""
-            SELECT COALESCE(SUM(total), 0)
+            SELECT
+                COALESCE(SUM(CASE WHEN categoria = 'insumo'    THEN total ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN categoria = 'domicilio' THEN total ELSE 0 END), 0)
             FROM compras
             WHERE corte_id = %s AND eliminada = 0
         """, (corte_id,))
-        total_compras = float(c.fetchone()[0])
+        fila_compras = c.fetchone()
+        compras_insumos = float(fila_compras[0])
+        compras_domicilios = float(fila_compras[1])
+        # total_compras se mantiene = suma de ambas (mismo numero de antes).
+        total_compras = compras_insumos + compras_domicilios
+
+        # Domicilios cobrados al cliente en el corte (abonos es_domicilio = 1).
+        # Mismo perimetro que total_efectivo/total_transferencia.
+        c.execute("""
+            SELECT COALESCE(SUM(a.monto), 0)
+            FROM abonos a
+            JOIN ventas v ON v.id = a.venta_id
+            WHERE a.corte_id = %s
+              AND a.es_domicilio = 1
+              AND v.estado IN ('pendiente', 'entregada')
+        """, (corte_id,))
+        domicilios_cobrados = float(c.fetchone()[0])
+        domicilios_pagados = compras_domicilios
+        diferencia_domicilios = domicilios_cobrados - domicilios_pagados
 
         # dinero en caja = ingresos - egresos de movimientos_caja
         c.execute("""
@@ -424,13 +448,22 @@ def balance_corte_actual():
             "saldo_inicial"     : float(corte[3]),
             "total_ventas"      : total_ventas,
             "total_compras"     : total_compras,
+            # Desglose nuevo (aditivo). total_ventas = ventas_productos.
+            "ventas_productos"  : ventas_productos,
+            "domicilios_cobrados"  : domicilios_cobrados,
+            "domicilios_pagados"   : domicilios_pagados,
+            "diferencia_domicilios": diferencia_domicilios,
+            "compras_insumos"   : compras_insumos,
+            "compras_domicilios": compras_domicilios,
             "saldo_pendiente_ventas" : saldo_pendiente_ventas,
             "saldo_pendiente_anteriores" : saldo_pendiente_anteriores,
             "dinero_caja"       : dinero_caja,
             "dinero_caja_real"  : dinero_caja_real, 
             "total_efectivo"    : total_efectivo - compras_efectivo - neto_prestamos_efectivo,
             "total_transferencia": total_transferencia - compras_transferencia - neto_prestamos_transferencia,
-            "resultado"         : total_ventas - total_compras,
+            # Margen real: productos - insumos. El domicilio queda fuera a
+            # proposito; su neto se ve en diferencia_domicilios.
+            "resultado"         : ventas_productos - compras_insumos,
             "transferencia_cuentas"    : transferencia_cuentas,
             "transferencia_adelantada" : transferencia_adelantada,
             "efectivo_caja"            : efectivo_caja,
@@ -438,11 +471,12 @@ def balance_corte_actual():
         }
 
 def ingresos_ventas_corte_abierto():
-    """Dinero cobrado en el corte abierto por abonos de ventas.
+    """Dinero cobrado en el corte abierto por abonos de ventas (solo productos).
 
     Fuente: tabla abonos (mismo origen que total_efectivo/total_transferencia),
-    filtrada por abonos.corte_id = corte abierto. Se excluyen abonos de ventas
-    anuladas y de ventas asignadas a un corte futuro (ese dinero va a
+    filtrada por abonos.corte_id = corte abierto. Se excluyen los abonos de
+    domicilio (es_domicilio = 1: no son ingreso, son dinero de paso), las
+    ventas anuladas y las ventas asignadas a un corte futuro (ese dinero va a
     cortes.saldo_inicial, no a caja del corte abierto). Sin corte abierto: 0.
     """
     with cursor_ctx() as c:
@@ -458,6 +492,7 @@ def ingresos_ventas_corte_abierto():
             JOIN cortes cv ON cv.id = v.corte_id
             WHERE a.corte_id = %s
               AND v.estado != 'anulada'
+              AND a.es_domicilio = 0
               AND cv.estado != 'futuro'
         """, (corte[0],))
         total = float(c.fetchone()[0])

@@ -12,7 +12,7 @@ Documento de traspaso para continuar el desarrollo en otra conversación. Proyec
 - Un préstamo (y cada abono a un préstamo) se asocia automáticamente al corte **abierto en ese momento** — no lo manda el frontend.
 - Las ventas se pueden asignar a un corte **futuro**. Mientras ese corte no esté abierto, sus abonos se suman a `cortes.saldo_inicial` en vez de insertarse en `movimientos_caja`.
 - `movimientos_caja` es el libro mayor de caja: `tipo` (`ingreso`/`egreso`), `concepto`, `monto`, `medio_pago`, `corte_id`, `referencia_id`.
-- `balance_corte_actual()` calcula: `total_ventas`, `total_compras`, `dinero_caja` (ingresos-egresos de `movimientos_caja`), `dinero_caja_real` (incluye `saldo_inicial`, excluye abonos de ventas futuras), `total_efectivo`/`total_transferencia` (calculado desde `abonos`−`compras` por `medio_pago`, **no** directamente desde `movimientos_caja` — hubo que sumarle a mano el neto de `prestamo`/`pago_prestamo` porque los préstamos no pasan por `abonos`/`compras`), `saldo_pendiente_ventas`, `saldo_pendiente_anteriores`.
+- `balance_corte_actual()` calcula: `total_ventas` (**solo productos**: `SUM(total - valor_domicilio)`; el domicilio es dinero de paso), `ventas_productos`, `total_compras` (= `compras_insumos` + `compras_domicilios`), `domicilios_cobrados`/`domicilios_pagados`/`diferencia_domicilios`, `dinero_caja` (ingresos-egresos de `movimientos_caja`), `dinero_caja_real` (incluye `saldo_inicial`, excluye abonos de ventas futuras), `total_efectivo`/`total_transferencia` (calculado desde `abonos`−`compras` por `medio_pago`, **no** directamente desde `movimientos_caja` — hubo que sumarle a mano el neto de `prestamo`/`pago_prestamo` porque los préstamos no pasan por `abonos`/`compras`), `saldo_pendiente_ventas`, `saldo_pendiente_anteriores`. `resultado` = `ventas_productos - compras_insumos` (el domicilio queda fuera; su neto está en `diferencia_domicilios`).
 - Historial de cortes: al exportar/ver detalle de un corte hay que traer **todas** las páginas de ventas/compras (se corrigió un bug donde se limitaba a 100 registros).
 
 ## 2. Zona horaria
@@ -136,7 +136,7 @@ Cotización enviada por **$600.000**, 3 semanas, anticipo 30%:
 
 ## 10. Estructura de tablas relevantes (nombres exactos usados en el código)
 
-`cortes(id, numero, fecha_inicio, saldo_inicial, estado)` · `retiros_cuentas(id, medio_pago_id, corte_id, usuario_id, monto, descripcion, fecha)` · `ventas(id, cliente_id, corte_id, usuario_id, fecha_venta, fecha_entrega, total, valor_domicilio, total_abonado, saldo_pendiente, estado, observacion, nombre_cliente, entregada_cocina_at, entregada_cocina_por)` · `venta_detalle(id, venta_id, producto_id, combo_id, nombre_producto, cantidad, precio_unitario, subtotal, es_combo, combo_productos)` · `abonos(id, venta_id, corte_id, usuario_id, monto, fecha, medio_pago, medio_pago_id, es_domicilio, observacion)` · `inventario(id, producto_id, stock_actual, unidades_sueltas, stock_minimo, updated_at)` · `productos(id, nombre, unidades_por_bandeja, ...)` · `combo_detalle(combo_id, producto_id, cantidad_unidades)` · `compras(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion, eliminada)` · `movimientos_caja(id, corte_id, usuario_id, tipo, concepto, referencia_id, monto, descripcion, medio_pago)` · `prestamos(id, cliente_id, corte_id, usuario_id, monto, total_abonado, saldo_pendiente, medio_pago, medio_pago_pago, estado, observacion, fecha, fecha_pago, usuario_pago_id)` · `pagos_prestamos(id, prestamo_id, corte_id, usuario_id, monto, medio_pago, observacion, fecha)` · `usuarios(id, nombre, username, password_hash, rol, activo, created_at, updated_at)` · `auditoria(id, usuario_id, accion, tabla_afectada, registro_id, descripcion, datos_anteriores, datos_nuevos, fecha)` · `producciones(id, producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion)`.
+`cortes(id, numero, fecha_inicio, saldo_inicial, estado)` · `retiros_cuentas(id, medio_pago_id, corte_id, usuario_id, monto, descripcion, fecha)` · `ventas(id, cliente_id, corte_id, usuario_id, fecha_venta, fecha_entrega, total, valor_domicilio, total_abonado, saldo_pendiente, estado, observacion, nombre_cliente, entregada_cocina_at, entregada_cocina_por)` · `venta_detalle(id, venta_id, producto_id, combo_id, nombre_producto, cantidad, precio_unitario, subtotal, es_combo, combo_productos)` · `abonos(id, venta_id, corte_id, usuario_id, monto, fecha, medio_pago, medio_pago_id, es_domicilio, observacion)` · `inventario(id, producto_id, stock_actual, unidades_sueltas, stock_minimo, updated_at)` · `productos(id, nombre, unidades_por_bandeja, ...)` · `combo_detalle(combo_id, producto_id, cantidad_unidades)` · `compras(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, total, descripcion, eliminada, categoria, venta_id)` · `movimientos_caja(id, corte_id, usuario_id, tipo, concepto, referencia_id, monto, descripcion, medio_pago)` · `prestamos(id, cliente_id, corte_id, usuario_id, monto, total_abonado, saldo_pendiente, medio_pago, medio_pago_pago, estado, observacion, fecha, fecha_pago, usuario_pago_id)` · `pagos_prestamos(id, prestamo_id, corte_id, usuario_id, monto, medio_pago, observacion, fecha)` · `usuarios(id, nombre, username, password_hash, rol, activo, created_at, updated_at)` · `auditoria(id, usuario_id, accion, tabla_afectada, registro_id, descripcion, datos_anteriores, datos_nuevos, fecha)` · `producciones(id, producto_id, cantidad, unidades_sueltas, usuario_id, fecha, observacion)`.
 
 *Actualización 2026-10-23 (valor de domicilio):* `ventas.valor_domicilio DECIMAL(12,2) NOT NULL DEFAULT 0` y `abonos.es_domicilio TINYINT(1) NOT NULL DEFAULT 0`. En `POST /ventas`, `valor_domicilio` es opcional (>= 0, máx. 2 decimales, tope 1.000.000; ausente = 0); `abonos_iniciales[].es_domicilio` es booleano opcional (default false). Se valida `total = detalle + valor_domicilio`, que los abonos de productos no superen `total - valor_domicilio`, que los abonos de domicilio no superen `valor_domicilio` y que no haya abonos de domicilio si `valor_domicilio = 0`. El `INSERT` de ventas guarda `valor_domicilio` y el de abonos guarda `es_domicilio`; `saldo_pendiente` sigue siendo columna generada (`total - total_abonado`). `PUT /ventas/<id>/detalle` acepta `valor_domicilio` opcional (ausente = conserva el actual de la BD), valida contra lo ya pagado (`es_domicilio` 0/1) y guarda `total = detalle + valor_domicilio` en el mismo UPDATE con `SELECT ... FOR UPDATE`. `PUT /ventas/<id>` ya no escribe `ventas.total` (ignora el `total` del payload). `POST /abonos` acepta `es_domicilio` booleano opcional (default false) y valida el tope por tipo (productos vs domicilio, con mensaje del pendiente de ese tipo); `PUT /abonos/<id>` no permite cambiar `es_domicilio` y valida el monto contra el tope de su tipo excluyendo el monto anterior. Lecturas: `GET /ventas/<id>/detalle` y comprobante devuelven `valor_domicilio`, `domicilio_pagado`, `domicilio_pendiente`, `subtotal_productos`, `productos_pagado`, `productos_pendiente` (anulada = todo 0); `GET /ventas` devuelve `valor_domicilio` y `domicilio_pendiente` con un LEFT JOIN agregado (sin N+1); abonos devuelven `es_domicilio` bool; recibo devuelve `es_domicilio`, `valor_domicilio`, `domicilio_pendiente` y `productos_pendiente`. Pendiente: reportes.
 
@@ -145,3 +145,69 @@ Cotización enviada por **$600.000**, 3 semanas, anticipo 30%:
 *Actualización 2026-11-06 (valor del inventario):* `GET /inventarios/valor` (`@token_requerido`, admin/cajero; `cocina` recibe 403) devuelve `{valor_detal, valor_mayor}` (floats). Cálculo: `Σ GREATEST(stock_actual, 0) * precio` solo con bandejas completas (ignora `unidades_sueltas` y stock negativo), solo productos con `activo = 1`; `precio_detal` y `precio_almayor` son **por bandeja**. Los combos no entran (no tienen inventario propio). Sin cambios de esquema. Función `valor_inventario()` en `services/inventario_services.py`. No depende de paginación ni de `q` del listado.
 
 *Actualización 2026-11-06 (compras):* `GET /compras/` ahora busca con `q` (máx. 100) en `descripcion`, nombre del proveedor o id exacto, y la respuesta agrega `resumen: {cantidad_compras, total_gastado}` calculado sobre **todas** las compras no eliminadas del corte consultado (`corte_id` o el abierto), sin importar `q` ni la página. Las cards del frontend deben leer `resumen` en vez de sumar la página.
+
+*Actualización 2026-11-09 (ventas por día de la semana):* `GET /ventas/por-dia-semana?semanas=N` (`@token_requerido`; `cocina` recibe 403) suma `ventas.total` por día de la semana de los últimos 7×N días corridos (N 1–8, def. 3), según `fecha_entrega` (UTC en BD; el día local se saca con desfase fijo de 5 h porque Colombia no tiene DST) y estados `pendiente`/`entregada`. Con 3 semanas, el lunes suma los 3 lunes. Devuelve siempre 7 días y `mejor_dia`.
+
+**Actualización 2026-11-09 (swagger):** `swagger.json` sincronizado. Nuevas rutas: `GET /inventarios/valor`, `GET /ventas/por-dia-semana`, `POST /medios-pago/{id}/retiros`, `POST /medios-pago/retiros/vaciar`. Contratos actualizados: `GET /prestamos/` (objeto paginado con `resumen`, params `pagina`/`limite`/`q`/`cliente_id`), `GET /proveedores/` (paginado con `q`), `GET /inventarios/` y `GET /productos/` (`q`, `limite` ≤ 200) y `GET /compras/` (`q` ampliado y `resumen`). Sin cambios de código.
+
+*Actualización 2026-11-10 (serie diaria de ventas cobradas):* nuevo `GET /ventas/serie-diaria?modo=corte|dias&dias=N` (`@token_requerido`; `cocina` 403), para la gráfica "Ventas del corte". Mide **dinero cobrado**, no facturado: cada venta aporta su `total_abonado` (el total si ya está pagada, o solo lo abonado si sigue pendiente) al día de su `fecha_entrega`; las ventas sin abonos no aportan y se excluyen las anuladas. Agrupa con `DATE(DATE_SUB(fecha_entrega, INTERVAL 5 HOUR))` (desfase fijo de 5 h, sin DST) y rellena con 0 los días sin ventas. `modo=corte` (def.) = solo `corte_id` del corte **abierto** (las ventas del corte futuro entran cuando su corte se abra), del inicio del corte a hoy, extendido hasta el último día con datos si hay ventas ya abonadas con `fecha_entrega` futura; 404 si no hay corte abierto. `modo=dias` = últimos `dias` (1–366, def. 30) días corridos incluyendo hoy, sin filtrar por corte. Respuesta `{modo, desde, hasta, corte_id, corte_numero, corte_fecha_inicio, dias:[{fecha,total,cantidad}], total, cantidad}`; `total` es la suma de los puntos. Sin cambios de esquema ni SQL de migración. `swagger.json` actualizado.
+
+---
+
+## 11. Domicilios: compras `categoria='domicilio'` (2026-11-11)
+
+Contexto: el pago al domiciliario se registraba como una compra normal a un proveedor llamado "domi", así que el domicilio inflaba ingresos y egresos y no se sabía a qué venta pertenecía. Ahora es una **categoría de compra** ligada a la venta. El proveedor sigue siendo libre (no se depende del nombre "domi").
+
+### Esquema (SQL aparte, correr ANTES de desplegar)
+`migracion_compras_domicilio.sql` (idempotente, con bloque de ROLLBACK y SELECT de comprobación):
+- `compras.categoria ENUM('insumo','domicilio') NOT NULL DEFAULT 'insumo'` → todas las compras existentes quedan `insumo`.
+- `compras.venta_id INT NULL` + índices `idx_compras_categoria` / `idx_compras_venta`. **Sin FK** (no se pudo verificar el tipo exacto de `ventas.id`); la integridad se valida en el service.
+
+### Reglas
+- `categoria='domicilio'` exige `venta_id` de una venta existente, no anulada y con `valor_domicilio > 0`. `categoria='insumo'` exige `venta_id` vacío. Errores: **400** con `{"mensaje": ...}`.
+- Una venta puede tener **varias** compras de domicilio. Se considera pagado cuando `SUM(compras.total)` de las vigentes (`eliminada = 0`) `>= valor_domicilio`. La suma **puede superar** `valor_domicilio` (el domicilio puede costar más de lo cobrado): solo se valida `total > 0`.
+- Anular una compra = `DELETE /compras/<id>` (baja lógica `eliminada = 1`): deja de contar y la venta vuelve a mostrar pendiente.
+- **Anular una venta NO anula sus compras de domicilio** (regla elegida): el egreso ya ocurrió en el corte en que se hizo la compra y los cortes cerrados no se recalculan. La respuesta de `PUT /ventas/<id>/anulacion` lo informa en `datos.compras_domicilio`, `datos.compras_domicilio_total` y `datos.advertencia` para que el admin decida si elimina las compras a mano.
+- **El egreso cuenta en el corte en que se hace la compra**, no en el de la venta. `cerrar_corte()` solo cambia estados (no recalcula nada), así que los cortes ya cerrados siguen consistentes porque el balance se calcula al vuelo.
+- El monto lo escribe el usuario (el front sugiere `domicilio_pendiente_compra`).
+
+### Ingresos sin domicilio
+- `GET /cortes/balance`: `total_ventas` ahora es **solo productos** (`SUM(total - valor_domicilio)`) y es igual a `ventas_productos`. Campos nuevos: `ventas_productos`, `domicilios_cobrados` (abonos `es_domicilio = 1` del corte), `domicilios_pagados` (compras `domicilio` del corte), `diferencia_domicilios` (`cobrados - pagados`, puede ser negativa), `compras_insumos`, `compras_domicilios`. `total_compras` = insumos + domicilios (mismo número que antes). `resultado` = `ventas_productos - compras_insumos`.
+- `GET /ventas/por-dia-semana`: suma `total - valor_domicilio`.
+- `GET /ventas/serie-diaria`: ahora suma **abonos con `es_domicilio = 0`** (antes `total_abonado`, que incluía domicilio).
+- `GET /cortes/ingresos-ventas`: excluye abonos `es_domicilio = 1`.
+- La **caja no cambia**: `dinero_caja_total`, `efectivo_caja`, `total_efectivo`, `total_transferencia` y `transferencia_cuentas` siguen incluyendo el domicilio (entra por el medio con que se cobró y sale por el medio de la compra).
+- `clientes_top` **no se tocó**: sigue sumando `ventas.total` porque mide consumo del cliente, no ingreso del negocio (documentado como decisión).
+
+### Ventas: pago al domiciliario
+`GET /ventas/` y `GET /ventas/<id>/detalle` agregan:
+- `subtotal_productos` (total − valor_domicilio),
+- `domicilio_pagado_compra`, `domicilio_pendiente_compra`, `domicilio_compra_completa` (bool).
+
+No chocan con `domicilio_pagado`/`domicilio_pendiente`, que son el **cobro al cliente** (abonos `es_domicilio = 1`); los `*_compra` son el **pago al domiciliario**. En ventas anuladas los `*_compra` reflejan lo realmente pagado (histórico); el selector no lista anuladas.
+
+Selector del modal de compras: `GET /ventas/con-domicilio?pagina&limite&q&solo_pendientes` (`@token_requerido`) — ventas no anuladas con `valor_domicilio > 0`, con búsqueda en servidor por id o nombre del cliente y paginación (límite ≤ 100).
+
+### Compras
+- `GET /compras/?categoria=insumo|domicilio` (filtro en servidor). Listado y detalle devuelven `categoria`, `venta_id`, `venta_cliente` (`LEFT JOIN` a `ventas`/`clientes`) y `venta_estado`.
+- `resumen` global del corte ahora trae `por_categoria: {insumo: {cantidad, total}, domicilio: {cantidad, total}}` además de `cantidad_compras` y `total_gastado` (= suma de ambas).
+- `POST /compras/` y `PUT /compras/<id>` aceptan `categoria` (def. `insumo` en POST) y `venta_id`. En `PUT`, si `categoria` no se envía se conserva la actual (y su `venta_id`), para que el frontend viejo no reclasifique una compra de domicilio por accidente.
+- `swagger.json` actualizado con todo lo anterior.
+
+---
+
+## 12. Dashboard: productos sin movimiento (2026-11-12)
+
+Métrica de la gráfica "Productos sin movimiento". Sin cambios de esquema.
+
+- Endpoint: `GET /productos/sin-movimiento?dias=15&limite=5` (`@token_requerido`; `cocina` recibe 403). `dias` 1–365 (def. 15), `limite` 1–50 (def. 5).
+- Universo: productos con `activo = 1` y stock total > 0 (`stock_actual * unidades_por_bandeja + unidades_sueltas`, sumando las filas de `inventario`).
+- Movimiento: un producto cuenta como movido si aparece en una venta no anulada (`estado IN ('pendiente','entregada')`) como:
+  - producto directo (`venta_detalle.es_combo = 0`),
+  - componente de combo de catálogo (`venta_detalle.combo_id` → `combo_detalle`),
+  - componente de combo personalizado (`venta_detalle.combo_productos` JSON, vía `JSON_TABLE`).
+- Fecha: se usa `ventas.fecha_entrega`; el día local se obtiene con desfase fijo de 5 h (`DATE_SUB(..., INTERVAL 5 HOUR)`), igual que las demás métricas.
+- `dias_sin_venta = DATEDIFF(hoy Colombia, última fecha local con movimiento)`. Solo se listan los que cumplen `dias_sin_venta >= dias`, ordenados de mayor a menor.
+- Nunca vendido: `ultima_venta = null`, `nunca_vendido = true` y los días se cuentan desde `productos.created_at`; si se creó dentro del periodo, no aparece.
+- Respuesta: `{dias, desde, hasta, limite, total, productos:[{id, nombre, dias_sin_venta, ultima_venta, nunca_vendido, stock_bandejas, unidades_sueltas, stock_unidades}]}`. `total` cuenta todos los que cumplen, no solo los `limite` devueltos.
+- `swagger.json` actualizado. Sin migración SQL. `JSON_TABLE` requiere MySQL 8.x (el proyecto corre sobre MySQL 8 en Clever Cloud).

@@ -1,7 +1,8 @@
 from flask import Blueprint
 from controllers.venta_controller import cntListado,cntregistrar, cntActualizar, cntAnular,cntGenerarComprobante
 from utils.decorators import token_requerido
-from controllers.venta_controller import cntDetalle,cntActualizarDetalle
+from controllers.venta_controller import cntDetalle,cntActualizarDetalle,cntVentasPorDiaSemana
+from controllers.venta_controller import cntSerieDiariaVentas, cntVentasConDomicilio
 
 ventas_bp = Blueprint ('ventas', __name__)
 
@@ -10,6 +11,21 @@ ventas_bp = Blueprint ('ventas', __name__)
 @token_requerido
 def listado():
     return cntListado()
+
+@ventas_bp.route('/con-domicilio', methods=['GET'])
+@token_requerido
+def con_domicilio():
+    return cntVentasConDomicilio()
+
+@ventas_bp.route('/por-dia-semana', methods=['GET'])
+@token_requerido
+def por_dia_semana():
+    return cntVentasPorDiaSemana()
+
+@ventas_bp.route('/serie-diaria', methods=['GET'])
+@token_requerido
+def serie_diaria():
+    return cntSerieDiariaVentas()
 
 @ventas_bp.route('/<int:id>/detalle', methods=['GET'])
 @token_requerido

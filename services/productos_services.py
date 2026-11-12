@@ -159,3 +159,132 @@ def productos_mas_vendidos(limite=5):
             "total_ingresos"  : float(p[4])
         })
     return lista
+
+
+def productos_sin_movimiento(dias=15, limite=5):
+    """
+    Productos activos con inventario que no registran ventas en los ultimos
+    `dias` dias corridos (hoy incluido, hora Colombia).
+
+    Un producto cuenta como movido si aparece como producto directo en
+    venta_detalle (es_combo = 0), como componente de un combo de catalogo
+    (combo_detalle) o como componente de un combo personalizado
+    (combo_productos JSON). Se excluyen las ventas anuladas y se toma
+    `fecha_entrega` (UTC en la BD, se muestra en hora Colombia).
+
+    Si el producto nunca se vendio, los dias se cuentan desde `created_at`.
+    Solo entran productos con stock total > 0:
+        bandejas * unidades_por_bandeja + unidades_sueltas
+    """
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    hoy = datetime.now(ZoneInfo("America/Bogota")).date()
+    desde = hoy - timedelta(days=dias - 1)
+
+    base_sql = """
+        SELECT
+            p.id,
+            p.nombre,
+            DATE(DATE_SUB(m.ultima_venta, INTERVAL 5 HOUR)) AS ultima_venta,
+            DATEDIFF(%s, DATE(DATE_SUB(
+                COALESCE(m.ultima_venta, p.created_at), INTERVAL 5 HOUR
+            ))) AS dias_sin_venta,
+            CASE WHEN m.ultima_venta IS NULL THEN 1 ELSE 0 END AS nunca_vendido,
+            COALESCE(i.bandejas, 0) AS stock_bandejas,
+            COALESCE(i.sueltas, 0) AS unidades_sueltas,
+            (COALESCE(i.bandejas, 0) * p.unidades_por_bandeja
+                + COALESCE(i.sueltas, 0)) AS stock_unidades
+        FROM productos p
+        LEFT JOIN (
+            SELECT producto_id, MAX(fecha_entrega) AS ultima_venta
+            FROM (
+                SELECT vd.producto_id, v.fecha_entrega
+                FROM venta_detalle vd
+                JOIN ventas v ON v.id = vd.venta_id
+                WHERE vd.es_combo = 0
+                  AND vd.producto_id IS NOT NULL
+                  AND v.estado IN ('pendiente', 'entregada')
+
+                UNION ALL
+
+                SELECT cd.producto_id, v.fecha_entrega
+                FROM venta_detalle vd
+                JOIN ventas v ON v.id = vd.venta_id
+                JOIN combo_detalle cd ON cd.combo_id = vd.combo_id
+                WHERE vd.es_combo = 1
+                  AND vd.combo_id IS NOT NULL
+                  AND v.estado IN ('pendiente', 'entregada')
+
+                UNION ALL
+
+                SELECT jt.producto_id, v.fecha_entrega
+                FROM venta_detalle vd
+                JOIN ventas v ON v.id = vd.venta_id
+                JOIN JSON_TABLE(
+                    IF(JSON_VALID(vd.combo_productos),
+                       vd.combo_productos, JSON_ARRAY()),
+                    '$[*]' COLUMNS (
+                        producto_id INT PATH '$.producto_id'
+                    )
+                ) AS jt ON TRUE
+                WHERE vd.es_combo = 1
+                  AND vd.combo_id IS NULL
+                  AND vd.combo_productos IS NOT NULL
+                  AND v.estado IN ('pendiente', 'entregada')
+            ) AS movimientos
+            GROUP BY producto_id
+        ) AS m ON m.producto_id = p.id
+        LEFT JOIN (
+            SELECT producto_id,
+                   SUM(stock_actual) AS bandejas,
+                   SUM(unidades_sueltas) AS sueltas
+            FROM inventario
+            GROUP BY producto_id
+        ) AS i ON i.producto_id = p.id
+    """
+
+    filtro = """
+        WHERE dias_sin_venta >= %s
+          AND stock_unidades > 0
+    """
+
+    with cursor_ctx() as c:
+        c.execute(
+            f"SELECT COUNT(*) FROM ({base_sql}) AS q {filtro}",
+            (hoy, dias)
+        )
+        total = c.fetchone()[0]
+
+        c.execute(
+            f"""
+                SELECT * FROM ({base_sql}) AS q
+                {filtro}
+                ORDER BY dias_sin_venta DESC, nombre ASC
+                LIMIT %s
+            """,
+            (hoy, dias, limite)
+        )
+        filas = c.fetchall()
+
+    lista = []
+    for f in filas:
+        lista.append({
+            "id"              : int(f[0]),
+            "nombre"          : f[1],
+            "dias_sin_venta"  : int(f[3]) if f[3] is not None else None,
+            "ultima_venta"    : f[2].isoformat() if f[2] else None,
+            "nunca_vendido"   : bool(f[4]),
+            "stock_bandejas"  : int(f[5]),
+            "unidades_sueltas": int(f[6]),
+            "stock_unidades"  : int(f[7])
+        })
+
+    return {
+        "dias"     : dias,
+        "desde"    : desde.isoformat(),
+        "hasta"    : hoy.isoformat(),
+        "limite"   : limite,
+        "total"    : int(total),
+        "productos": lista
+    }

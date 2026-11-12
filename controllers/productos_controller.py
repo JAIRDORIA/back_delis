@@ -1,5 +1,5 @@
 from flask import jsonify , request
-from  services.productos_services import listado_productos, registro, eliminar, existe_nombre,productos_mas_vendidos, actualizar, obtener_producto, existe_nombre_otro  
+from  services.productos_services import listado_productos, registro, eliminar, existe_nombre,productos_mas_vendidos, actualizar, obtener_producto, existe_nombre_otro, productos_sin_movimiento  
 import re
 
 def cntListado():
@@ -198,6 +198,38 @@ def cntProductosMasVendidos():
         if limite < 1 or limite > 20:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 20"}), 400
         datos = productos_mas_vendidos(limite)
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def cntProductosSinMovimiento():
+    try:
+        dias_raw = request.args.get("dias")
+        limite_raw = request.args.get("limite")
+
+        if dias_raw in (None, ""):
+            dias = 15
+        else:
+            try:
+                dias = int(dias_raw)
+            except (TypeError, ValueError):
+                return jsonify({"mensaje": "dias debe ser un entero entre 1 y 365"}), 400
+
+        if limite_raw in (None, ""):
+            limite = 5
+        else:
+            try:
+                limite = int(limite_raw)
+            except (TypeError, ValueError):
+                return jsonify({"mensaje": "limite debe ser un entero entre 1 y 50"}), 400
+
+        if dias < 1 or dias > 365:
+            return jsonify({"mensaje": "dias debe ser un entero entre 1 y 365"}), 400
+        if limite < 1 or limite > 50:
+            return jsonify({"mensaje": "limite debe ser un entero entre 1 y 50"}), 400
+
+        datos = productos_sin_movimiento(dias=dias, limite=limite)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
