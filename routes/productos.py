@@ -1,5 +1,5 @@
 from flask import Blueprint
-from controllers.productos_controller import cntListado, cntRegistro, cntEliminar,cntProductosMasVendidos, cntActualizar, obtenerProducto
+from controllers.productos_controller import cntListado, cntRegistro, cntEliminar,cntProductosMasVendidos, cntActualizar, obtenerProducto, cntProductosSinMovimiento
 from utils.decorators import token_requerido, rol_requerido
 productos_bp = Blueprint ('productos', __name__)
 
@@ -23,6 +23,11 @@ def eliminar(id):
 @token_requerido
 def mas_vendidos():
     return cntProductosMasVendidos()
+
+@productos_bp.route('/sin-movimiento', methods=['GET'])
+@token_requerido
+def sin_movimiento():
+    return cntProductosSinMovimiento()
 
 @productos_bp.route('/<int:id>', methods=["PUT"])
 @token_requerido

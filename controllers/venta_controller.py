@@ -4,7 +4,8 @@ from services.clientes_services import obtener_cliente
 from services.cortes_services import obtener_corte ,obtener_corte_abierto, obtener_corte_futuro
 from services.usuarios_servicies import obtener_usuario
 from datetime import datetime
-from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta
+from services.ventas_services import obtener_venta_detalle,actualizar_detalle_venta,ventas_por_dia_semana
+from services.ventas_services import serie_diaria_ventas, MAX_DIAS_SERIE, ventas_con_domicilio
 from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
 from zoneinfo import ZoneInfo
 
@@ -89,6 +90,62 @@ def cntListado():
             return jsonify({"mensaje": error}), 400
 
         datos = listado_ventas(pagina, limite, corte_id,q,cliente_id, estados, tipos_pago)
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"errores": str(e)}), 500
+
+
+def cntVentasConDomicilio():
+    """Ventas con domicilio para el selector del modal de compras."""
+    try:
+        pagina = request.args.get("pagina", 1, type=int)
+        limite = request.args.get("limite", 20, type=int)
+
+        if pagina < 1:
+            return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
+        if limite < 1 or limite > 100:
+            return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
+
+        q = (request.args.get("q", "", type=str) or "").strip() or None
+        if q and len(q) > 100:
+            return jsonify({"mensaje": "q no puede exceder 100 caracteres"}), 400
+
+        crudo = (request.args.get("solo_pendientes", "", type=str) or "").strip().lower()
+        if crudo not in ("", "0", "1", "true", "false"):
+            return jsonify({"mensaje": "solo_pendientes debe ser true o false"}), 400
+
+        datos = ventas_con_domicilio(pagina, limite, q, crudo in ("1", "true"))
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"errores": str(e)}), 500
+
+
+def cntVentasPorDiaSemana():
+    try:
+        semanas = request.args.get("semanas", 3, type=int)
+        if semanas is None or semanas < 1 or semanas > 8:
+            return jsonify({"mensaje": "semanas debe ser un entero entre 1 y 8"}), 400
+        return jsonify(ventas_por_dia_semana(semanas)), 200
+    except Exception as e:
+        return jsonify({"errores": str(e)}), 500
+
+
+def cntSerieDiariaVentas():
+    """Serie diaria del dinero cobrado (corte abierto o ultimos N dias)."""
+    try:
+        modo = request.args.get("modo", "corte", type=str)
+        if modo not in ("corte", "dias"):
+            return jsonify({"mensaje": "modo invalido. Valores permitidos: corte, dias"}), 400
+
+        dias = request.args.get("dias", 30, type=int)
+        if modo == "dias" and (dias is None or dias < 1 or dias > MAX_DIAS_SERIE):
+            return jsonify({
+                "mensaje": f"dias debe ser un entero entre 1 y {MAX_DIAS_SERIE}"
+            }), 400
+
+        datos = serie_diaria_ventas(modo, dias or 30)
+        if datos is None:
+            return jsonify({"mensaje": "no existe corte abierto"}), 404
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"errores": str(e)}), 500

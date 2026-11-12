@@ -110,7 +110,13 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
                    v.estado, v.observacion,
                    CASE WHEN v.estado = 'anulada' THEN 0
                         ELSE GREATEST(v.valor_domicilio - COALESCE(dom.dom_pagado, 0), 0)
-                   END AS domicilio_pendiente
+                   END AS domicilio_pendiente,
+                   GREATEST(v.total - v.valor_domicilio, 0) AS subtotal_productos,
+                   COALESCE(dc.dom_comprado, 0) AS domicilio_pagado_compra,
+                   GREATEST(v.valor_domicilio - COALESCE(dc.dom_comprado, 0), 0) AS domicilio_pendiente_compra,
+                   CASE WHEN v.valor_domicilio > 0
+                             AND COALESCE(dc.dom_comprado, 0) >= v.valor_domicilio
+                        THEN 1 ELSE 0 END AS domicilio_compra_completa
             FROM ventas v
             JOIN clientes cl ON cl.id = v.cliente_id
             JOIN cortes co ON co.id = v.corte_id
@@ -120,6 +126,12 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
                 WHERE es_domicilio = 1
                 GROUP BY venta_id
             ) dom ON dom.venta_id = v.id
+            LEFT JOIN (
+                SELECT venta_id, COALESCE(SUM(total), 0) AS dom_comprado
+                FROM compras
+                WHERE categoria = 'domicilio' AND eliminada = 0
+                GROUP BY venta_id
+            ) dc ON dc.venta_id = v.id
             {where_clause}
             ORDER BY v.id DESC
             LIMIT %(limite)s OFFSET %(offset)s
@@ -145,6 +157,10 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
             observacion     = p[13],
             valor_domicilio     = p[9],
             domicilio_pendiente = p[14],
+            subtotal_productos        = p[15],
+            domicilio_pagado_compra   = p[16],
+            domicilio_pendiente_compra= p[17],
+            domicilio_compra_completa = bool(p[18]),
         ).to_dict()
         lista.append(venta)
 
@@ -159,6 +175,268 @@ def listado_ventas(pagina=1, limite=20, corte_id=None, q=None,cliente_id=None,
     
     
     
+def ventas_con_domicilio(pagina=1, limite=20, q=None, solo_pendientes=False):
+    """Ventas con domicilio, para el selector del modal de compras.
+
+    Lista TODAS las ventas no anuladas con valor_domicilio > 0 (sin importar
+    su estado). Cada fila trae lo pagado/pendiente AL DOMICILIARIO para que el
+    front sugiera el monto restante; la suma puede superar valor_domicilio
+    (el domicilio puede costar mas de lo cobrado).
+    """
+    offset = (pagina - 1) * limite
+
+    where = "WHERE v.valor_domicilio > 0 AND v.estado != 'anulada'"
+    params = {'limite': limite, 'offset': offset}
+    if q:
+        where += " AND (CAST(v.id AS CHAR) LIKE %(q)s OR cl.nombre LIKE %(q)s)"
+        params['q'] = f"%{q}%"
+    if solo_pendientes:
+        where += " AND COALESCE(dc.dom_comprado, 0) < v.valor_domicilio"
+
+    with cursor_ctx() as c:
+        c.execute(f"""
+            SELECT COUNT(*)
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            LEFT JOIN (
+                SELECT venta_id, COALESCE(SUM(total), 0) AS dom_comprado
+                FROM compras
+                WHERE categoria = 'domicilio' AND eliminada = 0
+                GROUP BY venta_id
+            ) dc ON dc.venta_id = v.id
+            {where}
+        """, params)
+        total = c.fetchone()[0]
+
+        c.execute(f"""
+            SELECT v.id, v.cliente_id, cl.nombre, v.fecha_entrega, v.estado,
+                   v.total, v.valor_domicilio,
+                   GREATEST(v.total - v.valor_domicilio, 0) AS subtotal_productos,
+                   COALESCE(dc.dom_comprado, 0) AS domicilio_pagado_compra,
+                   GREATEST(v.valor_domicilio - COALESCE(dc.dom_comprado, 0), 0) AS domicilio_pendiente_compra,
+                   CASE WHEN COALESCE(dc.dom_comprado, 0) >= v.valor_domicilio
+                        THEN 1 ELSE 0 END AS domicilio_compra_completa
+            FROM ventas v
+            JOIN clientes cl ON cl.id = v.cliente_id
+            LEFT JOIN (
+                SELECT venta_id, COALESCE(SUM(total), 0) AS dom_comprado
+                FROM compras
+                WHERE categoria = 'domicilio' AND eliminada = 0
+                GROUP BY venta_id
+            ) dc ON dc.venta_id = v.id
+            {where}
+            ORDER BY v.id DESC
+            LIMIT %(limite)s OFFSET %(offset)s
+        """, params)
+        datos = c.fetchall()
+
+    return {
+        "total"        : total,
+        "pagina"       : pagina,
+        "limite"       : limite,
+        "total_paginas": -(-total // limite) if limite else 0,
+        "datos"        : [
+            {
+                "id_venta"                  : p[0],
+                "cliente_id"                : p[1],
+                "nombre_cliente"            : p[2],
+                "fecha_entrega"             : str(p[3]),
+                "estado"                    : p[4],
+                "total"                     : float(p[5]),
+                "valor_domicilio"           : float(p[6]),
+                "subtotal_productos"        : float(p[7]),
+                "domicilio_pagado_compra"   : float(p[8]),
+                "domicilio_pendiente_compra": float(p[9]),
+                "domicilio_compra_completa" : bool(p[10]),
+            } for p in datos
+        ]
+    }
+
+
+def ventas_por_dia_semana(semanas):
+    """
+    Suma el INGRESO POR PRODUCTOS (total - valor_domicilio) por dia de la
+    semana (Lun..Dom) en los ultimos 7*semanas dias corridos (incluye hoy,
+    hora Colombia), segun fecha_entrega.
+
+    El domicilio se excluye a proposito: no es ingreso, es dinero de paso que
+    luego sale como compra categoria='domicilio' (ver GET /cortes/balance).
+
+    Cada dia agrupa todos sus homologos (3 semanas => 3 lunes sumados).
+    Excluye anuladas. fecha_entrega esta en UTC y Colombia no tiene horario de
+    verano (UTC-5 fijo), por eso se desplaza 5 h para sacar el dia local.
+    """
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    bogota = ZoneInfo("America/Bogota")
+    utc = ZoneInfo("UTC")
+    hoy = datetime.now(bogota).date()
+    desde_local = hoy - timedelta(days=7 * semanas - 1)
+    hasta_local = hoy + timedelta(days=1)  # exclusivo
+
+    def a_utc(d):
+        return (datetime(d.year, d.month, d.day, tzinfo=bogota)
+                .astimezone(utc).strftime("%Y-%m-%d %H:%M:%S"))
+
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT WEEKDAY(DATE_SUB(fecha_entrega, INTERVAL 5 HOUR)) AS dia,
+                   COALESCE(SUM(GREATEST(total - valor_domicilio, 0)), 0),
+                   COUNT(*)
+            FROM ventas
+            WHERE estado IN ('pendiente', 'entregada')
+              AND fecha_entrega >= %s AND fecha_entrega < %s
+            GROUP BY dia
+        """, (a_utc(desde_local), a_utc(hasta_local)))
+        filas = c.fetchall()
+
+    nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    dias = [{"dia": i, "nombre": n, "total": 0.0, "cantidad": 0}
+            for i, n in enumerate(nombres)]
+    for dia, total, cantidad in filas:
+        dias[int(dia)]["total"] = float(total)
+        dias[int(dia)]["cantidad"] = int(cantidad)
+
+    mejor = max(dias, key=lambda d: d["total"])
+    return {
+        "semanas": semanas,
+        "desde": desde_local.isoformat(),
+        "hasta": hoy.isoformat(),
+        "dias": dias,
+        "mejor_dia": ({"dia": mejor["dia"], "nombre": mejor["nombre"],
+                       "total": mejor["total"]} if mejor["total"] > 0 else None),
+    }
+
+
+# Tope de puntos de la serie diaria (protege el payload si un corte dura meses
+# o si hay un pedido pagado con fecha_entrega muy lejana).
+MAX_DIAS_SERIE = 366
+
+
+def serie_diaria_ventas(modo="corte", dias=30):
+    """
+    Serie diaria del INGRESO POR PRODUCTOS cobrado en ventas, agrupado por el
+    dia de `fecha_entrega` en hora Colombia.
+
+    Fuente: `abonos` con `es_domicilio = 0` (dinero cobrado por productos).
+    Los abonos de domicilio NO son ingreso y quedan fuera de la serie; el
+    domicilio es dinero de paso que luego sale como compra categoria
+    'domicilio'. Una venta sin abonos de productos no aporta al punto.
+
+    modo="corte": solo ventas del corte ABIERTO (ventas del corte futuro no
+                  entran). El rango va del inicio del corte a hoy, y se
+                  extiende hasta el ultimo dia con datos si hay ventas ya
+                  abonadas con fecha_entrega futura (un abono posterior al dia
+                  de entrega mueve el punto de ese dia, porque se mira el
+                  acumulado).
+    modo="dias" : ultimos `dias` dias corridos (hoy incluido), sin filtrar por
+                  corte.
+
+    `fecha_entrega` esta en UTC y Colombia no tiene horario de verano (UTC-5
+    fijo): el dia local se saca con DATE_SUB(..., INTERVAL 5 HOUR). Siempre
+    devuelve el rango completo con 0 en los dias sin ventas.
+    None si modo="corte" y no hay corte abierto.
+    """
+    from datetime import date, timedelta
+    from zoneinfo import ZoneInfo
+
+    bogota = ZoneInfo("America/Bogota")
+    utc = ZoneInfo("UTC")
+    hoy = datetime.now(bogota).date()
+
+    def a_utc(d):
+        return (datetime(d.year, d.month, d.day, tzinfo=bogota)
+                .astimezone(utc).strftime("%Y-%m-%d %H:%M:%S"))
+
+    def a_bogota(dt):
+        if dt is None:
+            return hoy
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=utc)
+        return dt.astimezone(bogota).date()
+
+    corte = None
+    with cursor_ctx() as c:
+        if modo == "corte":
+            c.execute("""
+                SELECT id, numero, fecha_inicio
+                FROM cortes WHERE estado = 'abierto' LIMIT 1
+            """)
+            corte = c.fetchone()
+            if not corte:
+                return None
+
+            c.execute("""
+                SELECT DATE(DATE_SUB(v.fecha_entrega, INTERVAL 5 HOUR)) AS dia,
+                       COALESCE(SUM(a.monto), 0), COUNT(DISTINCT v.id)
+                FROM abonos a
+                JOIN ventas v ON v.id = a.venta_id
+                WHERE v.estado IN ('pendiente', 'entregada')
+                  AND a.es_domicilio = 0
+                  AND v.corte_id = %s
+                GROUP BY dia
+                ORDER BY dia
+            """, (corte[0],))
+        else:
+            c.execute("""
+                SELECT DATE(DATE_SUB(v.fecha_entrega, INTERVAL 5 HOUR)) AS dia,
+                       COALESCE(SUM(a.monto), 0), COUNT(DISTINCT v.id)
+                FROM abonos a
+                JOIN ventas v ON v.id = a.venta_id
+                WHERE v.estado IN ('pendiente', 'entregada')
+                  AND a.es_domicilio = 0
+                  AND v.fecha_entrega >= %s AND v.fecha_entrega < %s
+                GROUP BY dia
+                ORDER BY dia
+            """, (a_utc(hoy - timedelta(days=dias - 1)),
+                  a_utc(hoy + timedelta(days=1))))
+        filas = c.fetchall()
+
+    totales = {}
+    for dia, total, cantidad in filas:
+        clave = dia.isoformat() if hasattr(dia, "isoformat") else str(dia)
+        totales[clave] = (float(total), int(cantidad))
+
+    if modo == "corte":
+        desde = a_bogota(corte[2])
+        fin = hoy
+        if totales:
+            fechas_datos = [date.fromisoformat(k) for k in totales]
+            desde = min(desde, min(fechas_datos))
+            fin = max(hoy, max(fechas_datos))
+        if desde > fin:
+            desde = fin
+        desde = max(desde, fin - timedelta(days=MAX_DIAS_SERIE - 1))
+    else:
+        desde = hoy - timedelta(days=dias - 1)
+        fin = hoy
+
+    serie = []
+    total_serie = 0.0
+    cantidad_serie = 0
+    dia_actual = desde
+    while dia_actual <= fin:
+        clave = dia_actual.isoformat()
+        total, cantidad = totales.get(clave, (0.0, 0))
+        serie.append({"fecha": clave, "total": total, "cantidad": cantidad})
+        total_serie += total
+        cantidad_serie += cantidad
+        dia_actual += timedelta(days=1)
+
+    return {
+        "modo": modo,
+        "desde": desde.isoformat(),
+        "hasta": fin.isoformat(),
+        "corte_id": corte[0] if corte else None,
+        "corte_numero": corte[1] if corte else None,
+        "corte_fecha_inicio": str(corte[2]) if corte and corte[2] else None,
+        "dias": serie,
+        "total": total_serie,
+        "cantidad": cantidad_serie,
+    }
+
+
 def actualizar_detalle_venta(id, nuevo_detalle, valor_domicilio=None):
     with cursor_ctx() as c:
         # Verificar que la venta existe y está pendiente. FOR UPDATE evita
@@ -284,6 +562,15 @@ def obtener_venta_detalle(id):
         """, (id,))
         abonos = c.fetchall()
 
+        # pagos al domiciliario: compras categoria='domicilio' no anuladas
+        # (eliminada = 0). Es distinto del cobro al cliente (abonos es_domicilio).
+        c.execute("""
+            SELECT COALESCE(SUM(total), 0), COUNT(*)
+            FROM compras
+            WHERE venta_id = %s AND categoria = 'domicilio' AND eliminada = 0
+        """, (id,))
+        compras_domicilio = c.fetchone()
+
     def _combo_productos(valor):
         """La columna es JSON; MySQLdb puede devolverla como texto o bytes.
         Se parsea aqui para que el frontend reciba un array real, no un
@@ -310,6 +597,13 @@ def obtener_venta_detalle(id):
     domicilio_pendiente = 0.0 if es_anulada else float(venta[8]) - pagado_domicilio
     productos_pendiente = 0.0 if es_anulada else subtotal_productos - pagado_productos
 
+    # Pago AL DOMICILIARIO (compras categoria='domicilio'), no el cobro al
+    # cliente. No depende de que la venta este pagada.
+    domicilio_pagado_compra = float(compras_domicilio[0] or 0)
+    domicilio_pendiente_compra = max(0.0, float(venta[8]) - domicilio_pagado_compra)
+    domicilio_compra_completa = (float(venta[8]) > 0
+                                 and domicilio_pagado_compra >= float(venta[8]))
+
     return {
         "id"              : venta[0],
         "cliente_id"      : venta[1],
@@ -322,6 +616,11 @@ def obtener_venta_detalle(id):
         "valor_domicilio" : float(venta[8]),
         "domicilio_pagado"     : pagado_domicilio,
         "domicilio_pendiente"  : domicilio_pendiente,
+        # Pago AL DOMICILIARIO (compras categoria='domicilio'). NO es el cobro
+        # al cliente: ese es domicilio_pagado/domicilio_pendiente.
+        "domicilio_pagado_compra"     : domicilio_pagado_compra,
+        "domicilio_pendiente_compra"  : domicilio_pendiente_compra,
+        "domicilio_compra_completa"   : domicilio_compra_completa,
         "subtotal_productos"   : subtotal_productos,
         "productos_pagado"     : pagado_productos,
         "productos_pendiente"  : productos_pendiente,
@@ -840,10 +1139,22 @@ def descontar_inventario_venta(venta_id):
         current_app.mysql.connection.commit()
 
 def anular_venta(id):
+    compras_dom = (0, 0)
     with cursor_ctx() as c:
         venta = obtener_venta(id)
         if not venta or venta['estado'] not in ('pendiente', 'entregada'):
             return None
+
+        # Compras de domicilio ligadas: NO se anulan ni se borran. El egreso
+        # ya ocurrio en el corte en que se hizo la compra (los cortes cerrados
+        # no se recalculan) y la compra es un hecho independiente. Solo se
+        # informan en la respuesta para que el admin decida.
+        c.execute("""
+            SELECT COUNT(*), COALESCE(SUM(total), 0)
+            FROM compras
+            WHERE venta_id = %s AND categoria = 'domicilio' AND eliminada = 0
+        """, (id,))
+        compras_dom = c.fetchone()
 
         # Solo revertir inventario de combos si la venta estaba entregada
         if venta['estado'] == 'entregada':
@@ -863,4 +1174,15 @@ def anular_venta(id):
 
         current_app.mysql.connection.commit()
 
-    return obtener_venta(id)
+    resultado = obtener_venta(id)
+    if resultado is not None:
+        cantidad = int(compras_dom[0] or 0)
+        resultado["compras_domicilio"] = cantidad
+        resultado["compras_domicilio_total"] = float(compras_dom[1] or 0)
+        resultado["advertencia"] = (
+            f"la venta tiene {cantidad} compra(s) de domicilio vigente(s) por "
+            f"{float(compras_dom[1] or 0):.2f}; no se anularon automaticamente "
+            f"porque el egreso ya quedo registrado en su corte. "
+            f"Eliminelas con DELETE /compras/<id> si corresponde."
+        ) if cantidad else None
+    return resultado

@@ -51,6 +51,29 @@ def listado_inventarios(pagina=1, limite=20, busqueda=None):
         "total_paginas": -(-total // limite)
     }
 
+def valor_inventario():
+    """Valor del inventario a precio de venta (detal y mayor).
+    Solo bandejas completas (stock_actual), ignora sueltas y stock negativo,
+    solo productos activos. Los precios son por bandeja."""
+    with cursor_ctx() as c:
+        c.execute("""
+            SELECT
+                COALESCE(SUM(s.bandejas * p.precio_detal), 0),
+                COALESCE(SUM(s.bandejas * p.precio_almayor), 0)
+            FROM (
+                SELECT producto_id, SUM(GREATEST(stock_actual, 0)) AS bandejas
+                FROM inventario
+                GROUP BY producto_id
+            ) s
+            JOIN productos p ON p.id = s.producto_id
+            WHERE p.activo = 1
+        """)
+        fila = c.fetchone()
+    return {
+        "valor_detal": float(fila[0]),
+        "valor_mayor": float(fila[1])
+    }
+
 def registro(producto_id):
     with cursor_ctx() as c:
         sql = """

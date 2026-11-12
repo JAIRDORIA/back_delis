@@ -1161,18 +1161,34 @@
             "name": "pagina",
             "in": "query",
             "required": false,
+            "description": "Página (>= 1).",
             "schema": {
               "type": "integer",
-              "example": 1
+              "example": 1,
+              "minimum": 1
             }
           },
           {
             "name": "limite",
             "in": "query",
             "required": false,
+            "description": "Entre 1 y 200 (def. 20).",
             "schema": {
               "type": "integer",
-              "example": 20
+              "example": 20,
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Busca por nombre o descripción (máx. 100 caracteres).",
+            "schema": {
+              "type": "string",
+              "example": "deditos",
+              "maxLength": 100
             }
           }
         ],
@@ -1254,6 +1270,9 @@
           },
           "500": {
             "description": "Error interno del servidor"
+          },
+          "400": {
+            "description": "Parámetros inválidos"
           }
         }
       },
@@ -1635,6 +1654,136 @@
         }
       }
     },
+    "/productos/sin-movimiento": {
+      "get": {
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Productos sin movimiento",
+        "description": "Productos activos con stock total > 0 (bandejas * unidades_por_bandeja + unidades_sueltas) que no registran ventas en los ultimos `dias` dias corridos (hoy incluido, hora Colombia). Una venta cuenta como movimiento si el producto se vendio directo o como componente de un combo de catalogo o personalizado; se excluyen las ventas anuladas y se usa `fecha_entrega`. Si el producto nunca se vendio, los dias se cuentan desde `created_at`.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 15,
+              "minimum": 1,
+              "maximum": 365
+            },
+            "description": "Dias corridos a evaluar (1-365, def. 15)."
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 5,
+              "minimum": 1,
+              "maximum": 50
+            },
+            "description": "Maximo de productos a devolver (1-50, def. 5)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operacion exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dias": {
+                      "type": "integer",
+                      "example": 15
+                    },
+                    "desde": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "2026-10-29"
+                    },
+                    "hasta": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "2026-11-12"
+                    },
+                    "limite": {
+                      "type": "integer",
+                      "example": 5
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 12
+                    },
+                    "productos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "nombre": {
+                            "type": "string",
+                            "example": "Carimanolas de carne"
+                          },
+                          "dias_sin_venta": {
+                            "type": "integer",
+                            "example": 27
+                          },
+                          "ultima_venta": {
+                            "type": "string",
+                            "format": "date",
+                            "nullable": true,
+                            "example": "2026-10-16"
+                          },
+                          "nunca_vendido": {
+                            "type": "boolean",
+                            "example": false
+                          },
+                          "stock_bandejas": {
+                            "type": "integer",
+                            "example": 4
+                          },
+                          "unidades_sueltas": {
+                            "type": "integer",
+                            "example": 6
+                          },
+                          "stock_unidades": {
+                            "type": "integer",
+                            "example": 54
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parametros invalidos"
+          },
+          "401": {
+            "description": "Token invalido o no enviado"
+          },
+          "403": {
+            "description": "Rol cocina no permitido"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
     "/inventarios/": {
       "get": {
         "tags": [
@@ -1651,18 +1800,34 @@
             "name": "pagina",
             "in": "query",
             "required": false,
+            "description": "Página (>= 1).",
             "schema": {
               "type": "integer",
-              "example": 1
+              "example": 1,
+              "minimum": 1
             }
           },
           {
             "name": "limite",
             "in": "query",
             "required": false,
+            "description": "Entre 1 y 200 (def. 20).",
             "schema": {
               "type": "integer",
-              "example": 20
+              "example": 20,
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Busca por nombre de producto (máx. 100 caracteres).",
+            "schema": {
+              "type": "string",
+              "example": "deditos",
+              "maxLength": 100
             }
           }
         ],
@@ -1736,6 +1901,9 @@
           },
           "500": {
             "description": "Error interno del servidor"
+          },
+          "400": {
+            "description": "Parámetros inválidos"
           }
         }
       },
@@ -2308,7 +2476,7 @@
           "Ventas"
         ],
         "summary": "Listar ventas",
-        "description": "Listado de ventas paginado; filtros opcionales, 'estados' y 'tipos_pago' son CSV validados. Se usa en el módulo Ventas (listado principal) y en el módulo Balance (tabla 'Resumen del próximo corte'). Si se consulta un corte futuro con 'corte_id', devuelve únicamente las ventas asignadas a ese corte; con corte abierto/cerrado o sin 'corte_id' mantiene el comportamiento del listado de Ventas, incluyendo las ventas morosas de cortes cerrados.",
+        "description": "Listado de ventas paginado; filtros opcionales, 'estados' y 'tipos_pago' son CSV validados. Se usa en el módulo Ventas (listado principal) y en el módulo Balance (tabla 'Resumen del próximo corte'). Si se consulta un corte futuro con 'corte_id', devuelve únicamente las ventas asignadas a ese corte; con corte abierto/cerrado o sin 'corte_id' mantiene el comportamiento del listado de Ventas, incluyendo las ventas morosas de cortes cerrados. Cada venta trae el ingreso por productos (`subtotal_productos` = total - valor_domicilio) y el estado del pago AL DOMICILIARIO (`domicilio_pagado_compra`, `domicilio_pendiente_compra`, `domicilio_compra_completa`), que es distinto del cobro al cliente (`domicilio_pendiente`).",
         "security": [
           {
             "BearerAuth": []
@@ -2441,6 +2609,36 @@
                           "estado": {
                             "type": "string",
                             "example": "pendiente"
+                          },
+                          "valor_domicilio": {
+                            "type": "number",
+                            "description": "Domicilio cobrado al cliente.",
+                            "example": 5000
+                          },
+                          "domicilio_pendiente": {
+                            "type": "number",
+                            "description": "Cobro de domicilio pendiente AL CLIENTE (abonos es_domicilio); 0 si la venta esta anulada.",
+                            "example": 2000
+                          },
+                          "subtotal_productos": {
+                            "type": "number",
+                            "description": "Ingreso por productos = total - valor_domicilio.",
+                            "example": 20000
+                          },
+                          "domicilio_pagado_compra": {
+                            "type": "number",
+                            "description": "Pagado AL DOMICILIARIO: suma de compras categoria='domicilio' no eliminadas.",
+                            "example": 3000
+                          },
+                          "domicilio_pendiente_compra": {
+                            "type": "number",
+                            "description": "max(0, valor_domicilio - domicilio_pagado_compra).",
+                            "example": 2000
+                          },
+                          "domicilio_compra_completa": {
+                            "type": "boolean",
+                            "description": "true si valor_domicilio > 0 y domicilio_pagado_compra >= valor_domicilio. Con esto el front deshabilita el boton de moto.",
+                            "example": false
                           },
                           "observacion": {
                             "type": "string"
@@ -2676,7 +2874,7 @@
           "Ventas"
         ],
         "summary": "Anular una venta",
-        "description": "Cambia a anulada y revierte inventario. No requiere body.",
+        "description": "Cambia a anulada y revierte inventario. No requiere body. Las compras de domicilio ligadas NO se anulan automaticamente (el egreso ya quedo en su corte): se informan en `datos.compras_domicilio`, `datos.compras_domicilio_total` y `datos.advertencia` para que el admin decida si las elimina con DELETE /compras/{id}.",
         "security": [
           {
             "BearerAuth": []
@@ -2695,7 +2893,47 @@
         ],
         "responses": {
           "200": {
-            "description": "Venta anulada"
+            "description": "Venta anulada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "venta anulada correctamente"
+                    },
+                    "datos": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 15
+                        },
+                        "estado": {
+                          "type": "string",
+                          "example": "anulada"
+                        },
+                        "compras_domicilio": {
+                          "type": "integer",
+                          "description": "Compras de domicilio vigentes ligadas a la venta (no se anularon).",
+                          "example": 1
+                        },
+                        "compras_domicilio_total": {
+                          "type": "number",
+                          "example": 3000
+                        },
+                        "advertencia": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "la venta tiene 1 compra(s) de domicilio vigente(s) por 3000.00; no se anularon automaticamente porque el egreso ya quedo registrado en su corte. Eliminelas con DELETE /compras/<id> si corresponde."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Datos inválidos"
@@ -2815,6 +3053,28 @@
                     },
                     "direccion_entrega": {
                       "type": "string"
+                    },
+                    "valor_domicilio": {
+                      "type": "number",
+                      "example": 5000
+                    },
+                    "subtotal_productos": {
+                      "type": "number",
+                      "description": "total - valor_domicilio",
+                      "example": 20000
+                    },
+                    "domicilio_pagado_compra": {
+                      "type": "number",
+                      "description": "Pagado AL DOMICILIARIO (compras categoria='domicilio' vigentes).",
+                      "example": 3000
+                    },
+                    "domicilio_pendiente_compra": {
+                      "type": "number",
+                      "example": 2000
+                    },
+                    "domicilio_compra_completa": {
+                      "type": "boolean",
+                      "example": false
                     },
                     "detalle": {
                       "type": "array",
@@ -3560,7 +3820,7 @@
           "Prestamos"
         ],
         "summary": "Listar préstamos",
-        "description": "Requiere token. El corte del préstamo se toma del corte abierto, no lo envía el frontend.",
+        "description": "Requiere token. Paginado y filtrable. El corte del préstamo se toma del corte abierto, no lo envía el frontend. `resumen` trae los totales globales de toda la tabla y no depende de los filtros ni de la paginación.",
         "security": [
           {
             "BearerAuth": []
@@ -3573,9 +3833,57 @@
             "required": false,
             "schema": {
               "type": "string",
+              "enum": [
+                "pendiente",
+                "pagado"
+              ],
               "example": "pendiente"
             },
-            "description": "pendiente|pagado"
+            "description": "pendiente|pagado (otro valor = 400)"
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "description": "Página (>= 1).",
+            "schema": {
+              "type": "integer",
+              "example": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Entre 1 y 100 (def. 20).",
+            "schema": {
+              "type": "integer",
+              "example": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Busca en cliente, observación o id (máx. 100 caracteres).",
+            "schema": {
+              "type": "string",
+              "example": "Juan",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "cliente_id",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por cliente.",
+            "schema": {
+              "type": "integer",
+              "example": 2
+            }
           }
         ],
         "responses": {
@@ -3584,93 +3892,139 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "cliente_id": {
-                        "type": "integer",
-                        "example": 2
-                      },
-                      "cliente_nombre": {
-                        "type": "string",
-                        "example": "Juan"
-                      },
-                      "corte_id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "usuario_id": {
-                        "type": "integer",
-                        "example": 1
-                      },
-                      "monto": {
-                        "type": "number",
-                        "example": 50000
-                      },
-                      "total_abonado": {
-                        "type": "number",
-                        "example": 20000
-                      },
-                      "saldo_pendiente": {
-                        "type": "number",
-                        "example": 30000
-                      },
-                      "medio_pago": {
-                        "type": "string",
-                        "enum": [
-                          "efectivo",
-                          "transferencia"
-                        ],
-                        "example": "efectivo"
-                      },
-                      "medio_pago_id": {
-                        "type": "integer",
-                        "nullable": true,
-                        "example": 1
-                      },
-                      "medio_pago_nombre": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "Efectivo"
-                      },
-                      "medio_pago_pago": {
-                        "type": "string",
-                        "nullable": true,
-                        "enum": [
-                          "efectivo",
-                          "transferencia"
-                        ],
-                        "example": "transferencia",
-                        "description": "Medio con el que se pagó el préstamo (null mientras no esté pagado)"
-                      },
-                      "medio_pago_pago_id": {
-                        "type": "integer",
-                        "nullable": true,
-                        "example": 3
-                      },
-                      "medio_pago_pago_nombre": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "Nequi Miguel"
-                      },
-                      "estado": {
-                        "type": "string",
-                        "example": "pendiente"
-                      },
-                      "observacion": {
-                        "type": "string"
-                      },
-                      "fecha": {
-                        "type": "string",
-                        "example": "2026-03-21"
-                      },
-                      "fecha_pago": {
-                        "type": "string"
+                  "type": "object",
+                  "properties": {
+                    "datos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "cliente_id": {
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "cliente_nombre": {
+                            "type": "string",
+                            "example": "Juan"
+                          },
+                          "corte_id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "usuario_id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "monto": {
+                            "type": "number",
+                            "example": 50000
+                          },
+                          "total_abonado": {
+                            "type": "number",
+                            "example": 20000
+                          },
+                          "saldo_pendiente": {
+                            "type": "number",
+                            "example": 30000
+                          },
+                          "medio_pago": {
+                            "type": "string",
+                            "enum": [
+                              "efectivo",
+                              "transferencia"
+                            ],
+                            "example": "efectivo"
+                          },
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 1
+                          },
+                          "medio_pago_nombre": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Efectivo"
+                          },
+                          "medio_pago_pago": {
+                            "type": "string",
+                            "nullable": true,
+                            "enum": [
+                              "efectivo",
+                              "transferencia"
+                            ],
+                            "example": "transferencia",
+                            "description": "Medio con el que se pagó el préstamo (null mientras no esté pagado)"
+                          },
+                          "medio_pago_pago_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 3
+                          },
+                          "medio_pago_pago_nombre": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Nequi Miguel"
+                          },
+                          "estado": {
+                            "type": "string",
+                            "example": "pendiente"
+                          },
+                          "observacion": {
+                            "type": "string"
+                          },
+                          "fecha": {
+                            "type": "string",
+                            "example": "2026-03-21"
+                          },
+                          "fecha_pago": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 10
+                    },
+                    "pagina": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "limite": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "total_paginas": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "resumen": {
+                      "type": "object",
+                      "properties": {
+                        "total_prestado": {
+                          "type": "number",
+                          "example": 500000
+                        },
+                        "total_abonado": {
+                          "type": "number",
+                          "example": 200000
+                        },
+                        "saldo_por_cobrar": {
+                          "type": "number",
+                          "example": 300000
+                        },
+                        "pendientes": {
+                          "type": "integer",
+                          "example": 4
+                        },
+                        "pagados": {
+                          "type": "integer",
+                          "example": 6
+                        }
                       }
                     }
                   }
@@ -3680,6 +4034,9 @@
           },
           "500": {
             "description": "Error interno del servidor"
+          },
+          "400": {
+            "description": "Parámetros inválidos"
           }
         }
       },
@@ -4343,11 +4700,43 @@
                     },
                     "total_ventas": {
                       "type": "number",
-                      "example": 100000
+                      "example": 100000,
+                      "description": "Ingreso por ventas del corte: SOLO productos (total - valor_domicilio). Cambio de significado: antes incluia el domicilio. Es igual a ventas_productos."
                     },
                     "total_compras": {
                       "type": "number",
-                      "example": 30000
+                      "example": 30000,
+                      "description": "Suma de compras_insumos + compras_domicilios (mismo numero que antes)."
+                    },
+                    "ventas_productos": {
+                      "type": "number",
+                      "description": "Igual a total_ventas: ventas del corte sin domicilio (estado != anulada).",
+                      "example": 100000
+                    },
+                    "domicilios_cobrados": {
+                      "type": "number",
+                      "description": "Abonos de domicilio (es_domicilio = 1) cobrados en este corte, de ventas pendientes/entregadas. Dinero de paso, no ingreso.",
+                      "example": 20000
+                    },
+                    "domicilios_pagados": {
+                      "type": "number",
+                      "description": "Compras categoria='domicilio' no eliminadas del corte (lo pagado al domiciliario).",
+                      "example": 15000
+                    },
+                    "diferencia_domicilios": {
+                      "type": "number",
+                      "description": "domicilios_cobrados - domicilios_pagados. Puede ser negativa.",
+                      "example": 5000
+                    },
+                    "compras_insumos": {
+                      "type": "number",
+                      "description": "Compras categoria='insumo' no eliminadas del corte.",
+                      "example": 80000
+                    },
+                    "compras_domicilios": {
+                      "type": "number",
+                      "description": "Compras categoria='domicilio' no eliminadas del corte (igual a domicilios_pagados).",
+                      "example": 15000
                     },
                     "dinero_caja": {
                       "type": "number",
@@ -4383,7 +4772,8 @@
                     },
                     "resultado": {
                       "type": "number",
-                      "example": 70000
+                      "example": 70000,
+                      "description": "Margen real: ventas_productos - compras_insumos. El domicilio queda fuera a proposito; su neto se ve en diferencia_domicilios."
                     }
                   }
                 }
@@ -5272,7 +5662,7 @@
         "tags": [
           "Proveedores"
         ],
-        "summary": "Listar todos los proveedores",
+        "summary": "Listar proveedores (paginado)",
         "security": [
           {
             "BearerAuth": []
@@ -5325,6 +5715,18 @@
                           }
                         }
                       }
+                    },
+                    "pagina": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "limite": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "total_paginas": {
+                      "type": "integer",
+                      "example": 1
                     }
                   }
                 }
@@ -5336,8 +5738,48 @@
           },
           "500": {
             "description": "Error interno del servidor"
+          },
+          "400": {
+            "description": "Parámetros inválidos"
           }
-        }
+        },
+        "description": "Paginado con búsqueda. `/activos` y `/buscar/*` no cambian.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "description": "Página (>= 1).",
+            "schema": {
+              "type": "integer",
+              "example": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Entre 1 y 100 (def. 20).",
+            "schema": {
+              "type": "integer",
+              "example": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Busca en nombre, email o teléfono (máx. 100 caracteres).",
+            "schema": {
+              "type": "string",
+              "example": "Distribuidora",
+              "maxLength": 100
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -5855,7 +6297,7 @@
           "Compras"
         ],
         "summary": "Listar compras",
-        "description": "Paginado. Si no se envía corte_id se usa el corte abierto.",
+        "description": "Paginado. Si no se envia corte_id se usa el corte abierto. Filtra por categoria ('insumo' | 'domicilio'). `resumen` se calcula sobre todas las compras no eliminadas del corte, sin importar `q`, `categoria` ni la pagina, y trae los totales separados por categoria.",
         "security": [
           {
             "BearerAuth": []
@@ -5877,8 +6319,11 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "example": 20
-            }
+              "example": 20,
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Entre 1 y 100 (def. 20)."
           },
           {
             "name": "corte_id",
@@ -5895,8 +6340,24 @@
             "required": false,
             "schema": {
               "type": "string",
-              "example": "insumos"
-            }
+              "example": "insumos",
+              "maxLength": 100
+            },
+            "description": "Busca en descripción, nombre del proveedor o id exacto (máx. 100 caracteres)."
+          },
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "insumo",
+                "domicilio"
+              ],
+              "example": "domicilio"
+            },
+            "description": "Filtra el listado por categoria. Si no viene, devuelve ambas."
           }
         ],
         "responses": {
@@ -5977,6 +6438,80 @@
                           "descripcion": {
                             "type": "string",
                             "example": "Insumos"
+                          },
+                          "categoria": {
+                            "type": "string",
+                            "enum": [
+                              "insumo",
+                              "domicilio"
+                            ],
+                            "default": "insumo",
+                            "description": "'insumo' = gasto normal (sin venta). 'domicilio' = pago al domiciliario, ligado a una venta.",
+                            "example": "domicilio"
+                          },
+                          "venta_id": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Venta ligada. Obligatorio si categoria='domicilio' (no anulada y con valor_domicilio > 0); NULL si categoria='insumo'.",
+                            "example": 15
+                          },
+                          "venta_cliente": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Nombre del cliente de la venta ligada.",
+                            "example": "Juan Perez"
+                          },
+                          "venta_estado": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Estado de la venta ligada.",
+                            "example": "pendiente"
+                          }
+                        },
+                        "description": "En categoria='domicilio', venta_id apunta a la venta y venta_cliente/venta_estado traen datos minimos de esa venta."
+                      }
+                    },
+                    "resumen": {
+                      "type": "object",
+                      "properties": {
+                        "cantidad_compras": {
+                          "type": "integer",
+                          "example": 12
+                        },
+                        "total_gastado": {
+                          "type": "number",
+                          "example": 850000
+                        },
+                        "por_categoria": {
+                          "type": "object",
+                          "description": "Totales del corte separados por categoria (no dependen de `q`, `categoria` ni la pagina).",
+                          "properties": {
+                            "insumo": {
+                              "type": "object",
+                              "properties": {
+                                "cantidad": {
+                                  "type": "integer",
+                                  "example": 8
+                                },
+                                "total": {
+                                  "type": "number",
+                                  "example": 120000
+                                }
+                              }
+                            },
+                            "domicilio": {
+                              "type": "object",
+                              "properties": {
+                                "cantidad": {
+                                  "type": "integer",
+                                  "example": 3
+                                },
+                                "total": {
+                                  "type": "number",
+                                  "example": 15000
+                                }
+                              }
+                            }
                           }
                         }
                       }
@@ -6005,7 +6540,7 @@
           "Compras"
         ],
         "summary": "Registrar una nueva compra",
-        "description": "Se asocia al corte abierto del momento (no se envía corte_id).",
+        "description": "Registra una compra en el corte abierto. `categoria` es opcional y por defecto 'insumo'. Si categoria='domicilio', `venta_id` es obligatorio y la venta debe existir, no estar anulada y tener valor_domicilio > 0. Si categoria='insumo', `venta_id` debe venir vacio/ausente. El total debe ser > 0; no se valida contra valor_domicilio (el domicilio puede costar mas de lo cobrado).",
         "security": [
           {
             "BearerAuth": []
@@ -6053,6 +6588,22 @@
                     "type": "string",
                     "example": "Insumos semana 12",
                     "description": "Opcional"
+                  },
+                  "categoria": {
+                    "type": "string",
+                    "enum": [
+                      "insumo",
+                      "domicilio"
+                    ],
+                    "default": "insumo",
+                    "description": "'insumo' = gasto normal (sin venta). 'domicilio' = pago al domiciliario, ligado a una venta.",
+                    "example": "domicilio"
+                  },
+                  "venta_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Venta ligada. Obligatorio si categoria='domicilio' (no anulada y con valor_domicilio > 0); NULL si categoria='insumo'.",
+                    "example": 15
                   }
                 },
                 "required": [
@@ -6067,10 +6618,10 @@
         },
         "responses": {
           "201": {
-            "description": "Compra registrada"
+            "description": "Compra creada (incluye categoria, venta_id y datos minimos de la venta)"
           },
           "400": {
-            "description": "Datos inválidos. Incluye 'transferencia' sin medio_pago_id (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia o sin corte abierto. Un total <= 0 lo rechaza el service y devuelve 409."
+            "description": "categoria invalida, venta_id faltante/inexistente/anulada o venta sin valor_domicilio. Cuerpo: {\"mensaje\": \"...\"}"
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -6163,6 +6714,34 @@
                     "descripcion": {
                       "type": "string",
                       "example": "Insumos"
+                    },
+                    "categoria": {
+                      "type": "string",
+                      "enum": [
+                        "insumo",
+                        "domicilio"
+                      ],
+                      "default": "insumo",
+                      "description": "'insumo' = gasto normal (sin venta). 'domicilio' = pago al domiciliario, ligado a una venta.",
+                      "example": "domicilio"
+                    },
+                    "venta_id": {
+                      "type": "integer",
+                      "nullable": true,
+                      "description": "Venta ligada. Obligatorio si categoria='domicilio' (no anulada y con valor_domicilio > 0); NULL si categoria='insumo'.",
+                      "example": 15
+                    },
+                    "venta_cliente": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Nombre del cliente de la venta ligada.",
+                      "example": "Juan Perez"
+                    },
+                    "venta_estado": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Estado de la venta ligada.",
+                      "example": "pendiente"
                     }
                   }
                 }
@@ -6185,7 +6764,7 @@
           "Compras"
         ],
         "summary": "Actualizar una compra",
-        "description": "Se asocia al corte abierto del momento.",
+        "description": "Se asocia al corte abierto del momento. Mismas reglas de categoria/venta_id que POST /compras/ (400 con {\"mensaje\": ...} si no se cumplen). Si `categoria` no se envia, se conserva la que ya tiene la compra (y su venta_id), para que el frontend viejo no reclasifique una compra de domicilio.",
         "security": [
           {
             "BearerAuth": []
@@ -6242,6 +6821,22 @@
                   "descripcion": {
                     "type": "string",
                     "example": "Opcional"
+                  },
+                  "categoria": {
+                    "type": "string",
+                    "enum": [
+                      "insumo",
+                      "domicilio"
+                    ],
+                    "default": "insumo",
+                    "description": "'insumo' = gasto normal (sin venta). 'domicilio' = pago al domiciliario, ligado a una venta. Si no se envia en PUT, se conserva la actual.",
+                    "example": "domicilio"
+                  },
+                  "venta_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Venta ligada. Obligatorio si categoria='domicilio' (no anulada y con valor_domicilio > 0); NULL si categoria='insumo'.",
+                    "example": 15
                   }
                 },
                 "required": [
@@ -6260,7 +6855,7 @@
             "description": "Compra actualizada"
           },
           "400": {
-            "description": "Datos inválidos. Incluye 'transferencia' sin cuenta válida (mensaje: 'Selecciona la cuenta de transferencia'), cuenta inexistente/inactiva/de sistema, 'efectivo' con medio_pago_id distinto de 1, medio_pago fuera de efectivo|transferencia o sin corte abierto. Un total <= 0 lo rechaza el service y devuelve 409."
+            "description": "Datos invalidos: categoria/venta_id, medio de pago o total. Cuerpo: {\"mensaje\": \"...\"}"
           },
           "401": {
             "description": "Token inválido o no enviado"
@@ -8255,6 +8850,660 @@
           },
           "403": {
             "description": "No tienes permisos para esta acción"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/inventarios/valor": {
+      "get": {
+        "tags": [
+          "Inventario"
+        ],
+        "summary": "Valor del inventario a precio de venta",
+        "description": "Suma de bandejas completas × precio por bandeja, solo productos activos. Ignora `unidades_sueltas` y el stock negativo; los combos no entran. No depende de la paginación ni de `q` del listado. `cocina` recibe 403.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valor_detal": {
+                      "type": "number",
+                      "example": 1500000
+                    },
+                    "valor_mayor": {
+                      "type": "number",
+                      "example": 1200000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Rol sin permiso (cocina)"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/ventas/por-dia-semana": {
+      "get": {
+        "tags": [
+          "Ventas"
+        ],
+        "summary": "Ventas por día de la semana",
+        "description": "Suma el INGRESO POR PRODUCTOS (`total - valor_domicilio`) por dia de la semana (Lun..Dom) de los ultimos 7 x `semanas` dias corridos (incluye hoy, hora Colombia), segun `fecha_entrega` y estados `pendiente`/`entregada` (excluye anuladas). El domicilio NO se suma: es dinero de paso que sale como compra categoria='domicilio'. Cada dia agrupa a todos sus homologos: con 3 semanas, el lunes suma los 3 lunes. Siempre devuelve los 7 dias (0 donde no hubo ventas).",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "semanas",
+            "in": "query",
+            "required": false,
+            "description": "Entre 1 y 8 (def. 3).",
+            "schema": {
+              "type": "integer",
+              "example": 3,
+              "minimum": 1,
+              "maximum": 8,
+              "default": 3
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "semanas": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "desde": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "2026-10-20"
+                    },
+                    "hasta": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "2026-11-09"
+                    },
+                    "dias": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "dia": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 6,
+                            "description": "0 = lunes ... 6 = domingo",
+                            "example": 0
+                          },
+                          "nombre": {
+                            "type": "string",
+                            "example": "Lun"
+                          },
+                          "total": {
+                            "type": "number",
+                            "example": 1420000,
+                            "description": "Ingreso por productos (sin domicilio) del dia."
+                          },
+                          "cantidad": {
+                            "type": "integer",
+                            "example": 9
+                          }
+                        }
+                      }
+                    },
+                    "mejor_dia": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "null si no hubo ventas",
+                      "properties": {
+                        "dia": {
+                          "type": "integer",
+                          "example": 6
+                        },
+                        "nombre": {
+                          "type": "string",
+                          "example": "Dom"
+                        },
+                        "total": {
+                          "type": "number",
+                          "example": 890000
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "semanas fuera de 1–8"
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Rol sin permiso (cocina)"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/ventas/serie-diaria": {
+      "get": {
+        "tags": [
+          "Ventas"
+        ],
+        "summary": "Serie diaria de ventas cobradas",
+        "description": "Serie diaria del INGRESO POR PRODUCTOS cobrado, agrupado por el dia de `fecha_entrega` (hora Colombia). Fuente: `abonos` con `es_domicilio = 0`; los abonos de domicilio NO son ingreso y quedan fuera (el domicilio sale luego como compra categoria='domicilio'). `modo=corte` (def.) suma solo ventas del corte **abierto** (las del corte futuro no entran) desde el inicio del corte hasta hoy, extendiendose hasta el ultimo dia con datos si hay ventas ya abonadas con `fecha_entrega` futura. `modo=dias` suma los ultimos `dias` dias corridos (hoy incluido) sin filtrar por corte. Siempre devuelve el rango completo con 0 en los dias sin ventas; `total` es la suma de los puntos. Devuelve 404 si `modo=corte` y no hay corte abierto.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "modo",
+            "in": "query",
+            "required": false,
+            "description": "`corte` (corte abierto) o `dias` (últimos N días, todos los cortes).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "corte",
+                "dias"
+              ],
+              "default": "corte"
+            }
+          },
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "description": "Solo en `modo=dias`: entre 1 y 366 (def. 30).",
+            "schema": {
+              "type": "integer",
+              "example": 30,
+              "minimum": 1,
+              "maximum": 366,
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "modo": {
+                      "type": "string",
+                      "example": "corte"
+                    },
+                    "desde": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "2026-11-05"
+                    },
+                    "hasta": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "2026-11-11"
+                    },
+                    "corte_id": {
+                      "type": "integer",
+                      "nullable": true,
+                      "description": "null en `modo=dias`",
+                      "example": 5
+                    },
+                    "corte_numero": {
+                      "type": "integer",
+                      "nullable": true,
+                      "description": "null en `modo=dias`",
+                      "example": 5
+                    },
+                    "corte_fecha_inicio": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "UTC (como en la BD); null en `modo=dias`",
+                      "example": "2026-11-05 13:00:00"
+                    },
+                    "dias": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "fecha": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-11-05"
+                          },
+                          "total": {
+                            "type": "number",
+                            "description": "Dinero cobrado por productos (abonos es_domicilio = 0).",
+                            "example": 200000
+                          },
+                          "cantidad": {
+                            "type": "integer",
+                            "description": "Ventas distintas con abonos de productos ese dia.",
+                            "example": 3
+                          }
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "number",
+                      "description": "Suma de los puntos",
+                      "example": 2480000
+                    },
+                    "cantidad": {
+                      "type": "integer",
+                      "example": 24
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "modo inválido o dias fuera de 1–366"
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "403": {
+            "description": "Rol sin permiso (cocina)"
+          },
+          "404": {
+            "description": "No hay corte abierto (solo modo=corte)"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/{id}/retiros": {
+      "post": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Retirar de una cuenta a ahorros",
+        "description": "Retira dinero de una cuenta de transferencia (no de sistema) a ahorros. El usuario sale del token y el corte es el abierto. Valida saldo en `v_saldos_cuenta` con bloqueo de fila y audita en la misma transacción.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "monto"
+                ],
+                "properties": {
+                  "monto": {
+                    "type": "number",
+                    "description": "> 0, máx. 2 decimales",
+                    "example": 50000
+                  },
+                  "descripcion": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Retiro a ahorros"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Retiro registrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Retiro registrado"
+                    },
+                    "retiro": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "medio_pago_id": {
+                          "type": "integer",
+                          "example": 3
+                        },
+                        "nombre": {
+                          "type": "string",
+                          "example": "Nequi Miguel"
+                        },
+                        "monto": {
+                          "type": "number",
+                          "example": 50000
+                        },
+                        "saldo_anterior": {
+                          "type": "number",
+                          "example": 80000
+                        },
+                        "saldo_nuevo": {
+                          "type": "number",
+                          "example": 30000
+                        },
+                        "corte_id": {
+                          "type": "integer",
+                          "example": 4
+                        },
+                        "fecha": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "2026-11-09 15:30:00",
+                          "description": "UTC"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos, cuenta de sistema o no transferencia, sin corte abierto o saldo insuficiente"
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "404": {
+            "description": "Cuenta no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/medios-pago/retiros/vaciar": {
+      "post": {
+        "tags": [
+          "Medios de Pago"
+        ],
+        "summary": "Vaciar todas las cuentas de transferencia a ahorros",
+        "description": "Retira el saldo completo de todas las cuentas de transferencia no de sistema con saldo > 0, en una sola transacción. Si no hay saldo responde 200 con `cantidad` 0.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "descripcion": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Retiro a ahorros (cierre de corte)",
+                    "description": "Opcional; por defecto 'Retiro a ahorros (cierre de corte)'"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Vaciado registrado (o sin saldo)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Vaciado de cuentas registrado"
+                    },
+                    "cantidad": {
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 120000
+                    },
+                    "retiros": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "medio_pago_id": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "nombre": {
+                            "type": "string",
+                            "example": "Nequi Miguel"
+                          },
+                          "monto": {
+                            "type": "number",
+                            "example": 80000
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos o sin corte abierto"
+          },
+          "401": {
+            "description": "Token inválido o no enviado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/ventas/con-domicilio": {
+      "get": {
+        "tags": [
+          "Ventas"
+        ],
+        "summary": "Ventas con domicilio (selector del modal de compras)",
+        "description": "Devuelve las ventas no anuladas con valor_domicilio > 0, con lo pagado/pendiente AL DOMICILIARIO, para el selector del modal de compras. Con `solo_pendientes=true` solo trae las que aun no completan el pago al domiciliario. La suma de compras de domicilio puede superar valor_domicilio (el domicilio puede costar mas de lo cobrado).",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "juan",
+              "maxLength": 100
+            },
+            "description": "Busca por id de venta o nombre del cliente."
+          },
+          {
+            "name": "solo_pendientes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "true = solo ventas cuyo pago al domiciliario no esta completo."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operacion exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "pagina": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "limite": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "total_paginas": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "datos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_venta": {
+                            "type": "integer",
+                            "example": 15
+                          },
+                          "cliente_id": {
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "nombre_cliente": {
+                            "type": "string",
+                            "example": "Juan Perez"
+                          },
+                          "fecha_entrega": {
+                            "type": "string",
+                            "example": "2026-11-11 15:00:00"
+                          },
+                          "estado": {
+                            "type": "string",
+                            "example": "pendiente"
+                          },
+                          "total": {
+                            "type": "number",
+                            "example": 25000
+                          },
+                          "valor_domicilio": {
+                            "type": "number",
+                            "example": 5000
+                          },
+                          "subtotal_productos": {
+                            "type": "number",
+                            "example": 20000
+                          },
+                          "domicilio_pagado_compra": {
+                            "type": "number",
+                            "example": 3000
+                          },
+                          "domicilio_pendiente_compra": {
+                            "type": "number",
+                            "example": 2000
+                          },
+                          "domicilio_compra_completa": {
+                            "type": "boolean",
+                            "example": false
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "pagina/limite/q/solo_pendientes invalidos"
+          },
+          "401": {
+            "description": "Token invalido o no enviado"
+          },
+          "403": {
+            "description": "Rol cocina no permitido"
           },
           "500": {
             "description": "Error interno del servidor"

@@ -1,7 +1,8 @@
 from flask import jsonify, request, g
 from services.compra_services import (
     listado_compra, obtener_compra, registro_compra,
-    actualizar_compra, eliminar_compra
+    actualizar_compra, eliminar_compra,
+    CATEGORIAS_COMPRA, CompraInvalida
 )
 from services.cortes_services import obtener_corte_abierto, obtener_corte
 from services.medios_pago_services import resolver_medio_pago, MedioPagoInvalido
@@ -11,12 +12,19 @@ def cntListadoCompra():
         pagina    = request.args.get("pagina", 1, type=int)
         limite    = request.args.get("limite", 20, type=int)
         corte_id  = request.args.get("corte_id", None, type=int)
-        busqueda  = request.args.get("q", None, type=str)
+        busqueda  = (request.args.get("q", "", type=str) or "").strip() or None
+        categoria = (request.args.get("categoria", "", type=str) or "").strip().lower() or None
 
         if pagina < 1:
             return jsonify({"mensaje": "la pagina debe ser mayor a 0"}), 400
         if limite < 1 or limite > 100:
             return jsonify({"mensaje": "el limite debe ser entre 1 y 100"}), 400
+        if busqueda and len(busqueda) > 100:
+            return jsonify({"mensaje": "q no puede exceder 100 caracteres"}), 400
+        if categoria and categoria not in CATEGORIAS_COMPRA:
+            return jsonify({
+                "mensaje": "categoria invalida. Valores permitidos: insumo, domicilio"
+            }), 400
 
         if corte_id is None:
             corte_abierto = obtener_corte_abierto()
@@ -28,7 +36,7 @@ def cntListadoCompra():
             if not corte_db:
                 return jsonify({"mensaje": f"el corte con id {corte_id} no existe"}), 404
 
-        datos = listado_compra(pagina, limite, corte_id, busqueda)
+        datos = listado_compra(pagina, limite, corte_id, busqueda, categoria)
         return jsonify(datos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -60,6 +68,9 @@ def cntRegistroCompra():
     medio_pago_id = request.json.get('medio_pago_id')
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
+    # 'insumo' por defecto (compatibilidad con el frontend actual).
+    categoria    = (request.json.get('categoria') or 'insumo')
+    venta_id     = request.json.get('venta_id')
 
     try:
         medio_pago, medio_pago_id = resolver_medio_pago(medio_pago, medio_pago_id)
@@ -77,10 +88,13 @@ def cntRegistroCompra():
         return jsonify({"error": "El total debe ser un número"}), 400
 
     try:
-        dato, error = registro_compra(proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion)
+        dato, error = registro_compra(proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion,
+                                      categoria, venta_id)
         if error:
             return jsonify({"error": error}), 409
         return jsonify(dato), 201
+    except CompraInvalida as e:
+        return jsonify({"mensaje": e.mensaje}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -101,6 +115,10 @@ def cntActualizarCompra(id):
     medio_pago_id = request.json.get('medio_pago_id')
     total        = request.json['total']
     descripcion  = request.json.get('descripcion', None)
+    # Si no viene categoria, se conserva la que ya tiene la compra (ver
+    # actualizar_compra); asi el frontend viejo no reclasifica una de domicilio.
+    categoria    = request.json.get('categoria')
+    venta_id     = request.json.get('venta_id')
 
     corte_abierto = obtener_corte_abierto()
     if not corte_abierto:
@@ -113,11 +131,14 @@ def cntActualizarCompra(id):
         return jsonify({"error": "El total debe ser un número"}), 400
 
     try:
-        dato, error = actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion)
+        dato, error = actualizar_compra(id, proveedor_id, corte_id, usuario_id, fecha, medio_pago, medio_pago_id, total, descripcion,
+                                        categoria, venta_id)
         if error:
             status = 404 if "no encontrada" in error else 409
             return jsonify({"error": error}), status
         return jsonify(dato), 200
+    except CompraInvalida as e:
+        return jsonify({"mensaje": e.mensaje}), 400
     except MedioPagoInvalido as e:
         return jsonify({"mensaje": e.mensaje}), 400
     except Exception as e:
